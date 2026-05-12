@@ -11,148 +11,306 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server,{
+
     pingTimeout:60000,
+
     pingInterval:25000,
-    transports:["websocket"]
+
+    transports:[
+        "websocket"
+    ]
+
 });
 
 app.use(express.static("public"));
 
 let users = [];
+
 let bannedIPs = [];
+
 let bannedIDs = [];
 
 if(fs.existsSync("users.json")){
-    users = JSON.parse(fs.readFileSync("users.json"));
+
+    users =
+    JSON.parse(
+        fs.readFileSync("users.json")
+    );
+
 }
 
 function saveUsers(){
+
     fs.writeFileSync(
+
         "users.json",
-        JSON.stringify(users,null,2)
+
+        JSON.stringify(
+            users,
+            null,
+            2
+        )
+
     );
+
 }
 
 io.on("connection",(socket)=>{
 
-    const ip = socket.handshake.address;
+    const ip =
+    socket.handshake.address;
 
     if(
+
         bannedIPs.includes(ip) ||
+
         bannedIDs.includes(socket.id)
+
     ){
+
         socket.disconnect();
+
         return;
+
     }
+
+    /* JOIN */
 
     socket.on("join",(data)=>{
 
-        const username = data.username.trim();
+        const username =
+        data.username.trim();
 
-        const exists = users.some(
+        const exists =
+        users.some(
+
             user =>
-            user.username.toLowerCase() ===
-            username.toLowerCase()
+
+            user.username
+            .toLowerCase()
+
+            ===
+
+            username
+            .toLowerCase()
+
         );
 
         if(exists){
-            socket.emit("name taken");
+
+            socket.emit(
+                "name taken"
+            );
+
             return;
+
         }
 
-        socket.username = username;
+        socket.username =
+        username;
 
-        socket.join("الوطن العربي");
+        socket.join(
+            "الوطن العربي"
+        );
 
         users.push({
+
             id:socket.id,
+
             username,
+
             ip
+
         });
 
         saveUsers();
 
-        io.emit("online users",users);
+        io.emit(
+            "online users",
+            users
+        );
 
-        io.emit("system",{
-            text:`${username} دخل الغرفة`
-        });
+        if(username === "Admin"){
+
+            io.emit(
+
+                "system",
+
+                {
+
+                    text:
+                    `ChanServ ** تم توكيل ${username}`
+
+                }
+
+            );
+
+        }
 
     });
 
-    socket.on("chat message",(data)=>{
+    /* CHAT */
 
-        io.emit("chat message",{
-            id:socket.id,
-            username:data.username,
-            message:data.message,
-            time:new Date().toLocaleTimeString()
-        });
+    socket.on(
 
-    });
+        "chat message",
 
-    socket.on("private message",(data)=>{
+        (data)=>{
 
-        io.to(data.toSocket).emit(
-            "private message",
+        io.emit(
+
+            "chat message",
+
             {
-                from:data.from,
-                message:data.message
+
+                id:socket.id,
+
+                username:
+                data.username,
+
+                message:
+                data.message,
+
+                time:
+                new Date()
+                .toLocaleTimeString()
+
             }
+
         );
 
     });
 
-    socket.on("kick user",(id)=>{
-        io.sockets.sockets.get(id)?.disconnect();
+    /* PRIVATE */
+
+    socket.on(
+
+        "private message",
+
+        (data)=>{
+
+        io.to(
+            data.toSocket
+        ).emit(
+
+            "private message",
+
+            {
+
+                from:
+                data.from,
+
+                message:
+                data.message
+
+            }
+
+        );
+
     });
 
-    socket.on("ban user",(data)=>{
+    /* KICK */
+
+    socket.on(
+
+        "kick user",
+
+        (id)=>{
+
+        io.sockets.sockets
+        .get(id)
+        ?.disconnect();
+
+    });
+
+    /* BAN */
+
+    socket.on(
+
+        "ban user",
+
+        (data)=>{
 
         const target =
-        io.sockets.sockets.get(data.id);
+
+        io.sockets.sockets
+        .get(data.id);
 
         if(target){
 
             const ip =
-            target.handshake.address;
+
+            target.handshake
+            .address;
 
             bannedIPs.push(ip);
 
-            bannedIDs.push(data.id);
+            bannedIDs.push(
+                data.id
+            );
 
-            target.emit("banned");
+            target.emit(
+                "banned"
+            );
 
-            target.disconnect(true);
+            target.disconnect(
+                true
+            );
 
         }
 
     });
 
-    socket.on("disconnect user",(id)=>{
-        io.sockets.sockets.get(id)?.disconnect(true);
+    /* DISCONNECT */
+
+    socket.on(
+
+        "disconnect user",
+
+        (id)=>{
+
+        io.sockets.sockets
+        .get(id)
+        ?.disconnect(true);
+
     });
 
-    socket.on("disconnect",()=>{
+    /* LEAVE */
 
-        users = users.filter(
-            user => user.id !== socket.id
+    socket.on(
+
+        "disconnect",
+
+        ()=>{
+
+        users =
+        users.filter(
+
+            user =>
+
+            user.id !==
+            socket.id
+
         );
 
         saveUsers();
 
-        io.emit("online users",users);
-
-        io.emit("system",{
-            text:`${socket.username} غادر الغرفة`
-        });
+        io.emit(
+            "online users",
+            users
+        );
 
     });
 
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+process.env.PORT || 3000;
 
 server.listen(PORT,()=>{
-    console.log("Server running");
+
+    console.log(
+        "Server running"
+    );
+
 });
