@@ -297,6 +297,8 @@ socket.on(
 
         div.onclick = (e)=>{
 
+            e.stopPropagation();
+
             selectedUser =
             user;
 
@@ -312,7 +314,7 @@ socket.on(
 
 });
 
-/* SEND */
+/* SEND MESSAGE */
 
 function sendMessage(){
 
@@ -353,7 +355,7 @@ function sendMessage(){
 
 }
 
-/* RECEIVE */
+/* RECEIVE MESSAGE */
 
 socket.on(
 
@@ -431,6 +433,8 @@ socket.on(
 
     div.onclick = (e)=>{
 
+        e.stopPropagation();
+
         selectedUser = {
 
             id:data.id,
@@ -482,8 +486,9 @@ socket.on(
     div.style.marginBottom =
     "10px";
 
-    div.innerText =
-    data.text;
+    div.innerHTML =
+
+    `<b>${data.text}</b>`;
 
     messages.appendChild(
         div
@@ -864,16 +869,26 @@ document.addEventListener(
 
 document.addEventListener(
 
-    "click",
+    "touchstart",
 
-    ()=>{
+    (e)=>{
+
+    const menu =
 
     document
     .getElementById(
         "userMenu"
-    )
+    );
 
-    .style.display =
-    "none";
+    if(
+
+        !menu.contains(e.target)
+
+    ){
+
+        menu.style.display =
+        "none";
+
+    }
 
 });
