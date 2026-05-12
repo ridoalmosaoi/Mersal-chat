@@ -1,1059 +1,404 @@
-const socket = io({
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
-    reconnection:true,
-
-    reconnectionAttempts:999999,
-
-    reconnectionDelay:1000,
-
-    reconnectionDelayMax:5000,
-
-    timeout:20000,
-
-    transports:[
-        "websocket"
-    ]
-
-});
-
-let currentUser = "";
-
-let selectedUser = null;
-
-let privateCount = 0;
-
-let usersVisible = false;
-
-let bannedUsers = [];
-
-/* ADMIN */
-
-const ADMIN_NAME =
-"Admin";
-
-const ADMIN_PASSWORD =
-"admin771";
-
-/* AUTO SAVE */
-
-window.onload = ()=>{
-
-    const savedUser =
-
-    localStorage.getItem(
-        "chatUsername"
-    );
-
-    const savedPass =
-
-    localStorage.getItem(
-        "chatPassword"
-    );
-
-    if(savedUser){
-
-        document
-        .getElementById(
-            "loginUsername"
-        )
-
-        .value =
-        savedUser;
-
-    }
-
-    if(savedPass){
-
-        document
-        .getElementById(
-            "loginPassword"
-        )
-
-        .value =
-        savedPass;
-
-    }
-
-};
+body{
+    background:#000;
+    color:#fff;
+    font-family:tahoma;
+    overflow:hidden;
+    height:100vh;
+}
 
 /* LOGIN */
 
-function login(){
-
-    const username =
-
-    document
-    .getElementById(
-        "loginUsername"
-    )
-
-    .value;
-
-    const password =
-
-    document
-    .getElementById(
-        "loginPassword"
-    )
-
-    .value;
-
-    if(
-
-        username.trim() === "" ||
-
-        password.trim() === ""
-
-    ){
-
-        alert(
-            "ادخل البيانات"
-        );
-
-        return;
-
-    }
-
-    currentUser =
-    username;
-
-    localStorage.setItem(
-
-        "chatUsername",
-
-        username
-
-    );
-
-    localStorage.setItem(
-
-        "chatPassword",
-
-        password
-
-    );
-
-    if(
-
-        currentUser ===
-        ADMIN_NAME &&
-
-        password ===
-        ADMIN_PASSWORD
-
-    ){
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "block";
-
-    }else{
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "none";
-
-    }
-
-    socket.emit(
-
-        "join",
-
-        {
-            username
-        }
-
-    );
-
+.login-screen{
+    width:100%;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#000;
 }
 
-/* NAME TAKEN */
+.login-box{
+    width:90%;
+    max-width:350px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
 
-socket.on(
+.logo{
+    color:#ff9900;
+    text-align:center;
+    font-size:60px;
+    font-weight:bold;
+}
 
-    "name taken",
+.sub{
+    text-align:center;
+    color:#999;
+    margin-bottom:10px;
+}
 
-    ()=>{
+.login-box input{
+    height:52px;
+    border:none;
+    border-radius:12px;
+    background:#111;
+    color:white;
+    padding:12px;
+    outline:none;
+    font-size:16px;
+}
 
-    alert(
-        "الاسم داخل الآن"
-    );
+.login-box button{
+    height:52px;
+    border:none;
+    border-radius:12px;
+    background:#ff9900;
+    color:black;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+}
 
-});
+/* CHAT */
 
-/* BANNED */
+.chat-app{
+    height:100vh;
+    background:#000;
+}
 
-socket.on(
+/* TOPBAR */
 
-    "banned",
+.topbar{
+    position:fixed;
+    top:0;
+    right:0;
+    width:100%;
+    height:60px;
+    background:#111;
+    border-bottom:1px solid #222;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 15px;
+    z-index:99999;
+}
 
-    ()=>{
+.room-name{
+    color:#ff9900;
+    font-size:22px;
+    font-weight:bold;
+}
 
-    alert(
-        "تم حظرك من الشات"
-    );
+/* ICONS */
 
-    location.reload();
+.menu-toggle,
+.settings-btn{
+    font-size:26px;
+    color:#ff9900;
+    cursor:pointer;
+}
 
-});
+/* PRIVATE ICON */
+
+.chat-notify{
+    position:fixed;
+    top:10px;
+    left:65px;
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:#111;
+    border:1px solid #333;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:999999;
+    font-size:20px;
+    cursor:pointer;
+}
+
+#privateBadge{
+    position:absolute;
+    top:-5px;
+    right:-5px;
+    background:red;
+    color:white;
+    min-width:20px;
+    height:20px;
+    border-radius:50%;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    font-size:12px;
+}
 
 /* ONLINE USERS */
 
-socket.on(
-
-    "online users",
-
-    (users)=>{
-
-    if(
-
-        document
-        .getElementById(
-            "chatApp"
-        )
-
-        .style.display
-        !== "block"
-
-    ){
-
-        document
-        .getElementById(
-            "loginScreen"
-        )
-
-        .style.display =
-        "none";
-
-        document
-        .getElementById(
-            "chatApp"
-        )
-
-        .style.display =
-        "block";
-
-    }
-
-    const online =
-
-    document
-    .getElementById(
-        "onlineList"
-    );
-
-    online.innerHTML = `
-
-        <div style="
-        color:#ff9900;
-        font-weight:bold;
-        margin-bottom:10px;
-        text-align:center;
-        ">
-
-        المتصلين
-        (${users.length})
-
-        </div>
-
-    `;
-
-    users.forEach(user=>{
-
-        const div =
-
-        document
-        .createElement(
-            "div"
-        );
-
-        div.classList.add(
-            "online-user"
-        );
-
-        div.innerHTML = `
-
-        ${
-
-        user.username ===
-        ADMIN_NAME
-
-        ?
-
-        "<span style='color:#ff4444'>&amp;</span>"
-
-        :
-
-        ""
-
-        }
-
-        ${user.username}
-
-        `;
-
-        div.onclick = (e)=>{
-
-            e.stopPropagation();
-
-            selectedUser =
-            user;
-
-            openMenu(e);
-
-        };
-
-        online.appendChild(
-            div
-        );
-
-    });
-
-});
-
-/* SEND MESSAGE */
-
-function sendMessage(){
-
-    const input =
-
-    document
-    .getElementById(
-        "messageInput"
-    );
-
-    const message =
-    input.value;
-
-    if(
-        message.trim() === ""
-    ){
-
-        return;
-
-    }
-
-    socket.emit(
-
-        "chat message",
-
-        {
-
-            username:
-            currentUser,
-
-            message
-
-        }
-
-    );
-
-    input.value = "";
-
+.online-list{
+    position:fixed;
+    top:60px;
+    left:-220px;
+    width:200px;
+    bottom:0;
+    background:#111;
+    overflow-y:auto;
+    transition:.25s;
+    z-index:999999;
+    border-right:1px solid #222;
 }
 
-/* RECEIVE MESSAGE */
+.online-show{
+    left:0;
+}
 
-socket.on(
+.online-user{
+    padding:15px;
+    border-bottom:1px solid #222;
+    cursor:pointer;
+    font-size:16px;
+}
 
-    "chat message",
+.online-user:hover{
+    background:#1a1a1a;
+}
 
-    (data)=>{
+/* MESSAGES */
 
-    const messages =
+.messages{
+    position:fixed;
+    top:60px;
+    bottom:70px;
+    right:0;
+    left:0;
+    overflow-y:auto;
+    padding:12px;
+}
 
-    document
-    .getElementById(
-        "messages"
-    );
+/* MESSAGE */
 
-    const div =
+.message{
+    background:#111;
+    border:1px solid #222;
+    padding:12px;
+    border-radius:16px;
+    margin-bottom:10px;
+    width:fit-content;
+    max-width:85%;
+}
 
-    document
-    .createElement(
-        "div"
-    );
+.my-message{
+    margin-left:auto;
+    background:#ff9900;
+    color:black;
+}
 
-    div.classList.add(
-        "message"
-    );
+.username{
+    color:#ff9900;
+    font-weight:bold;
+    margin-bottom:5px;
+}
 
-    if(
+.text{
+    line-height:1.6;
+    word-break:break-word;
+}
 
-        data.username ===
-        currentUser
+.time{
+    color:#777;
+    font-size:11px;
+    margin-top:5px;
+}
 
-    ){
+/* INPUT */
 
-        div.classList.add(
-            "my-message"
-        );
+.input-area{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    height:70px;
+    background:#111;
+    border-top:1px solid #222;
+    display:flex;
+    gap:10px;
+    padding:10px;
+    z-index:999999;
+}
 
-    }
+.input-area input{
+    flex:1;
+    border:none;
+    border-radius:30px;
+    background:#222;
+    color:white;
+    padding:12px;
+    outline:none;
+    font-size:16px;
+}
 
-    div.innerHTML = `
-
-        <div class="username">
-
-        ${
-
-        data.username ===
-        ADMIN_NAME
-
-        ?
-
-        "<span style='color:#ff4444'>&amp;</span>"
-
-        :
-
-        ""
-
-        }
-
-        ${data.username}
-
-        </div>
-
-        <div class="text">
-
-        ${data.message}
-
-        </div>
-
-        <div class="time">
-
-        ${data.time}
-
-        </div>
-
-    `;
-
-    div.onclick = (e)=>{
-
-        e.stopPropagation();
-
-        selectedUser = {
-
-            id:data.id,
-
-            username:
-            data.username
-
-        };
-
-        openMenu(e);
-
-    };
-
-    messages.appendChild(
-        div
-    );
-
-    messages.scrollTop =
-
-    messages.scrollHeight;
-
-});
-
-/* SYSTEM */
-
-socket.on(
-
-    "system",
-
-    (data)=>{
-
-    const messages =
-
-    document
-    .getElementById(
-        "messages"
-    );
-
-    const div =
-
-    document
-    .createElement(
-        "div"
-    );
-
-    div.style.color =
-    "#00ff66";
-
-    div.style.marginBottom =
-    "10px";
-
-    div.style.fontWeight =
-    "bold";
-
-    div.style.textAlign =
-    "center";
-
-    div.innerHTML =
-    data.text;
-
-    messages.appendChild(
-        div
-    );
-
-});
+.input-area button{
+    width:90px;
+    border:none;
+    border-radius:30px;
+    background:#ff9900;
+    color:black;
+    font-weight:bold;
+    font-size:16px;
+    cursor:pointer;
+}
 
 /* MENU */
 
-function openMenu(e){
-
-    e.preventDefault();
-
-    const menu =
-
-    document
-    .getElementById(
-        "userMenu"
-    );
-
-    menu.style.display =
-    "block";
-
+.user-menu{
+    position:fixed;
+    bottom:85px;
+    right:10px;
+    width:190px;
+    background:#111;
+    border:1px solid #333;
+    border-radius:20px;
+    overflow:hidden;
+    display:none;
+    z-index:9999999;
 }
 
-/* CLOSE MENU */
-
-function closeMenus(){
-
-    document
-    .getElementById(
-        "userMenu"
-    )
-
-    .style.display =
-    "none";
-
+.user-menu div{
+    padding:16px;
+    text-align:center;
+    border-bottom:1px solid #222;
+    cursor:pointer;
+    font-size:18px;
 }
 
-/* COPY USERNAME */
-
-function copyUsername(){
-
-    const input =
-
-    document
-    .getElementById(
-        "messageInput"
-    );
-
-    input.value =
-
-    input.value +
-
-    selectedUser.username +
-
-    " ";
-
-    input.focus();
-
-    closeMenus();
-
+.user-menu div:hover{
+    background:#1a1a1a;
 }
 
-/* TOGGLE USERS */
-
-function toggleUsers(){
-
-    const users =
-
-    document
-    .getElementById(
-        "onlineList"
-    );
-
-    usersVisible =
-    !usersVisible;
-
-    if(usersVisible){
-
-        users.classList.remove(
-            "online-hidden"
-        );
-
-    }else{
-
-        users.classList.add(
-            "online-hidden"
-        );
-
-    }
-
+#adminOptions div{
+    color:#ff4444;
+    font-weight:bold;
 }
 
 /* SETTINGS */
 
-function openSettings(){
-
-    const box =
-
-    document
-    .getElementById(
-        "settingsBox"
-    );
-
-    if(
-
-        box.style.display ===
-        "block"
-
-    ){
-
-        box.style.display =
-        "none";
-
-    }else{
-
-        box.style.display =
-        "block";
-
-        renderBanList();
-
-    }
-
+.settings-box{
+    position:fixed;
+    top:70px;
+    right:10px;
+    left:10px;
+    background:#111;
+    border:1px solid #333;
+    border-radius:16px;
+    overflow:hidden;
+    display:none;
+    z-index:999999;
 }
 
-/* BAN LIST */
-
-function renderBanList(){
-
-    const box =
-
-    document
-    .getElementById(
-        "banList"
-    );
-
-    box.innerHTML = "";
-
-    bannedUsers.forEach(user=>{
-
-        const div =
-        document.createElement(
-            "div"
-        );
-
-        div.className =
-        "ban-user";
-
-        div.innerHTML = `
-
-            <span>
-            ${user}
-            </span>
-
-            <button
-            class="unban-btn"
-            onclick="unbanUser('${user}')">
-
-            فك
-
-            </button>
-
-        `;
-
-        box.appendChild(div);
-
-    });
-
+.settings-title{
+    padding:15px;
+    border-bottom:1px solid #222;
+    color:#ff9900;
+    font-weight:bold;
 }
 
-/* UNBAN */
+.ban-user{
+    padding:12px;
+    border-bottom:1px solid #222;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
 
-function unbanUser(user){
-
-    bannedUsers =
-    bannedUsers.filter(
-
-        u => u !== user
-
-    );
-
-    renderBanList();
-
+.unban-btn{
+    border:none;
+    background:red;
+    color:white;
+    padding:6px 12px;
+    border-radius:8px;
 }
 
 /* PRIVATE */
 
-function openPrivate(){
+.private-box{
+    position:fixed;
+    bottom:80px;
+    right:2.5%;
+    width:95%;
+    height:60%;
+    background:#111;
+    border:1px solid #333;
+    border-radius:18px;
+    display:none;
+    flex-direction:column;
+    overflow:hidden;
+    z-index:999999;
+}
 
-    privateCount = 0;
+.private-top{
+    height:55px;
+    background:#000;
+    border-bottom:1px solid #222;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 15px;
+}
 
-    document
-    .getElementById(
-        "privateBadge"
-    )
+.private-top button{
+    width:35px;
+    height:35px;
+    border:none;
+    border-radius:50%;
+    background:red;
+    color:white;
+    cursor:pointer;
+}
 
-    .style.display =
-    "none";
+.private-messages{
+    flex:1;
+    overflow-y:auto;
+    padding:10px;
+}
 
-    const box =
+.private-input{
+    display:flex;
+    gap:8px;
+    padding:10px;
+    border-top:1px solid #222;
+}
 
-    document
-    .getElementById(
-        "privateBox"
-    );
+.private-input input{
+    flex:1;
+    border:none;
+    border-radius:12px;
+    background:#222;
+    color:white;
+    padding:10px;
+    outline:none;
+}
 
-    box.style.display =
-    "flex";
+.private-input button{
+    width:80px;
+    border:none;
+    border-radius:12px;
+    background:#ff9900;
+    color:black;
+    font-weight:bold;
+}
 
-    if(selectedUser){
+/* MOBILE */
 
-        document
-        .getElementById(
-            "privateName"
-        )
+@media(max-width:700px){
 
-        .innerText =
-
-        selectedUser.username;
-
+    .message{
+        max-width:90%;
     }
 
-    closeMenus();
-
 }
-
-function closePrivate(){
-
-    document
-    .getElementById(
-        "privateBox"
-    )
-
-    .style.display =
-    "none";
-
-}
-
-function sendPrivate(){
-
-    const input =
-
-    document
-    .getElementById(
-        "privateInput"
-    );
-
-    const message =
-    input.value;
-
-    if(
-        message.trim() === ""
-    ){
-
-        return;
-
-    }
-
-    socket.emit(
-
-        "private message",
-
-        {
-
-            toSocket:
-            selectedUser.id,
-
-            from:
-            currentUser,
-
-            message
-
-        }
-
-    );
-
-    addPrivateMessage(
-
-        "أنت",
-
-        message
-
-    );
-
-    input.value = "";
-
-}
-
-/* RECEIVE PRIVATE */
-
-socket.on(
-
-    "private message",
-
-    (data)=>{
-
-    privateCount++;
-
-    document
-    .getElementById(
-        "privateBadge"
-    )
-
-    .innerText =
-    privateCount;
-
-    document
-    .getElementById(
-        "privateBadge"
-    )
-
-    .style.display =
-    "flex";
-
-    document
-    .getElementById(
-        "privateBox"
-    )
-
-    .style.display =
-    "flex";
-
-    document
-    .getElementById(
-        "privateName"
-    )
-
-    .innerText =
-    data.from;
-
-    addPrivateMessage(
-
-        data.from,
-
-        data.message
-
-    );
-
-});
-
-/* ADD PM */
-
-function addPrivateMessage(
-
-    name,
-
-    msg
-
-){
-
-    const box =
-
-    document
-    .getElementById(
-        "privateMessages"
-    );
-
-    const div =
-
-    document
-    .createElement(
-        "div"
-    );
-
-    div.style.marginBottom =
-    "10px";
-
-    div.style.background =
-    "#1a1a1a";
-
-    div.style.padding =
-    "10px";
-
-    div.style.borderRadius =
-    "10px";
-
-    div.innerHTML = `
-
-        <b style="
-        color:#ff9900
-        ">
-
-        ${name}
-
-        </b>
-
-        <br><br>
-
-        ${msg}
-
-    `;
-
-    box.appendChild(
-        div
-    );
-
-    box.scrollTop =
-
-    box.scrollHeight;
-
-}
-
-/* ADMIN */
-
-function kickUser(){
-
-    socket.emit(
-
-        "kick user",
-
-        selectedUser.id
-
-    );
-
-    closeMenus();
-
-}
-
-function banUser(){
-
-    bannedUsers.push(
-        selectedUser.username
-    );
-
-    socket.emit(
-
-        "ban user",
-
-        {
-
-            id:selectedUser.id
-
-        }
-
-    );
-
-    closeMenus();
-
-}
-
-function disconnectUser(){
-
-    socket.emit(
-
-        "disconnect user",
-
-        selectedUser.id
-
-    );
-
-    closeMenus();
-
-}
-
-/* RECONNECT */
-
-socket.on(
-
-    "connect",
-
-    ()=>{
-
-    if(currentUser !== ""){
-
-        socket.emit(
-
-            "join",
-
-            {
-
-                username:
-                currentUser
-
-            }
-
-        );
-
-    }
-
-});
-
-/* ENTER */
-
-document.addEventListener(
-
-    "keypress",
-
-    (e)=>{
-
-    if(
-        e.key === "Enter"
-    ){
-
-        if(
-
-            document
-            .getElementById(
-                "chatApp"
-            )
-
-            .style.display
-            === "none"
-
-        ){
-
-            login();
-
-        }else{
-
-            sendMessage();
-
-        }
-
-    }
-
-});
-
-/* CLOSE MENU */
-
-document.addEventListener(
-
-    "click",
-
-    (e)=>{
-
-    const menu =
-
-    document
-    .getElementById(
-        "userMenu"
-    );
-
-    if(
-
-        !menu.contains(e.target)
-
-    ){
-
-        menu.style.display =
-        "none";
-
-    }
-
-});
-
-/* FIX MOBILE */
-
-window.addEventListener(
-
-    "resize",
-
-    ()=>{
-
-    document.body.style.height =
-    window.innerHeight + "px";
-
-});
