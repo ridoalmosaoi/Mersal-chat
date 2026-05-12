@@ -30,6 +30,8 @@ let bannedIPs = [];
 
 let bannedIDs = [];
 
+/* LOAD USERS */
+
 if(fs.existsSync("users.json")){
 
     users =
@@ -38,6 +40,8 @@ if(fs.existsSync("users.json")){
     );
 
 }
+
+/* SAVE USERS */
 
 function saveUsers(){
 
@@ -55,10 +59,14 @@ function saveUsers(){
 
 }
 
+/* CONNECTION */
+
 io.on("connection",(socket)=>{
 
     const ip =
     socket.handshake.address;
+
+    /* BANNED */
 
     if(
 
@@ -67,6 +75,10 @@ io.on("connection",(socket)=>{
         bannedIDs.includes(socket.id)
 
     ){
+
+        socket.emit(
+            "banned"
+        );
 
         socket.disconnect();
 
@@ -80,6 +92,8 @@ io.on("connection",(socket)=>{
 
         const username =
         data.username.trim();
+
+        /* NAME EXISTS */
 
         const exists =
         users.some(
@@ -130,6 +144,8 @@ io.on("connection",(socket)=>{
             users
         );
 
+        /* CHANSERV */
+
         if(username === "Admin"){
 
             io.emit(
@@ -139,7 +155,7 @@ io.on("connection",(socket)=>{
                 {
 
                     text:
-                    `ChanServ ** تم توكيل ${username}`
+                    "ChanServ ** تم توكيل Admin"
 
                 }
 
@@ -149,7 +165,7 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* CHAT */
+    /* PUBLIC MESSAGE */
 
     socket.on(
 
@@ -173,7 +189,9 @@ io.on("connection",(socket)=>{
 
                 time:
                 new Date()
-                .toLocaleTimeString()
+                .toLocaleTimeString(
+                    "ar"
+                )
 
             }
 
@@ -181,7 +199,7 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* PRIVATE */
+    /* PRIVATE MESSAGE */
 
     socket.on(
 
@@ -209,7 +227,7 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* KICK */
+    /* KICK USER */
 
     socket.on(
 
@@ -217,13 +235,35 @@ io.on("connection",(socket)=>{
 
         (id)=>{
 
+        const target =
+
         io.sockets.sockets
-        .get(id)
-        ?.disconnect();
+        .get(id);
+
+        if(target){
+
+            target.emit(
+
+                "system",
+
+                {
+
+                    text:
+                    "تم طردك من الشات"
+
+                }
+
+            );
+
+            target.disconnect(
+                true
+            );
+
+        }
 
     });
 
-    /* BAN */
+    /* BAN USER */
 
     socket.on(
 
@@ -238,12 +278,14 @@ io.on("connection",(socket)=>{
 
         if(target){
 
-            const ip =
+            const targetIP =
 
             target.handshake
             .address;
 
-            bannedIPs.push(ip);
+            bannedIPs.push(
+                targetIP
+            );
 
             bannedIDs.push(
                 data.id
@@ -261,7 +303,7 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* DISCONNECT */
+    /* DISCONNECT USER */
 
     socket.on(
 
@@ -269,9 +311,31 @@ io.on("connection",(socket)=>{
 
         (id)=>{
 
+        const target =
+
         io.sockets.sockets
-        .get(id)
-        ?.disconnect(true);
+        .get(id);
+
+        if(target){
+
+            target.emit(
+
+                "system",
+
+                {
+
+                    text:
+                    "تم فصل اتصالك"
+
+                }
+
+            );
+
+            target.disconnect(
+                true
+            );
+
+        }
 
     });
 
@@ -304,13 +368,19 @@ io.on("connection",(socket)=>{
 
 });
 
+/* START */
+
 const PORT =
 process.env.PORT || 3000;
 
 server.listen(PORT,()=>{
 
     console.log(
-        "Server running"
+
+        "Server running on port " +
+
+        PORT
+
     );
 
 });
