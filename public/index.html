@@ -67,21 +67,37 @@ id="chatApp"
 class="chat-app"
 style="display:none;">
 
-    <!-- TOP -->
+    <!-- TOPBAR -->
 
     <div class="topbar">
 
-        <div class="room-name">
-            🇸🇦 الوطن العربي
+        <div
+        class="menu-toggle"
+        onclick="toggleUsers()">
+
+            ☰
+
         </div>
 
-        <div class="online-status">
-            ● متصل
+        <div class="room-name">
+            الوطن العربي
+        </div>
+
+        <div class="top-icons">
+
+            <div
+            class="settings-btn"
+            onclick="openSettings()">
+
+                ⚙️
+
+            </div>
+
         </div>
 
     </div>
 
-    <!-- PM -->
+    <!-- PRIVATE ICON -->
 
     <div
     class="chat-notify"
@@ -95,11 +111,11 @@ style="display:none;">
 
     </div>
 
-    <!-- ONLINE -->
+    <!-- USERS -->
 
     <div
     id="onlineList"
-    class="online-list"></div>
+    class="online-list online-hidden"></div>
 
     <!-- MESSAGES -->
 
@@ -124,7 +140,7 @@ style="display:none;">
 
 </div>
 
-<!-- MENU -->
+<!-- USER MENU -->
 
 <div
 id="userMenu"
@@ -153,6 +169,21 @@ class="user-menu">
         </div>
 
     </div>
+
+</div>
+
+<!-- SETTINGS -->
+
+<div
+id="settingsBox"
+class="settings-box">
+
+    <div class="settings-title">
+        المحظورين
+    </div>
+
+    <div
+    id="banList"></div>
 
 </div>
 
