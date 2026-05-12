@@ -1,702 +1,1059 @@
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
+const socket = io({
 
-body{
+    reconnection:true,
 
-    background:black;
+    reconnectionAttempts:999999,
 
-    color:white;
+    reconnectionDelay:1000,
 
-    font-family:tahoma;
+    reconnectionDelayMax:5000,
 
-    overflow:hidden;
+    timeout:20000,
 
-    height:100vh;
+    transports:[
+        "websocket"
+    ]
 
-    position:fixed;
+});
 
-    width:100%;
+let currentUser = "";
 
-    touch-action:manipulation;
+let selectedUser = null;
 
-    -webkit-user-select:none;
+let privateCount = 0;
 
-    user-select:none;
-}
+let usersVisible = false;
+
+let bannedUsers = [];
+
+/* ADMIN */
+
+const ADMIN_NAME =
+"Admin";
+
+const ADMIN_PASSWORD =
+"admin771";
+
+/* AUTO SAVE */
+
+window.onload = ()=>{
+
+    const savedUser =
+
+    localStorage.getItem(
+        "chatUsername"
+    );
+
+    const savedPass =
+
+    localStorage.getItem(
+        "chatPassword"
+    );
+
+    if(savedUser){
+
+        document
+        .getElementById(
+            "loginUsername"
+        )
+
+        .value =
+        savedUser;
+
+    }
+
+    if(savedPass){
+
+        document
+        .getElementById(
+            "loginPassword"
+        )
+
+        .value =
+        savedPass;
+
+    }
+
+};
 
 /* LOGIN */
 
-.login-screen{
+function login(){
 
-    width:100%;
+    const username =
 
-    height:100vh;
+    document
+    .getElementById(
+        "loginUsername"
+    )
 
-    display:flex;
+    .value;
 
-    justify-content:center;
+    const password =
 
-    align-items:center;
+    document
+    .getElementById(
+        "loginPassword"
+    )
 
-    background:black;
+    .value;
+
+    if(
+
+        username.trim() === "" ||
+
+        password.trim() === ""
+
+    ){
+
+        alert(
+            "ادخل البيانات"
+        );
+
+        return;
+
+    }
+
+    currentUser =
+    username;
+
+    localStorage.setItem(
+
+        "chatUsername",
+
+        username
+
+    );
+
+    localStorage.setItem(
+
+        "chatPassword",
+
+        password
+
+    );
+
+    if(
+
+        currentUser ===
+        ADMIN_NAME &&
+
+        password ===
+        ADMIN_PASSWORD
+
+    ){
+
+        document
+        .getElementById(
+            "adminOptions"
+        )
+
+        .style.display =
+        "block";
+
+    }else{
+
+        document
+        .getElementById(
+            "adminOptions"
+        )
+
+        .style.display =
+        "none";
+
+    }
+
+    socket.emit(
+
+        "join",
+
+        {
+            username
+        }
+
+    );
+
 }
 
-.login-box{
+/* NAME TAKEN */
 
-    width:90%;
+socket.on(
 
-    max-width:350px;
+    "name taken",
 
-    display:flex;
+    ()=>{
 
-    flex-direction:column;
+    alert(
+        "الاسم داخل الآن"
+    );
 
-    gap:10px;
+});
+
+/* BANNED */
+
+socket.on(
+
+    "banned",
+
+    ()=>{
+
+    alert(
+        "تم حظرك من الشات"
+    );
+
+    location.reload();
+
+});
+
+/* ONLINE USERS */
+
+socket.on(
+
+    "online users",
+
+    (users)=>{
+
+    if(
+
+        document
+        .getElementById(
+            "chatApp"
+        )
+
+        .style.display
+        !== "block"
+
+    ){
+
+        document
+        .getElementById(
+            "loginScreen"
+        )
+
+        .style.display =
+        "none";
+
+        document
+        .getElementById(
+            "chatApp"
+        )
+
+        .style.display =
+        "block";
+
+    }
+
+    const online =
+
+    document
+    .getElementById(
+        "onlineList"
+    );
+
+    online.innerHTML = `
+
+        <div style="
+        color:#ff9900;
+        font-weight:bold;
+        margin-bottom:10px;
+        text-align:center;
+        ">
+
+        المتصلين
+        (${users.length})
+
+        </div>
+
+    `;
+
+    users.forEach(user=>{
+
+        const div =
+
+        document
+        .createElement(
+            "div"
+        );
+
+        div.classList.add(
+            "online-user"
+        );
+
+        div.innerHTML = `
+
+        ${
+
+        user.username ===
+        ADMIN_NAME
+
+        ?
+
+        "<span style='color:#ff4444'>&amp;</span>"
+
+        :
+
+        ""
+
+        }
+
+        ${user.username}
+
+        `;
+
+        div.onclick = (e)=>{
+
+            e.stopPropagation();
+
+            selectedUser =
+            user;
+
+            openMenu(e);
+
+        };
+
+        online.appendChild(
+            div
+        );
+
+    });
+
+});
+
+/* SEND MESSAGE */
+
+function sendMessage(){
+
+    const input =
+
+    document
+    .getElementById(
+        "messageInput"
+    );
+
+    const message =
+    input.value;
+
+    if(
+        message.trim() === ""
+    ){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "chat message",
+
+        {
+
+            username:
+            currentUser,
+
+            message
+
+        }
+
+    );
+
+    input.value = "";
+
 }
 
-.logo{
+/* RECEIVE MESSAGE */
 
-    color:#ff9900;
+socket.on(
 
-    text-align:center;
+    "chat message",
 
-    font-size:60px;
+    (data)=>{
 
-    font-weight:bold;
-}
+    const messages =
 
-.sub{
+    document
+    .getElementById(
+        "messages"
+    );
 
-    text-align:center;
+    const div =
 
-    color:#888;
+    document
+    .createElement(
+        "div"
+    );
 
-    margin-bottom:15px;
-}
+    div.classList.add(
+        "message"
+    );
 
-.login-box input{
+    if(
 
-    height:50px;
+        data.username ===
+        currentUser
 
-    border:none;
+    ){
 
-    border-radius:8px;
+        div.classList.add(
+            "my-message"
+        );
 
-    background:#111;
+    }
 
-    color:white;
+    div.innerHTML = `
 
-    padding:10px;
+        <div class="username">
 
-    outline:none;
+        ${
 
-    font-size:16px;
-}
+        data.username ===
+        ADMIN_NAME
 
-.login-box button{
+        ?
 
-    height:50px;
+        "<span style='color:#ff4444'>&amp;</span>"
 
-    border:none;
+        :
 
-    border-radius:8px;
+        ""
 
-    background:#ff9900;
+        }
 
-    color:black;
+        ${data.username}
 
-    font-weight:bold;
+        </div>
 
-    font-size:18px;
+        <div class="text">
 
-    cursor:pointer;
-}
+        ${data.message}
 
-/* CHAT */
+        </div>
 
-.chat-app{
+        <div class="time">
 
-    height:100vh;
+        ${data.time}
 
-    background:black;
-}
+        </div>
 
-/* TOPBAR */
+    `;
 
-.topbar{
+    div.onclick = (e)=>{
 
-    position:fixed;
+        e.stopPropagation();
 
-    top:0;
+        selectedUser = {
 
-    left:0;
+            id:data.id,
 
-    width:100%;
+            username:
+            data.username
 
-    height:60px;
+        };
 
-    background:#111;
+        openMenu(e);
 
-    border-bottom:1px solid #222;
+    };
 
-    display:flex;
+    messages.appendChild(
+        div
+    );
 
-    justify-content:space-between;
+    messages.scrollTop =
 
-    align-items:center;
+    messages.scrollHeight;
 
-    padding:0 15px;
+});
 
-    z-index:99999;
-}
+/* SYSTEM */
 
-.room-name{
+socket.on(
 
-    color:#ff9900;
+    "system",
 
-    font-weight:bold;
+    (data)=>{
 
-    font-size:18px;
-}
+    const messages =
 
-/* MENU TOGGLE */
+    document
+    .getElementById(
+        "messages"
+    );
 
-.menu-toggle{
+    const div =
 
-    font-size:24px;
+    document
+    .createElement(
+        "div"
+    );
 
-    cursor:pointer;
+    div.style.color =
+    "#00ff66";
 
-    color:#ff9900;
-}
+    div.style.marginBottom =
+    "10px";
 
-/* TOP ICONS */
+    div.style.fontWeight =
+    "bold";
 
-.top-icons{
+    div.style.textAlign =
+    "center";
 
-    display:flex;
+    div.innerHTML =
+    data.text;
 
-    gap:10px;
-}
+    messages.appendChild(
+        div
+    );
 
-.settings-btn{
-
-    font-size:22px;
-
-    cursor:pointer;
-}
-
-/* PRIVATE ICON */
-
-.chat-notify{
-
-    position:fixed;
-
-    top:10px;
-
-    left:65px;
-
-    width:42px;
-
-    height:42px;
-
-    border-radius:50%;
-
-    background:#111;
-
-    border:1px solid #333;
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    z-index:999999;
-
-    font-size:20px;
-
-    cursor:pointer;
-}
-
-#privateBadge{
-
-    position:absolute;
-
-    top:-5px;
-
-    right:-5px;
-
-    background:red;
-
-    color:white;
-
-    min-width:20px;
-
-    height:20px;
-
-    border-radius:50%;
-
-    display:none;
-
-    justify-content:center;
-
-    align-items:center;
-
-    font-size:12px;
-}
-
-/* USERS */
-
-.online-list{
-
-    position:fixed;
-
-    top:60px;
-
-    left:0;
-
-    width:120px;
-
-    bottom:65px;
-
-    background:#0d0d0d;
-
-    overflow-y:auto;
-
-    padding:10px;
-
-    border-right:1px solid #222;
-
-    transition:.2s;
-
-    z-index:9999;
-}
-
-.online-hidden{
-
-    left:-140px !important;
-}
-
-.online-user{
-
-    background:#111;
-
-    padding:8px;
-
-    border-radius:6px;
-
-    margin-bottom:6px;
-
-    cursor:pointer;
-
-    font-size:14px;
-}
-
-.online-user:hover{
-
-    background:#222;
-}
-
-/* MESSAGES */
-
-.messages{
-
-    position:fixed;
-
-    top:60px;
-
-    bottom:65px;
-
-    left:0;
-
-    right:0;
-
-    overflow-y:auto;
-
-    padding:10px;
-}
-
-/* MESSAGE */
-
-.message{
-
-    background:#111;
-
-    border:1px solid #222;
-
-    padding:12px;
-
-    border-radius:10px;
-
-    margin-bottom:10px;
-
-    width:fit-content;
-
-    max-width:85%;
-
-    animation:fade .2s;
-}
-
-.my-message{
-
-    margin-left:auto;
-
-    background:#ff9900;
-
-    color:black;
-}
-
-.username{
-
-    color:#ff9900;
-
-    font-weight:bold;
-
-    margin-bottom:5px;
-}
-
-.text{
-
-    line-height:1.6;
-
-    word-break:break-word;
-}
-
-.time{
-
-    color:#666;
-
-    font-size:11px;
-
-    margin-top:5px;
-}
-
-/* INPUT */
-
-.input-area{
-
-    position:fixed;
-
-    bottom:0;
-
-    left:0;
-
-    width:100%;
-
-    height:65px;
-
-    display:flex;
-
-    gap:8px;
-
-    padding:10px;
-
-    background:#111;
-
-    border-top:1px solid #222;
-
-    z-index:999999;
-
-    align-items:center;
-}
-
-.input-area input{
-
-    flex:1;
-
-    height:45px;
-
-    border:none;
-
-    border-radius:30px;
-
-    background:#222;
-
-    color:white;
-
-    padding:10px;
-
-    outline:none;
-
-    font-size:16px;
-}
-
-.input-area button{
-
-    width:85px;
-
-    height:45px;
-
-    border:none;
-
-    border-radius:30px;
-
-    background:#ff9900;
-
-    color:black;
-
-    font-weight:bold;
-
-    cursor:pointer;
-}
+});
 
 /* MENU */
 
-.user-menu{
+function openMenu(e){
 
-    position:fixed;
+    e.preventDefault();
 
-    background:#111;
+    const menu =
 
-    border:1px solid #333;
+    document
+    .getElementById(
+        "userMenu"
+    );
 
-    border-radius:8px;
+    menu.style.display =
+    "block";
 
-    overflow:hidden;
-
-    display:none;
-
-    z-index:9999999;
 }
 
-.user-menu div{
+/* CLOSE MENU */
 
-    padding:10px 15px;
+function closeMenus(){
 
-    cursor:pointer;
+    document
+    .getElementById(
+        "userMenu"
+    )
+
+    .style.display =
+    "none";
+
 }
 
-.user-menu div:hover{
+/* COPY USERNAME */
 
-    background:#222;
+function copyUsername(){
+
+    const input =
+
+    document
+    .getElementById(
+        "messageInput"
+    );
+
+    input.value =
+
+    input.value +
+
+    selectedUser.username +
+
+    " ";
+
+    input.focus();
+
+    closeMenus();
+
 }
 
-#adminOptions{
+/* TOGGLE USERS */
 
-    border-top:1px solid #333;
-}
+function toggleUsers(){
 
-#adminOptions div{
+    const users =
 
-    color:#ff4444;
+    document
+    .getElementById(
+        "onlineList"
+    );
+
+    usersVisible =
+    !usersVisible;
+
+    if(usersVisible){
+
+        users.classList.remove(
+            "online-hidden"
+        );
+
+    }else{
+
+        users.classList.add(
+            "online-hidden"
+        );
+
+    }
+
 }
 
 /* SETTINGS */
 
-.settings-box{
+function openSettings(){
 
-    position:fixed;
+    const box =
 
-    top:70px;
+    document
+    .getElementById(
+        "settingsBox"
+    );
 
-    right:10px;
+    if(
 
-    width:280px;
+        box.style.display ===
+        "block"
 
-    max-height:400px;
+    ){
 
-    overflow-y:auto;
+        box.style.display =
+        "none";
 
-    background:#111;
+    }else{
 
-    border:1px solid #333;
+        box.style.display =
+        "block";
 
-    border-radius:10px;
+        renderBanList();
 
-    display:none;
+    }
 
-    z-index:999999;
 }
 
-.settings-title{
+/* BAN LIST */
 
-    padding:15px;
+function renderBanList(){
 
-    border-bottom:1px solid #222;
+    const box =
 
-    color:#ff9900;
+    document
+    .getElementById(
+        "banList"
+    );
 
-    font-weight:bold;
+    box.innerHTML = "";
+
+    bannedUsers.forEach(user=>{
+
+        const div =
+        document.createElement(
+            "div"
+        );
+
+        div.className =
+        "ban-user";
+
+        div.innerHTML = `
+
+            <span>
+            ${user}
+            </span>
+
+            <button
+            class="unban-btn"
+            onclick="unbanUser('${user}')">
+
+            فك
+
+            </button>
+
+        `;
+
+        box.appendChild(div);
+
+    });
+
 }
 
-.ban-user{
+/* UNBAN */
 
-    padding:10px;
+function unbanUser(user){
 
-    border-bottom:1px solid #222;
+    bannedUsers =
+    bannedUsers.filter(
 
-    display:flex;
+        u => u !== user
 
-    justify-content:space-between;
+    );
 
-    align-items:center;
-}
+    renderBanList();
 
-.unban-btn{
-
-    background:red;
-
-    color:white;
-
-    border:none;
-
-    padding:5px 10px;
-
-    border-radius:5px;
-
-    cursor:pointer;
 }
 
 /* PRIVATE */
 
-.private-box{
+function openPrivate(){
 
-    position:fixed;
+    privateCount = 0;
 
-    right:10px;
+    document
+    .getElementById(
+        "privateBadge"
+    )
 
-    bottom:80px;
+    .style.display =
+    "none";
 
-    width:320px;
+    const box =
 
-    height:420px;
+    document
+    .getElementById(
+        "privateBox"
+    );
 
-    background:#111;
+    box.style.display =
+    "flex";
 
-    border:1px solid #333;
+    if(selectedUser){
 
-    border-radius:10px;
+        document
+        .getElementById(
+            "privateName"
+        )
 
-    display:none;
+        .innerText =
 
-    flex-direction:column;
+        selectedUser.username;
 
-    z-index:999999;
-}
-
-.private-top{
-
-    height:50px;
-
-    background:#0d0d0d;
-
-    display:flex;
-
-    justify-content:space-between;
-
-    align-items:center;
-
-    padding:0 15px;
-
-    border-bottom:1px solid #222;
-}
-
-.private-top button{
-
-    width:30px;
-
-    height:30px;
-
-    border:none;
-
-    border-radius:50%;
-
-    background:red;
-
-    color:white;
-
-    cursor:pointer;
-}
-
-.private-messages{
-
-    flex:1;
-
-    overflow-y:auto;
-
-    padding:10px;
-}
-
-.private-input{
-
-    display:flex;
-
-    gap:5px;
-
-    padding:10px;
-
-    border-top:1px solid #222;
-}
-
-.private-input input{
-
-    flex:1;
-
-    background:#222;
-
-    color:white;
-
-    border:none;
-
-    padding:10px;
-
-    border-radius:8px;
-
-    outline:none;
-}
-
-.private-input button{
-
-    width:70px;
-
-    border:none;
-
-    border-radius:8px;
-
-    background:#ff9900;
-
-    color:black;
-
-    font-weight:bold;
-
-    cursor:pointer;
-}
-
-/* ANIMATION */
-
-@keyframes fade{
-
-    from{
-
-        opacity:0;
-
-        transform:translateY(10px);
     }
 
-    to{
-
-        opacity:1;
-
-        transform:translateY(0);
-    }
+    closeMenus();
 
 }
 
-/* MOBILE */
+function closePrivate(){
 
-@media(max-width:700px){
+    document
+    .getElementById(
+        "privateBox"
+    )
 
-    .private-box{
-
-        width:95%;
-
-        right:2.5%;
-
-        height:60%;
-    }
+    .style.display =
+    "none";
 
 }
+
+function sendPrivate(){
+
+    const input =
+
+    document
+    .getElementById(
+        "privateInput"
+    );
+
+    const message =
+    input.value;
+
+    if(
+        message.trim() === ""
+    ){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "private message",
+
+        {
+
+            toSocket:
+            selectedUser.id,
+
+            from:
+            currentUser,
+
+            message
+
+        }
+
+    );
+
+    addPrivateMessage(
+
+        "أنت",
+
+        message
+
+    );
+
+    input.value = "";
+
+}
+
+/* RECEIVE PRIVATE */
+
+socket.on(
+
+    "private message",
+
+    (data)=>{
+
+    privateCount++;
+
+    document
+    .getElementById(
+        "privateBadge"
+    )
+
+    .innerText =
+    privateCount;
+
+    document
+    .getElementById(
+        "privateBadge"
+    )
+
+    .style.display =
+    "flex";
+
+    document
+    .getElementById(
+        "privateBox"
+    )
+
+    .style.display =
+    "flex";
+
+    document
+    .getElementById(
+        "privateName"
+    )
+
+    .innerText =
+    data.from;
+
+    addPrivateMessage(
+
+        data.from,
+
+        data.message
+
+    );
+
+});
+
+/* ADD PM */
+
+function addPrivateMessage(
+
+    name,
+
+    msg
+
+){
+
+    const box =
+
+    document
+    .getElementById(
+        "privateMessages"
+    );
+
+    const div =
+
+    document
+    .createElement(
+        "div"
+    );
+
+    div.style.marginBottom =
+    "10px";
+
+    div.style.background =
+    "#1a1a1a";
+
+    div.style.padding =
+    "10px";
+
+    div.style.borderRadius =
+    "10px";
+
+    div.innerHTML = `
+
+        <b style="
+        color:#ff9900
+        ">
+
+        ${name}
+
+        </b>
+
+        <br><br>
+
+        ${msg}
+
+    `;
+
+    box.appendChild(
+        div
+    );
+
+    box.scrollTop =
+
+    box.scrollHeight;
+
+}
+
+/* ADMIN */
+
+function kickUser(){
+
+    socket.emit(
+
+        "kick user",
+
+        selectedUser.id
+
+    );
+
+    closeMenus();
+
+}
+
+function banUser(){
+
+    bannedUsers.push(
+        selectedUser.username
+    );
+
+    socket.emit(
+
+        "ban user",
+
+        {
+
+            id:selectedUser.id
+
+        }
+
+    );
+
+    closeMenus();
+
+}
+
+function disconnectUser(){
+
+    socket.emit(
+
+        "disconnect user",
+
+        selectedUser.id
+
+    );
+
+    closeMenus();
+
+}
+
+/* RECONNECT */
+
+socket.on(
+
+    "connect",
+
+    ()=>{
+
+    if(currentUser !== ""){
+
+        socket.emit(
+
+            "join",
+
+            {
+
+                username:
+                currentUser
+
+            }
+
+        );
+
+    }
+
+});
+
+/* ENTER */
+
+document.addEventListener(
+
+    "keypress",
+
+    (e)=>{
+
+    if(
+        e.key === "Enter"
+    ){
+
+        if(
+
+            document
+            .getElementById(
+                "chatApp"
+            )
+
+            .style.display
+            === "none"
+
+        ){
+
+            login();
+
+        }else{
+
+            sendMessage();
+
+        }
+
+    }
+
+});
+
+/* CLOSE MENU */
+
+document.addEventListener(
+
+    "click",
+
+    (e)=>{
+
+    const menu =
+
+    document
+    .getElementById(
+        "userMenu"
+    );
+
+    if(
+
+        !menu.contains(e.target)
+
+    ){
+
+        menu.style.display =
+        "none";
+
+    }
+
+});
+
+/* FIX MOBILE */
+
+window.addEventListener(
+
+    "resize",
+
+    ()=>{
+
+    document.body.style.height =
+    window.innerHeight + "px";
+
+});
