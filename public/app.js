@@ -125,8 +125,6 @@ socket.on(
     .style.display =
     "block";
 
-    /* ADMIN ONLY */
-
     if(
 
         currentUser !==
@@ -142,29 +140,7 @@ socket.on(
         .style.display =
         "none";
 
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "none";
-
     }
-
-});
-
-/* NAME TAKEN */
-
-socket.on(
-
-    "name taken",
-
-    ()=>{
-
-    alert(
-        "الاسم مستخدم"
-    );
 
 });
 
@@ -356,7 +332,8 @@ socket.on(
 
         e.stopPropagation();
 
-        selectedUser = data;
+        selectedUser =
+        data;
 
         openUserMenu();
 
@@ -461,6 +438,33 @@ function openUserMenu(){
     menu.style.display =
     "block";
 
+    if(
+
+        currentUser !==
+        ADMIN_NAME
+
+    ){
+
+        document
+        .getElementById(
+            "adminOptions"
+        )
+
+        .style.display =
+        "none";
+
+    }else{
+
+        document
+        .getElementById(
+            "adminOptions"
+        )
+
+        .style.display =
+        "block";
+
+    }
+
 }
 
 function closeMenu(){
@@ -562,56 +566,6 @@ function openPrivateList(){
 
     badge.style.display =
     "none";
-
-}
-
-/* SEND PRIVATE */
-
-function sendPrivate(){
-
-    const input =
-
-    document
-    .getElementById(
-        "privateInput"
-    );
-
-    const message =
-    input.value.trim();
-
-    if(message === ""){
-
-        return;
-
-    }
-
-    socket.emit(
-
-        "private message",
-
-        {
-
-            to:
-            selectedUser.id,
-
-            from:
-            currentUser,
-
-            message
-
-        }
-
-    );
-
-    addPrivateMessage(
-
-        "أنت",
-
-        message
-
-    );
-
-    input.value = "";
 
 }
 
@@ -792,7 +746,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE ALL */
+/* CLOSE */
 
 function closeAll(){
 
@@ -808,9 +762,17 @@ function closeAll(){
 
     });
 
+    document
+    .getElementById(
+        "userMenu"
+    )
+
+    .style.display =
+    "none";
+
 }
 
-/* CLOSE EVENTS */
+/* CLICK */
 
 document.addEventListener(
 
@@ -818,7 +780,7 @@ document.addEventListener(
 
     ()=>{
 
-    closeMenu();
+    closeAll();
 
 });
 
