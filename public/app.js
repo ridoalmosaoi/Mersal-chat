@@ -125,6 +125,8 @@ socket.on(
     .style.display =
     "block";
 
+    /* ADMIN ONLY */
+
     if(
 
         currentUser !==
@@ -135,6 +137,14 @@ socket.on(
         document
         .getElementById(
             "settingsButton"
+        )
+
+        .style.display =
+        "none";
+
+        document
+        .getElementById(
+            "adminOptions"
         )
 
         .style.display =
@@ -346,22 +356,7 @@ socket.on(
 
         e.stopPropagation();
 
-        selectedUser = {
-
-            id:data.id,
-
-            username:
-            data.username,
-
-            ip:data.ip,
-
-            browser:
-            data.browser,
-
-            device:
-            data.device
-
-        };
+        selectedUser = data;
 
         openUserMenu();
 
@@ -377,53 +372,82 @@ socket.on(
 
 });
 
-/* POPUPS */
+/* USERS POPUP */
 
 function toggleUsers(){
 
-    closeAllPopups();
+    const popup =
 
     document
     .getElementById(
         "usersPopup"
-    )
+    );
 
-    .style.display =
-    "flex";
+    if(
+
+        popup.style.display ===
+        "flex"
+
+    ){
+
+        popup.style.display =
+        "none";
+
+    }else{
+
+        closeAll();
+
+        popup.style.display =
+        "flex";
+
+    }
 
 }
 
+/* SETTINGS */
+
 function toggleSettings(){
 
-    closeAllPopups();
+    if(
+
+        currentUser !==
+        ADMIN_NAME
+
+    ){
+
+        return;
+
+    }
+
+    const popup =
 
     document
     .getElementById(
         "settingsPopup"
-    )
+    );
 
-    .style.display =
-    "flex";
+    if(
 
-}
+        popup.style.display ===
+        "flex"
 
-function closeAllPopups(){
+    ){
 
-    document
-    .querySelectorAll(
-        ".popup-bg"
-    )
-
-    .forEach(p=>{
-
-        p.style.display =
+        popup.style.display =
         "none";
 
-    });
+    }else{
+
+        closeAll();
+
+        popup.style.display =
+        "flex";
+
+    }
 
 }
 
-/* MENU */
+/* USER MENU */
 
 function openUserMenu(){
 
@@ -511,9 +535,33 @@ function closePrivate(){
 
 function openPrivateList(){
 
-    alert(
-        "قريبا قائمة المحادثات الخاصة 🔥"
+    document
+    .getElementById(
+        "privateBox"
+    )
+
+    .style.display =
+    "flex";
+
+    document
+    .getElementById(
+        "privateName"
+    )
+
+    .innerText =
+    "المحادثات الخاصة";
+
+    privateNotifications = 0;
+
+    const badge =
+
+    document
+    .getElementById(
+        "privateCount"
     );
+
+    badge.style.display =
+    "none";
 
 }
 
@@ -618,13 +666,7 @@ socket.on(
 
 /* ADD PM */
 
-function addPrivateMessage(
-
-    name,
-
-    msg
-
-){
+function addPrivateMessage(name,msg){
 
     const box =
 
@@ -645,11 +687,7 @@ function addPrivateMessage(
 
     div.innerHTML = `
 
-    <b>
-
-    ${name}
-
-    </b>
+    <b>${name}</b>
 
     <br><br>
 
@@ -701,16 +739,16 @@ function showUserInfo(){
     <br><br>
 
     IP:
-    ${selectedUser.ip || "غير معروف"}
+    ${selectedUser.ip || "غير متوفر"}
 
     <br><br>
 
-    المتصفح:
+    Browser:
     ${selectedUser.browser || "غير معروف"}
 
     <br><br>
 
-    الجهاز:
+    Device:
     ${selectedUser.device || "غير معروف"}
 
     `;
@@ -724,11 +762,8 @@ function showUserInfo(){
 function kickUser(){
 
     socket.emit(
-
         "kick user",
-
         selectedUser.id
-
     );
 
     closeMenu();
@@ -738,11 +773,8 @@ function kickUser(){
 function banUser(){
 
     socket.emit(
-
         "ban user",
-
         selectedUser.id
-
     );
 
     closeMenu();
@@ -752,136 +784,33 @@ function banUser(){
 function disconnectUser(){
 
     socket.emit(
-
         "disconnect user",
-
         selectedUser.id
-
     );
 
     closeMenu();
 
 }
 
-/* LISTS */
+/* CLOSE ALL */
 
-socket.on(
-
-    "ban list",
-
-    (list)=>{
-
-    const box =
+function closeAll(){
 
     document
-    .getElementById(
-        "banList"
-    );
+    .querySelectorAll(
+        ".popup-bg"
+    )
 
-    box.innerHTML = "";
+    .forEach(p=>{
 
-    list.forEach(user=>{
-
-        const div =
-
-        document
-        .createElement(
-            "div"
-        );
-
-        div.className =
-        "admin-item";
-
-        div.innerHTML = `
-
-        ${user.username}
-
-        <button
-        class="admin-btn"
-        onclick="unbanUser('${user.ip}')">
-
-        فك حظر
-
-        </button>
-
-        `;
-
-        box.appendChild(div);
+        p.style.display =
+        "none";
 
     });
 
-});
-
-socket.on(
-
-    "disconnect list",
-
-    (list)=>{
-
-    const box =
-
-    document
-    .getElementById(
-        "disconnectList"
-    );
-
-    box.innerHTML = "";
-
-    list.forEach(user=>{
-
-        const div =
-
-        document
-        .createElement(
-            "div"
-        );
-
-        div.className =
-        "admin-item";
-
-        div.innerHTML = `
-
-        ${user.username}
-
-        <button
-        class="admin-btn"
-        onclick="undisconnectUser('${user.id}')">
-
-        فك فصل
-
-        </button>
-
-        `;
-
-        box.appendChild(div);
-
-    });
-
-});
-
-/* UNBAN */
-
-function unbanUser(ip){
-
-    socket.emit(
-        "unban user",
-        ip
-    );
-
 }
 
-/* UNDISCONNECT */
-
-function undisconnectUser(id){
-
-    socket.emit(
-        "undisconnect user",
-        id
-    );
-
-}
-
-/* CLOSE */
+/* CLOSE EVENTS */
 
 document.addEventListener(
 
@@ -890,23 +819,6 @@ document.addEventListener(
     ()=>{
 
     closeMenu();
-
-    closeAllPopups();
-
-});
-
-document
-.getElementById(
-    "userMenu"
-)
-
-.addEventListener(
-
-    "click",
-
-    (e)=>{
-
-    e.stopPropagation();
 
 });
 
@@ -926,6 +838,21 @@ document
         e.stopPropagation();
 
     });
+
+});
+
+document
+.getElementById(
+    "userMenu"
+)
+
+.addEventListener(
+
+    "click",
+
+    (e)=>{
+
+    e.stopPropagation();
 
 });
 
