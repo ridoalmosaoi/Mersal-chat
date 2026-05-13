@@ -1,7 +1,7 @@
 {
   "name": "mersal-chat",
   "version": "1.0.0",
-  "description": "Arabic realtime chat",
+  "description": "Mersal IRC Chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
