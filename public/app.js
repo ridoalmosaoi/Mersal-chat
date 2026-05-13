@@ -1,6 +1,8 @@
-const socket = io();
+const socket = io({
 
-const ADMIN_NAME = "Admin";
+    transports:["websocket"]
+
+});
 
 let currentUser = "";
 
@@ -54,7 +56,9 @@ function login(){
 
     .value.trim();
 
-    if(!username || !password){
+    if(!username){
+
+        alert("اكتب الاسم");
 
         return;
 
@@ -81,6 +85,8 @@ function login(){
 
 }
 
+/* LOGIN SUCCESS */
+
 socket.on(
 
     "login success",
@@ -103,24 +109,23 @@ socket.on(
     .style.display =
     "block";
 
-    if(
+});
 
-        currentUser !==
-        ADMIN_NAME
+/* NAME TAKEN */
 
-    ){
+socket.on(
 
-        document
-        .getElementById(
-            "settingsButton"
-        )
+    "name taken",
 
-        .style.display =
-        "none";
+    ()=>{
 
-    }
+    alert(
+        "الاسم مستخدم"
+    );
 
 });
+
+/* ONLINE USERS */
 
 socket.on(
 
@@ -128,14 +133,20 @@ socket.on(
 
     (users)=>{
 
-    const list =
+    const usersList =
 
     document
     .getElementById(
         "usersList"
     );
 
-    list.innerHTML = "";
+    if(!usersList){
+
+        return;
+
+    }
+
+    usersList.innerHTML = "";
 
     users.forEach(user=>{
 
@@ -155,7 +166,7 @@ socket.on(
         color:${user.color}
         ">
 
-        ${user.username}
+        👤 ${user.username}
 
         </span>
 
@@ -172,7 +183,9 @@ socket.on(
 
         };
 
-        list.appendChild(div);
+        usersList.appendChild(
+            div
+        );
 
     });
 
@@ -190,6 +203,7 @@ function sendMessage(){
     );
 
     const message =
+
     input.value.trim();
 
     if(!message){
@@ -235,6 +249,12 @@ socket.on(
         "messages"
     );
 
+    if(!messages){
+
+        return;
+
+    }
+
     const div =
 
     document
@@ -248,9 +268,9 @@ socket.on(
     div.innerHTML = `
 
     <span
-    class="msg-name"
     style="
-    color:${data.color}
+    color:${data.color};
+    font-weight:bold;
     ">
 
     &lt;${data.username}&gt;
@@ -272,14 +292,17 @@ socket.on(
 
     };
 
-    messages.appendChild(div);
+    messages.appendChild(
+        div
+    );
 
     messages.scrollTop =
+
     messages.scrollHeight;
 
 });
 
-/* USERS */
+/* USERS POPUP */
 
 function toggleUsers(e){
 
@@ -315,106 +338,7 @@ function toggleSettings(e){
 
 }
 
-/* MENU */
-
-function openUserMenu(){
-
-    const menu =
-
-    document
-    .getElementById(
-        "userMenu"
-    );
-
-    menu.style.display =
-    "block";
-
-    if(
-
-        currentUser !==
-        ADMIN_NAME
-
-    ){
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "none";
-
-        document
-        .getElementById(
-            "userInfoButton"
-        )
-
-        .style.display =
-        "none";
-
-    }else{
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "block";
-
-        document
-        .getElementById(
-            "userInfoButton"
-        )
-
-        .style.display =
-        "block";
-
-    }
-
-}
-
-/* REPLY */
-
-function replyUser(){
-
-    document
-    .getElementById(
-        "messageInput"
-    )
-
-    .value +=
-
-    `<${selectedUser.username}> `;
-
-    closeAll();
-
-}
-
 /* PRIVATE */
-
-function openPrivate(){
-
-    document
-    .getElementById(
-        "privateBox"
-    )
-
-    .style.display =
-    "flex";
-
-    document
-    .getElementById(
-        "privateName"
-    )
-
-    .innerText =
-
-    selectedUser.username;
-
-    closeAll();
-
-}
 
 function openPrivateList(e){
 
@@ -429,16 +353,6 @@ function openPrivateList(e){
 
     .style.display =
     "flex";
-
-    privateNotifications = 0;
-
-    document
-    .getElementById(
-        "privateCount"
-    )
-
-    .style.display =
-    "none";
 
 }
 
@@ -456,32 +370,58 @@ function closePrivate(e){
 
 }
 
-/* PRIVATE RECEIVE */
+/* USER MENU */
 
-socket.on(
+function openUserMenu(){
 
-    "private message",
-
-    (data)=>{
-
-    privateNotifications++;
-
-    const badge =
+    const menu =
 
     document
     .getElementById(
-        "privateCount"
+        "userMenu"
     );
 
-    badge.style.display =
+    menu.style.display =
+    "block";
+
+}
+
+/* REPLY */
+
+function replyUser(){
+
+    const input =
+
+    document
+    .getElementById(
+        "messageInput"
+    );
+
+    input.value +=
+
+    `<${selectedUser.username}> `;
+
+    closeAll();
+
+}
+
+/* PRIVATE MESSAGE */
+
+function openPrivate(){
+
+    document
+    .getElementById(
+        "privateBox"
+    )
+
+    .style.display =
     "flex";
 
-    badge.innerText =
-    privateNotifications;
+    closeAll();
 
-});
+}
 
-/* INFO */
+/* USER INFO */
 
 function showUserInfo(){
 
@@ -522,7 +462,51 @@ function showUserInfo(){
 
 }
 
-/* CLOSE */
+/* BAN */
+
+function banUser(){
+
+    if(!selectedUser){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "ban user",
+
+        selectedUser.id
+
+    );
+
+    closeAll();
+
+}
+
+/* DISCONNECT */
+
+function disconnectUser(){
+
+    if(!selectedUser){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "disconnect user",
+
+        selectedUser.id
+
+    );
+
+    closeAll();
+
+}
+
+/* CLOSE ALL */
 
 function closeAll(){
 
@@ -547,6 +531,8 @@ function closeAll(){
     "none";
 
 }
+
+/* CLICK OUTSIDE */
 
 document.addEventListener(
 
