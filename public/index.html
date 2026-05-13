@@ -8,11 +8,7 @@
 
 <meta
 name="viewport"
-content="width=device-width, initial-scale=1.0">
-
-<meta
-name="theme-color"
-content="#000000">
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>
 مرسال شات
@@ -34,9 +30,9 @@ class="login-screen">
 
     <div class="login-box">
 
-        <h1 class="logo">
+        <div class="logo">
             مرسال
-        </h1>
+        </div>
 
         <div class="sub">
             شات الوطن العربي
@@ -51,6 +47,42 @@ class="login-screen">
         type="password"
         id="loginPassword"
         placeholder="كلمة المرور">
+
+        <!-- COLORS -->
+
+        <div class="colors">
+
+            <div
+            class="color active"
+            style="background:#ffd700"
+            onclick="selectColor('#ffd700',this)">
+            </div>
+
+            <div
+            class="color"
+            style="background:#00ff99"
+            onclick="selectColor('#00ff99',this)">
+            </div>
+
+            <div
+            class="color"
+            style="background:#00bfff"
+            onclick="selectColor('#00bfff',this)">
+            </div>
+
+            <div
+            class="color"
+            style="background:#ff44cc"
+            onclick="selectColor('#ff44cc',this)">
+            </div>
+
+            <div
+            class="color"
+            style="background:#ffffff"
+            onclick="selectColor('#ffffff',this)">
+            </div>
+
+        </div>
 
         <button onclick="login()">
             دخول
@@ -72,50 +104,71 @@ style="display:none;">
     <div class="topbar">
 
         <div
-        class="menu-toggle"
+        class="menu-btn"
         onclick="toggleUsers()">
 
             ☰
 
         </div>
 
-        <div class="room-name">
-            الوطن العربي
+        <div class="room-title">
+            # الوطن العربي
         </div>
 
-        <div class="top-icons">
+        <div
+        class="settings-btn"
+        onclick="toggleSettings()">
+
+            ⚙
+        </div>
+
+    </div>
+
+    <!-- USERS POPUP -->
+
+    <div
+    id="usersPopup"
+    class="users-popup">
+
+        <div class="users-box">
+
+            <div class="users-header">
+
+                المتواجدين
+
+                <span
+                id="usersCount">
+                0
+                </span>
+
+            </div>
 
             <div
-            class="settings-btn"
-            onclick="openSettings()">
+            id="usersList"></div>
 
-                ⚙️
+        </div>
 
+    </div>
+
+    <!-- SETTINGS -->
+
+    <div
+    id="settingsPopup"
+    class="users-popup">
+
+        <div class="users-box">
+
+            <div class="users-header">
+                الإعدادات
+            </div>
+
+            <div class="settings-item">
+                المحظورين قريبًا
             </div>
 
         </div>
 
     </div>
-
-    <!-- PRIVATE ICON -->
-
-    <div
-    class="chat-notify"
-    onclick="openPrivate()">
-
-        💬
-
-        <span id="privateBadge">
-            0
-        </span>
-
-    </div>
-
-    <!-- USERS -->
-
-    <div
-    id="onlineList"
-    class="online-list online-hidden"></div>
 
     <!-- MESSAGES -->
 
@@ -125,15 +178,19 @@ style="display:none;">
 
     <!-- INPUT -->
 
-    <div class="input-area">
+    <div class="chat-input">
+
+        <div class="emoji-btn">
+            😊
+        </div>
 
         <input
         type="text"
         id="messageInput"
-        placeholder="اكتب رسالة...">
+        placeholder="اكتب هنا...">
 
         <button onclick="sendMessage()">
-            ارسال
+            ➤
         </button>
 
     </div>
@@ -146,7 +203,7 @@ style="display:none;">
 id="userMenu"
 class="user-menu">
 
-    <div onclick="copyUsername()">
+    <div onclick="replyUser()">
         نسخ الاسم للرد
     </div>
 
@@ -154,7 +211,7 @@ class="user-menu">
         مرسال خاص
     </div>
 
-    <div id="adminOptions">
+    <div id="adminMenu">
 
         <div onclick="kickUser()">
             طرد
@@ -172,21 +229,6 @@ class="user-menu">
 
 </div>
 
-<!-- SETTINGS -->
-
-<div
-id="settingsBox"
-class="settings-box">
-
-    <div class="settings-title">
-        المحظورين
-    </div>
-
-    <div
-    id="banList"></div>
-
-</div>
-
 <!-- PRIVATE -->
 
 <div
@@ -196,11 +238,11 @@ class="private-box">
     <div class="private-top">
 
         <span id="privateName">
-            خاص
+            مرسال خاص
         </span>
 
         <button onclick="closePrivate()">
-            X
+            ✕
         </button>
 
     </div>
