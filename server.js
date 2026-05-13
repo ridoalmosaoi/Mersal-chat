@@ -2,8 +2,6 @@ const express = require("express");
 
 const http = require("http");
 
-const fs = require("fs");
-
 const { Server } = require("socket.io");
 
 const app = express();
@@ -16,69 +14,43 @@ const io = new Server(server,{
 
     pingInterval:25000,
 
-    transports:[
-        "websocket"
-    ]
+    transports:["websocket"]
 
 });
 
-app.use(express.static("public"));
+app.use(
+
+    express.static("public")
+
+);
+
+/* USERS */
 
 let users = [];
 
+/* BANS */
+
 let bannedIPs = [];
-
-let bannedIDs = [];
-
-/* LOAD USERS */
-
-if(fs.existsSync("users.json")){
-
-    users =
-    JSON.parse(
-        fs.readFileSync("users.json")
-    );
-
-}
-
-/* SAVE USERS */
-
-function saveUsers(){
-
-    fs.writeFileSync(
-
-        "users.json",
-
-        JSON.stringify(
-            users,
-            null,
-            2
-        )
-
-    );
-
-}
 
 /* CONNECTION */
 
-io.on("connection",(socket)=>{
+io.on(
+
+    "connection",
+
+    (socket)=>{
 
     const ip =
+
     socket.handshake.address;
 
     /* BANNED */
 
     if(
 
-        bannedIPs.includes(ip) ||
-
-        bannedIDs.includes(socket.id)
+        bannedIPs.includes(ip)
 
     ){
-
-        socket.emit(
-            "banned"
-        );
 
         socket.disconnect();
 
@@ -88,15 +60,15 @@ io.on("connection",(socket)=>{
 
     /* JOIN */
 
-    socket.on("join",(data)=>{
+    socket.on(
 
-        const username =
-        data.username.trim();
+        "join",
 
-        /* NAME EXISTS */
+        (data)=>{
 
         const exists =
-        users.some(
+
+        users.find(
 
             user =>
 
@@ -105,7 +77,7 @@ io.on("connection",(socket)=>{
 
             ===
 
-            username
+            data.username
             .toLowerCase()
 
         );
@@ -121,23 +93,26 @@ io.on("connection",(socket)=>{
         }
 
         socket.username =
-        username;
+        data.username;
 
-        socket.join(
-            "الوطن العربي"
-        );
+        socket.color =
+        data.color;
 
         users.push({
 
             id:socket.id,
 
-            username,
+            username:
+            data.username,
 
-            ip
+            color:
+            data.color
 
         });
 
-        saveUsers();
+        socket.emit(
+            "login success"
+        );
 
         io.emit(
             "online users",
@@ -146,16 +121,29 @@ io.on("connection",(socket)=>{
 
         /* CHANSERV */
 
-        if(username === "Admin"){
+        if(
+
+            data.username ===
+            "Admin"
+
+        ){
 
             io.emit(
 
-                "system",
+                "chat message",
 
                 {
 
-                    text:
-                    "ChanServ ** تم توكيل Admin"
+                    id:"system",
+
+                    username:
+                    "ChanServ",
+
+                    color:
+                    "#00d0b4",
+
+                    message:
+                    "** تم توكيل المشرف Admin"
 
                 }
 
@@ -165,7 +153,7 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* PUBLIC MESSAGE */
+    /* PUBLIC */
 
     socket.on(
 
@@ -184,14 +172,11 @@ io.on("connection",(socket)=>{
                 username:
                 data.username,
 
-                message:
-                data.message,
+                color:
+                data.color,
 
-                time:
-                new Date()
-                .toLocaleTimeString(
-                    "ar"
-                )
+                message:
+                data.message
 
             }
 
@@ -199,7 +184,7 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* PRIVATE MESSAGE */
+    /* PRIVATE */
 
     socket.on(
 
@@ -208,7 +193,7 @@ io.on("connection",(socket)=>{
         (data)=>{
 
         io.to(
-            data.toSocket
+            data.to
         ).emit(
 
             "private message",
@@ -227,7 +212,7 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* KICK USER */
+    /* KICK */
 
     socket.on(
 
@@ -242,19 +227,6 @@ io.on("connection",(socket)=>{
 
         if(target){
 
-            target.emit(
-
-                "system",
-
-                {
-
-                    text:
-                    "تم طردك من الشات"
-
-                }
-
-            );
-
             target.disconnect(
                 true
             );
@@ -263,18 +235,18 @@ io.on("connection",(socket)=>{
 
     });
 
-    /* BAN USER */
+    /* BAN */
 
     socket.on(
 
         "ban user",
 
-        (data)=>{
+        (id)=>{
 
         const target =
 
         io.sockets.sockets
-        .get(data.id);
+        .get(id);
 
         if(target){
 
@@ -285,14 +257,6 @@ io.on("connection",(socket)=>{
 
             bannedIPs.push(
                 targetIP
-            );
-
-            bannedIDs.push(
-                data.id
-            );
-
-            target.emit(
-                "banned"
             );
 
             target.disconnect(
@@ -317,19 +281,6 @@ io.on("connection",(socket)=>{
         .get(id);
 
         if(target){
-
-            target.emit(
-
-                "system",
-
-                {
-
-                    text:
-                    "تم فصل اتصالك"
-
-                }
-
-            );
 
             target.disconnect(
                 true
@@ -357,8 +308,6 @@ io.on("connection",(socket)=>{
 
         );
 
-        saveUsers();
-
         io.emit(
             "online users",
             users
@@ -373,13 +322,15 @@ io.on("connection",(socket)=>{
 const PORT =
 process.env.PORT || 3000;
 
-server.listen(PORT,()=>{
+server.listen(
+
+    PORT,
+
+    ()=>{
 
     console.log(
 
-        "Server running on port " +
-
-        PORT
+        "Server running"
 
     );
 
