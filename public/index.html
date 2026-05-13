@@ -8,7 +8,7 @@
 
 <meta
 name="viewport"
-content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
 <title>
 مرسال شات
@@ -99,15 +99,42 @@ id="chatApp"
 class="chat-app"
 style="display:none;">
 
-    <!-- TOPBAR -->
+    <!-- TOP -->
 
     <div class="topbar">
 
+        <!-- MENU -->
+
         <div
-        class="menu-btn"
-        onclick="toggleUsers()">
+        class="top-icon"
+        onclick="toggleMenu()">
 
             ☰
+
+        </div>
+
+        <!-- USERS -->
+
+        <div
+        class="top-icon"
+        onclick="toggleUsers()">
+
+            👥
+
+        </div>
+
+        <!-- PRIVATE -->
+
+        <div
+        class="top-icon private-icon"
+        onclick="openPrivateList()">
+
+            🔔
+
+            <span
+            id="privateCount">
+            0
+            </span>
 
         </div>
 
@@ -115,11 +142,15 @@ style="display:none;">
             # الوطن العربي
         </div>
 
+        <!-- SETTINGS -->
+
         <div
-        class="settings-btn"
+        id="settingsButton"
+        class="top-icon"
         onclick="toggleSettings()">
 
-            ⚙
+            ⚙️
+
         </div>
 
     </div>
@@ -128,16 +159,16 @@ style="display:none;">
 
     <div
     id="usersPopup"
-    class="users-popup">
+    class="popup-bg">
 
-        <div class="users-box">
+        <div class="popup-box">
 
-            <div class="users-header">
+            <div class="popup-title">
 
                 المتواجدين
 
                 <span
-                id="usersCount">
+                id="onlineCount">
                 0
                 </span>
 
@@ -154,16 +185,38 @@ style="display:none;">
 
     <div
     id="settingsPopup"
-    class="users-popup">
+    class="popup-bg">
 
-        <div class="users-box">
+        <div class="popup-box">
 
-            <div class="users-header">
-                الإعدادات
+            <div class="popup-title">
+                لوحة الإدارة
             </div>
 
-            <div class="settings-item">
-                المحظورين قريبًا
+            <!-- BANNED -->
+
+            <div class="admin-section">
+
+                <div class="admin-title">
+                    المحظورين
+                </div>
+
+                <div
+                id="banList"></div>
+
+            </div>
+
+            <!-- DISCONNECTED -->
+
+            <div class="admin-section">
+
+                <div class="admin-title">
+                    المفصولين
+                </div>
+
+                <div
+                id="disconnectList"></div>
+
             </div>
 
         </div>
@@ -211,7 +264,11 @@ class="user-menu">
         مرسال خاص
     </div>
 
-    <div id="adminMenu">
+    <div onclick="showUserInfo()">
+        معلومات المستخدم
+    </div>
+
+    <div id="adminOptions">
 
         <div onclick="kickUser()">
             طرد
@@ -224,6 +281,26 @@ class="user-menu">
         <div onclick="disconnectUser()">
             فصل كلي
         </div>
+
+    </div>
+
+</div>
+
+<!-- USER INFO -->
+
+<div
+id="userInfoPopup"
+class="popup-bg">
+
+    <div class="popup-box">
+
+        <div class="popup-title">
+            معلومات المستخدم
+        </div>
+
+        <div
+        id="userInfoContent"
+        class="user-info"></div>
 
     </div>
 
