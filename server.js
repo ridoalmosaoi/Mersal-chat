@@ -10,11 +10,11 @@ const server = http.createServer(app);
 
 const io = new Server(server,{
 
+    transports:["websocket"],
+
     pingTimeout:60000,
 
-    pingInterval:25000,
-
-    transports:["websocket"]
+    pingInterval:25000
 
 });
 
@@ -33,6 +33,8 @@ let users = [];
 let bannedIPs = [];
 
 let disconnectedUsers = [];
+
+/* CONNECTION */
 
 io.on(
 
@@ -111,6 +113,8 @@ io.on(
 
     }
 
+    /* JOIN */
+
     socket.on(
 
         "join",
@@ -161,11 +165,34 @@ io.on(
 
         }
 
+        const exists =
+
+        users.find(
+
+            u =>
+
+            u.username
+            .toLowerCase()
+
+            ===
+
+            data.username
+            .toLowerCase()
+
+        );
+
+        if(exists){
+
+            socket.emit(
+                "name taken"
+            );
+
+            return;
+
+        }
+
         socket.username =
         data.username;
-
-        socket.color =
-        data.color;
 
         users.push({
 
@@ -185,14 +212,20 @@ io.on(
 
         });
 
+        /* SUCCESS */
+
         socket.emit(
             "login success"
         );
+
+        /* USERS */
 
         io.emit(
             "online users",
             users
         );
+
+        /* ADMIN MSG */
 
         if(isAdmin){
 
@@ -201,6 +234,8 @@ io.on(
                 "chat message",
 
                 {
+
+                    id:"system",
 
                     username:
                     "ChanServ",
@@ -218,6 +253,8 @@ io.on(
         }
 
     });
+
+    /* PUBLIC */
 
     socket.on(
 
@@ -254,6 +291,131 @@ io.on(
 
     });
 
+    /* PRIVATE */
+
+    socket.on(
+
+        "private message",
+
+        (data)=>{
+
+        io.to(
+            data.to
+        ).emit(
+
+            "private message",
+
+            {
+
+                from:
+                data.from,
+
+                message:
+                data.message
+
+            }
+
+        );
+
+    });
+
+    /* BAN */
+
+    socket.on(
+
+        "ban user",
+
+        (id)=>{
+
+        const target =
+
+        io.sockets.sockets
+        .get(id);
+
+        if(!target){
+
+            return;
+
+        }
+
+        if(
+
+            target.username ===
+            ADMIN_NAME
+
+        ){
+
+            return;
+
+        }
+
+        const targetIP =
+
+        target.handshake.headers[
+            "x-forwarded-for"
+        ]
+
+        ||
+
+        target.handshake.address;
+
+        bannedIPs.push(
+            targetIP
+        );
+
+        target.disconnect(
+            true
+        );
+
+    });
+
+    /* DISCONNECT */
+
+    socket.on(
+
+        "disconnect user",
+
+        (id)=>{
+
+        const target =
+
+        io.sockets.sockets
+        .get(id);
+
+        if(!target){
+
+            return;
+
+        }
+
+        if(
+
+            target.username ===
+            ADMIN_NAME
+
+        ){
+
+            return;
+
+        }
+
+        disconnectedUsers.push({
+
+            id,
+
+            ip:
+            target.handshake.address
+
+        });
+
+        target.disconnect(
+            true
+        );
+
+    });
+
+    /* LEAVE */
+
     socket.on(
 
         "disconnect",
@@ -278,6 +440,7 @@ io.on(
     });
 
 });
+
 const PORT =
 process.env.PORT || 3000;
 
