@@ -8,7 +8,7 @@
 
 <meta
 name="viewport"
-content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+content="width=device-width, initial-scale=1.0">
 
 <title>
 مرسال شات
@@ -41,14 +41,12 @@ class="login-screen">
         <input
         type="text"
         id="loginUsername"
-        placeholder="الاسم المستعار">
+        placeholder="الاسم">
 
         <input
         type="password"
         id="loginPassword"
         placeholder="كلمة المرور">
-
-        <!-- COLORS -->
 
         <div class="colors">
 
@@ -76,12 +74,6 @@ class="login-screen">
             onclick="selectColor('#ff44cc',this)">
             </div>
 
-            <div
-            class="color"
-            style="background:#ffffff"
-            onclick="selectColor('#ffffff',this)">
-            </div>
-
         </div>
 
         <button onclick="login()">
@@ -99,41 +91,24 @@ id="chatApp"
 class="chat-app"
 style="display:none;">
 
-    <!-- TOP -->
-
     <div class="topbar">
 
-        <!-- MENU -->
-
         <div
         class="top-icon"
-        onclick="toggleMenu()">
-
-            ☰
-
-        </div>
-
-        <!-- USERS -->
-
-        <div
-        class="top-icon"
-        onclick="toggleUsers()">
+        onclick="toggleUsers(event)">
 
             👥
 
         </div>
 
-        <!-- PRIVATE -->
-
         <div
-        class="top-icon private-icon"
-        onclick="openPrivateList()">
+        class="top-icon"
+        onclick="openPrivateList(event)">
 
             🔔
 
-            <span
-            id="privateCount">
-            0
+            <span id="privateCount">
+                0
             </span>
 
         </div>
@@ -142,12 +117,10 @@ style="display:none;">
             # الوطن العربي
         </div>
 
-        <!-- SETTINGS -->
-
         <div
         id="settingsButton"
         class="top-icon"
-        onclick="toggleSettings()">
+        onclick="toggleSettings(event)">
 
             ⚙️
 
@@ -155,7 +128,7 @@ style="display:none;">
 
     </div>
 
-    <!-- USERS POPUP -->
+    <!-- USERS -->
 
     <div
     id="usersPopup"
@@ -164,18 +137,10 @@ style="display:none;">
         <div class="popup-box">
 
             <div class="popup-title">
-
                 المتواجدين
-
-                <span
-                id="onlineCount">
-                0
-                </span>
-
             </div>
 
-            <div
-            id="usersList"></div>
+            <div id="usersList"></div>
 
         </div>
 
@@ -193,30 +158,103 @@ style="display:none;">
                 لوحة الإدارة
             </div>
 
-            <!-- BANNED -->
+            <div id="banList"></div>
 
-            <div class="admin-section">
+        </div>
 
-                <div class="admin-title">
-                    المحظورين
-                </div>
+    </div>
 
-                <div
-                id="banList"></div>
+    <!-- USER INFO -->
+
+    <div
+    id="userInfoPopup"
+    class="popup-bg">
+
+        <div class="popup-box">
+
+            <div class="popup-title">
+                معلومات المستخدم
+            </div>
+
+            <div
+            id="userInfoContent"
+            class="user-info"></div>
+
+        </div>
+
+    </div>
+
+    <!-- PRIVATE -->
+
+    <div
+    id="privateBox"
+    class="popup-bg">
+
+        <div class="popup-box private-chat">
+
+            <div class="private-top">
+
+                <span id="privateName">
+                    المحادثات الخاصة
+                </span>
+
+                <button onclick="closePrivate(event)">
+                    ✕
+                </button>
 
             </div>
 
-            <!-- DISCONNECTED -->
+            <div
+            id="privateMessages"
+            class="private-messages"></div>
 
-            <div class="admin-section">
+            <div class="private-input">
 
-                <div class="admin-title">
-                    المفصولين
-                </div>
+                <input
+                type="text"
+                id="privateInput"
+                placeholder="اكتب رسالة">
 
-                <div
-                id="disconnectList"></div>
+                <button onclick="sendPrivate()">
+                    ارسال
+                </button>
 
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- USER MENU -->
+
+    <div
+    id="userMenu"
+    class="user-menu">
+
+        <div onclick="replyUser()">
+            نسخ الاسم للرد
+        </div>
+
+        <div onclick="openPrivate()">
+            مرسال خاص
+        </div>
+
+        <div
+        id="userInfoButton"
+        onclick="showUserInfo()">
+
+            معلومات المستخدم
+        </div>
+
+        <div
+        id="adminOptions">
+
+            <div onclick="banUser()">
+                حظر
+            </div>
+
+            <div onclick="disconnectUser()">
+                فصل كلي
             </div>
 
         </div>
@@ -233,109 +271,12 @@ style="display:none;">
 
     <div class="chat-input">
 
-        <div class="emoji-btn">
-            😊
-        </div>
-
         <input
         type="text"
         id="messageInput"
         placeholder="اكتب هنا...">
 
         <button onclick="sendMessage()">
-            ➤
-        </button>
-
-    </div>
-
-</div>
-
-<!-- USER MENU -->
-
-<div
-id="userMenu"
-class="user-menu">
-
-    <div onclick="replyUser()">
-        نسخ الاسم للرد
-    </div>
-
-    <div onclick="openPrivate()">
-        مرسال خاص
-    </div>
-
-    <div onclick="showUserInfo()">
-        معلومات المستخدم
-    </div>
-
-    <div id="adminOptions">
-
-        <div onclick="kickUser()">
-            طرد
-        </div>
-
-        <div onclick="banUser()">
-            حظر
-        </div>
-
-        <div onclick="disconnectUser()">
-            فصل كلي
-        </div>
-
-    </div>
-
-</div>
-
-<!-- USER INFO -->
-
-<div
-id="userInfoPopup"
-class="popup-bg">
-
-    <div class="popup-box">
-
-        <div class="popup-title">
-            معلومات المستخدم
-        </div>
-
-        <div
-        id="userInfoContent"
-        class="user-info"></div>
-
-    </div>
-
-</div>
-
-<!-- PRIVATE -->
-
-<div
-id="privateBox"
-class="private-box">
-
-    <div class="private-top">
-
-        <span id="privateName">
-            مرسال خاص
-        </span>
-
-        <button onclick="closePrivate()">
-            ✕
-        </button>
-
-    </div>
-
-    <div
-    id="privateMessages"
-    class="private-messages"></div>
-
-    <div class="private-input">
-
-        <input
-        type="text"
-        id="privateInput"
-        placeholder="اكتب رسالة خاصة">
-
-        <button onclick="sendPrivate()">
             ارسال
         </button>
 
