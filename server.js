@@ -24,13 +24,21 @@ app.use(
 
 );
 
+const ADMIN_NAME = "Admin";
+
+const ADMIN_PASSWORD = "admin771";
+
 /* USERS */
 
 let users = [];
 
-/* BANS */
+/* BANNED */
 
 let bannedIPs = [];
+
+/* DISCONNECTED */
+
+let disconnectedUsers = [];
 
 /* CONNECTION */
 
@@ -44,17 +52,62 @@ io.on(
 
     socket.handshake.address;
 
-    /* BANNED */
+    const userAgent =
+
+    socket.handshake.headers[
+        "user-agent"
+    ] || "";
+
+    /* INFO */
+
+    let browser =
+    "Unknown";
+
+    let device =
+    "Unknown";
 
     if(
 
-        bannedIPs.includes(ip)
+        userAgent.includes("Chrome")
 
     ){
 
-        socket.disconnect();
+        browser =
+        "Chrome";
 
-        return;
+    }else if(
+
+        userAgent.includes("Safari")
+
+    ){
+
+        browser =
+        "Safari";
+
+    }
+
+    if(
+
+        userAgent.includes("iPhone")
+
+    ){
+
+        device =
+        "iPhone";
+
+    }else if(
+
+        userAgent.includes("Android")
+
+    ){
+
+        device =
+        "Android";
+
+    }else{
+
+        device =
+        "Desktop";
 
     }
 
@@ -65,6 +118,58 @@ io.on(
         "join",
 
         (data)=>{
+
+        /* ADMIN BYPASS */
+
+        const isAdmin =
+
+        data.username ===
+        ADMIN_NAME &&
+
+        data.password ===
+        ADMIN_PASSWORD;
+
+        /* BANNED */
+
+        if(
+
+            bannedIPs.includes(ip) &&
+
+            !isAdmin
+
+        ){
+
+            socket.disconnect();
+
+            return;
+
+        }
+
+        /* DISCONNECTED */
+
+        const disconnected =
+
+        disconnectedUsers.find(
+
+            u => u.ip === ip
+
+        );
+
+        if(
+
+            disconnected &&
+
+            !isAdmin
+
+        ){
+
+            socket.disconnect();
+
+            return;
+
+        }
+
+        /* NAME EXISTS */
 
         const exists =
 
@@ -106,7 +211,13 @@ io.on(
             data.username,
 
             color:
-            data.color
+            data.color,
+
+            ip,
+
+            browser,
+
+            device
 
         });
 
@@ -119,14 +230,34 @@ io.on(
             users
         );
 
+        /* SEND LISTS */
+
+        io.emit(
+
+            "ban list",
+
+            bannedIPs.map(ip=>({
+
+                ip,
+
+                username:
+                "محظور"
+
+            }))
+
+        );
+
+        io.emit(
+
+            "disconnect list",
+
+            disconnectedUsers
+
+        );
+
         /* CHANSERV */
 
-        if(
-
-            data.username ===
-            "Admin"
-
-        ){
+        if(isAdmin){
 
             io.emit(
 
@@ -176,7 +307,13 @@ io.on(
                 data.color,
 
                 message:
-                data.message
+                data.message,
+
+                ip,
+
+                browser,
+
+                device
 
             }
 
@@ -225,13 +362,22 @@ io.on(
         io.sockets.sockets
         .get(id);
 
-        if(target){
+        if(
 
-            target.disconnect(
-                true
-            );
+            !target ||
+
+            target.username ===
+            ADMIN_NAME
+
+        ){
+
+            return;
 
         }
+
+        target.disconnect(
+            true
+        );
 
     });
 
@@ -248,22 +394,56 @@ io.on(
         io.sockets.sockets
         .get(id);
 
-        if(target){
+        if(
 
-            const targetIP =
+            !target ||
 
-            target.handshake
-            .address;
+            target.username ===
+            ADMIN_NAME
+
+        ){
+
+            return;
+
+        }
+
+        const targetIP =
+
+        target.handshake
+        .address;
+
+        if(
+
+            !bannedIPs.includes(
+                targetIP
+            )
+
+        ){
 
             bannedIPs.push(
                 targetIP
             );
 
-            target.disconnect(
-                true
-            );
-
         }
+
+        io.emit(
+
+            "ban list",
+
+            bannedIPs.map(ip=>({
+
+                ip,
+
+                username:
+                "محظور"
+
+            }))
+
+        );
+
+        target.disconnect(
+            true
+        );
 
     });
 
@@ -280,13 +460,103 @@ io.on(
         io.sockets.sockets
         .get(id);
 
-        if(target){
+        if(
 
-            target.disconnect(
-                true
-            );
+            !target ||
+
+            target.username ===
+            ADMIN_NAME
+
+        ){
+
+            return;
 
         }
+
+        disconnectedUsers.push({
+
+            id,
+
+            username:
+            target.username,
+
+            ip:
+            target.handshake.address
+
+        });
+
+        io.emit(
+
+            "disconnect list",
+
+            disconnectedUsers
+
+        );
+
+        target.disconnect(
+            true
+        );
+
+    });
+
+    /* UNBAN */
+
+    socket.on(
+
+        "unban user",
+
+        (ip)=>{
+
+        bannedIPs =
+
+        bannedIPs.filter(
+
+            banned =>
+            banned !== ip
+
+        );
+
+        io.emit(
+
+            "ban list",
+
+            bannedIPs.map(ip=>({
+
+                ip,
+
+                username:
+                "محظور"
+
+            }))
+
+        );
+
+    });
+
+    /* UNDISCONNECT */
+
+    socket.on(
+
+        "undisconnect user",
+
+        (id)=>{
+
+        disconnectedUsers =
+
+        disconnectedUsers.filter(
+
+            user =>
+            user.id !== id
+
+        );
+
+        io.emit(
+
+            "disconnect list",
+
+            disconnectedUsers
+
+        );
 
     });
 
@@ -329,9 +599,7 @@ server.listen(
     ()=>{
 
     console.log(
-
         "Server running"
-
     );
 
 });
