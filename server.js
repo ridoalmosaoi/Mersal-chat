@@ -28,19 +28,11 @@ const ADMIN_NAME = "Admin";
 
 const ADMIN_PASSWORD = "admin771";
 
-/* USERS */
-
 let users = [];
-
-/* BANNED */
 
 let bannedIPs = [];
 
-/* DISCONNECTED */
-
 let disconnectedUsers = [];
-
-/* CONNECTION */
 
 io.on(
 
@@ -50,15 +42,23 @@ io.on(
 
     const ip =
 
-    socket.handshake.address;
+    socket.handshake.headers[
+        "x-forwarded-for"
+    ]
+
+    ||
+
+    socket.handshake.address
+
+    ||
+
+    "Unknown";
 
     const userAgent =
 
     socket.handshake.headers[
         "user-agent"
     ] || "";
-
-    /* INFO */
 
     let browser =
     "Unknown";
@@ -111,15 +111,11 @@ io.on(
 
     }
 
-    /* JOIN */
-
     socket.on(
 
         "join",
 
         (data)=>{
-
-        /* ADMIN BYPASS */
 
         const isAdmin =
 
@@ -128,8 +124,6 @@ io.on(
 
         data.password ===
         ADMIN_PASSWORD;
-
-        /* BANNED */
 
         if(
 
@@ -144,8 +138,6 @@ io.on(
             return;
 
         }
-
-        /* DISCONNECTED */
 
         const disconnected =
 
@@ -164,34 +156,6 @@ io.on(
         ){
 
             socket.disconnect();
-
-            return;
-
-        }
-
-        /* NAME EXISTS */
-
-        const exists =
-
-        users.find(
-
-            user =>
-
-            user.username
-            .toLowerCase()
-
-            ===
-
-            data.username
-            .toLowerCase()
-
-        );
-
-        if(exists){
-
-            socket.emit(
-                "name taken"
-            );
 
             return;
 
@@ -230,33 +194,6 @@ io.on(
             users
         );
 
-        /* SEND LISTS */
-
-        io.emit(
-
-            "ban list",
-
-            bannedIPs.map(ip=>({
-
-                ip,
-
-                username:
-                "محظور"
-
-            }))
-
-        );
-
-        io.emit(
-
-            "disconnect list",
-
-            disconnectedUsers
-
-        );
-
-        /* CHANSERV */
-
         if(isAdmin){
 
             io.emit(
@@ -264,8 +201,6 @@ io.on(
                 "chat message",
 
                 {
-
-                    id:"system",
 
                     username:
                     "ChanServ",
@@ -283,8 +218,6 @@ io.on(
         }
 
     });
-
-    /* PUBLIC */
 
     socket.on(
 
@@ -321,247 +254,6 @@ io.on(
 
     });
 
-    /* PRIVATE */
-
-    socket.on(
-
-        "private message",
-
-        (data)=>{
-
-        io.to(
-            data.to
-        ).emit(
-
-            "private message",
-
-            {
-
-                from:
-                data.from,
-
-                message:
-                data.message
-
-            }
-
-        );
-
-    });
-
-    /* KICK */
-
-    socket.on(
-
-        "kick user",
-
-        (id)=>{
-
-        const target =
-
-        io.sockets.sockets
-        .get(id);
-
-        if(
-
-            !target ||
-
-            target.username ===
-            ADMIN_NAME
-
-        ){
-
-            return;
-
-        }
-
-        target.disconnect(
-            true
-        );
-
-    });
-
-    /* BAN */
-
-    socket.on(
-
-        "ban user",
-
-        (id)=>{
-
-        const target =
-
-        io.sockets.sockets
-        .get(id);
-
-        if(
-
-            !target ||
-
-            target.username ===
-            ADMIN_NAME
-
-        ){
-
-            return;
-
-        }
-
-        const targetIP =
-
-        target.handshake
-        .address;
-
-        if(
-
-            !bannedIPs.includes(
-                targetIP
-            )
-
-        ){
-
-            bannedIPs.push(
-                targetIP
-            );
-
-        }
-
-        io.emit(
-
-            "ban list",
-
-            bannedIPs.map(ip=>({
-
-                ip,
-
-                username:
-                "محظور"
-
-            }))
-
-        );
-
-        target.disconnect(
-            true
-        );
-
-    });
-
-    /* DISCONNECT USER */
-
-    socket.on(
-
-        "disconnect user",
-
-        (id)=>{
-
-        const target =
-
-        io.sockets.sockets
-        .get(id);
-
-        if(
-
-            !target ||
-
-            target.username ===
-            ADMIN_NAME
-
-        ){
-
-            return;
-
-        }
-
-        disconnectedUsers.push({
-
-            id,
-
-            username:
-            target.username,
-
-            ip:
-            target.handshake.address
-
-        });
-
-        io.emit(
-
-            "disconnect list",
-
-            disconnectedUsers
-
-        );
-
-        target.disconnect(
-            true
-        );
-
-    });
-
-    /* UNBAN */
-
-    socket.on(
-
-        "unban user",
-
-        (ip)=>{
-
-        bannedIPs =
-
-        bannedIPs.filter(
-
-            banned =>
-            banned !== ip
-
-        );
-
-        io.emit(
-
-            "ban list",
-
-            bannedIPs.map(ip=>({
-
-                ip,
-
-                username:
-                "محظور"
-
-            }))
-
-        );
-
-    });
-
-    /* UNDISCONNECT */
-
-    socket.on(
-
-        "undisconnect user",
-
-        (id)=>{
-
-        disconnectedUsers =
-
-        disconnectedUsers.filter(
-
-            user =>
-            user.id !== id
-
-        );
-
-        io.emit(
-
-            "disconnect list",
-
-            disconnectedUsers
-
-        );
-
-    });
-
-    /* LEAVE */
-
     socket.on(
 
         "disconnect",
@@ -586,9 +278,6 @@ io.on(
     });
 
 });
-
-/* START */
-
 const PORT =
 process.env.PORT || 3000;
 
