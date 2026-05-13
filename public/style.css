@@ -20,7 +20,6 @@ body{
     display:flex;
     justify-content:center;
     align-items:center;
-    background:#000;
 }
 
 .login-box{
@@ -32,9 +31,9 @@ body{
 }
 
 .logo{
-    font-size:60px;
-    color:#00d0b4;
     text-align:center;
+    font-size:55px;
+    color:#00d0b4;
     font-weight:bold;
 }
 
@@ -51,7 +50,6 @@ body{
     color:white;
     padding:12px;
     font-size:16px;
-    outline:none;
 }
 
 .login-box button{
@@ -64,8 +62,6 @@ body{
     font-weight:bold;
 }
 
-/* COLORS */
-
 .colors{
     display:flex;
     justify-content:center;
@@ -73,8 +69,8 @@ body{
 }
 
 .color{
-    width:32px;
-    height:32px;
+    width:30px;
+    height:30px;
     border-radius:50%;
     border:3px solid transparent;
 }
@@ -88,7 +84,6 @@ body{
 .chat-app{
     width:100%;
     height:100vh;
-    background:#000;
 }
 
 /* TOPBAR */
@@ -102,8 +97,8 @@ body{
     background:#00bfa5;
     display:flex;
     align-items:center;
-    gap:12px;
-    padding:0 12px;
+    gap:14px;
+    padding:0 14px;
     z-index:999;
 }
 
@@ -121,17 +116,17 @@ body{
 
 #privateCount{
     position:absolute;
-    top:-8px;
-    left:-8px;
+    top:-7px;
+    left:-7px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
     background:red;
     color:white;
-    width:20px;
-    height:20px;
-    border-radius:50%;
+    font-size:11px;
     display:none;
     justify-content:center;
     align-items:center;
-    font-size:12px;
 }
 
 /* POPUPS */
@@ -143,65 +138,55 @@ body{
     display:none;
     justify-content:center;
     align-items:center;
-    z-index:999999;
+    z-index:9999;
 }
 
 .popup-box{
     width:90%;
-    max-width:360px;
-    max-height:70vh;
-    overflow-y:auto;
+    max-width:420px;
+    max-height:80vh;
+    overflow:auto;
     background:#111;
-    border:2px solid #666;
-    border-radius:15px;
+    border:2px solid #555;
+    border-radius:20px;
 }
 
 .popup-title{
     padding:16px;
     text-align:center;
-    font-size:24px;
-    border-bottom:1px solid #333;
+    font-size:23px;
     color:#ffd700;
+    border-bottom:1px solid #333;
 }
+
+/* USERS */
 
 .online-user{
     padding:18px;
     border-bottom:1px solid #222;
-    font-size:21px;
-}
-
-.online-user:active{
-    background:#222;
-}
-
-/* ADMIN */
-
-.admin-section{
-    padding:10px;
-}
-
-.admin-title{
     font-size:20px;
-    color:#00d0b4;
-    margin-bottom:10px;
 }
 
-.admin-item{
-    background:#1a1a1a;
-    padding:12px;
-    border-radius:10px;
-    margin-bottom:10px;
+/* MENU */
+
+.user-menu{
+    position:fixed;
+    bottom:90px;
+    right:10px;
+    width:220px;
+    background:#111;
+    border-radius:16px;
+    overflow:hidden;
+    display:none;
+    z-index:99999;
+    border:1px solid #444;
 }
 
-.admin-btn{
-    margin-top:8px;
-    width:100%;
-    height:40px;
-    border:none;
-    border-radius:8px;
-    background:red;
-    color:white;
-    font-weight:bold;
+.user-menu div{
+    padding:18px;
+    text-align:center;
+    border-bottom:1px solid #222;
+    font-size:19px;
 }
 
 /* MESSAGES */
@@ -210,16 +195,16 @@ body{
     position:fixed;
     top:55px;
     bottom:70px;
-    left:0;
     right:0;
-    overflow-y:auto;
+    left:0;
+    overflow:auto;
     padding:10px;
 }
 
 .msg-line{
-    margin-bottom:8px;
+    margin-bottom:10px;
     line-height:1.8;
-    font-size:22px;
+    font-size:21px;
     word-break:break-word;
 }
 
@@ -238,83 +223,33 @@ body{
     background:#111;
     border-top:2px solid #00d0b4;
     display:flex;
-    align-items:center;
     gap:8px;
     padding:10px;
 }
 
-.emoji-btn{
-    width:45px;
-    height:45px;
-    border-radius:50%;
-    background:white;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-size:24px;
-}
-
 .chat-input input{
     flex:1;
-    height:48px;
     border:none;
     border-radius:10px;
-    background:white;
     padding:10px;
     font-size:18px;
-    outline:none;
 }
 
 .chat-input button{
-    width:60px;
-    height:48px;
+    width:90px;
     border:none;
-    background:transparent;
-    color:#ffd700;
-    font-size:34px;
-}
-
-/* USER MENU */
-
-.user-menu{
-    position:fixed;
-    bottom:90px;
-    right:10px;
-    width:220px;
-    background:#111;
-    border-radius:15px;
-    overflow:hidden;
-    display:none;
-    z-index:9999999;
-    border:1px solid #444;
-}
-
-.user-menu div{
-    padding:18px;
-    text-align:center;
-    border-bottom:1px solid #222;
-    font-size:20px;
-}
-
-.user-menu div:active{
-    background:#222;
-}
-
-#adminOptions div{
-    color:#ff4444;
+    border-radius:10px;
+    background:#00d0b4;
+    color:black;
+    font-weight:bold;
 }
 
 /* PRIVATE */
 
-.private-box{
-    position:fixed;
-    inset:5%;
-    background:#111;
-    border-radius:15px;
-    display:none;
+.private-chat{
+    display:flex;
     flex-direction:column;
-    z-index:999999;
-    overflow:hidden;
+    height:70vh;
 }
 
 .private-top{
@@ -338,7 +273,7 @@ body{
 
 .private-messages{
     flex:1;
-    overflow-y:auto;
+    overflow:auto;
     padding:10px;
 }
 
@@ -347,7 +282,6 @@ body{
     padding:10px;
     border-radius:10px;
     margin-bottom:10px;
-    line-height:1.7;
 }
 
 .private-input{
@@ -359,7 +293,6 @@ body{
 
 .private-input input{
     flex:1;
-    height:45px;
     border:none;
     border-radius:10px;
     background:#222;
@@ -373,7 +306,6 @@ body{
     border-radius:10px;
     background:#00d0b4;
     color:black;
-    font-weight:bold;
 }
 
 /* USER INFO */
@@ -382,18 +314,4 @@ body{
     padding:15px;
     line-height:2;
     font-size:18px;
-}
-
-/* MOBILE */
-
-@media(max-width:700px){
-
-    .msg-line{
-        font-size:19px;
-    }
-
-    .online-user{
-        font-size:19px;
-    }
-
 }
