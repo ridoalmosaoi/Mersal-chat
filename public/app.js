@@ -1,8 +1,16 @@
 const socket = io({
 
-    transports:["websocket"]
+    transports:["websocket"],
+
+    reconnection:true,
+
+    reconnectionAttempts:99999,
+
+    reconnectionDelay:1000
 
 });
+
+const ADMIN_NAME = "Admin";
 
 let currentUser = "";
 
@@ -12,7 +20,7 @@ let selectedUser = null;
 
 let privateNotifications = 0;
 
-/* COLOR */
+/* COLORS */
 
 function selectColor(color,el){
 
@@ -111,20 +119,6 @@ socket.on(
 
 });
 
-/* NAME TAKEN */
-
-socket.on(
-
-    "name taken",
-
-    ()=>{
-
-    alert(
-        "الاسم مستخدم"
-    );
-
-});
-
 /* ONLINE USERS */
 
 socket.on(
@@ -139,12 +133,6 @@ socket.on(
     .getElementById(
         "usersList"
     );
-
-    if(!usersList){
-
-        return;
-
-    }
 
     usersList.innerHTML = "";
 
@@ -166,20 +154,35 @@ socket.on(
         color:${user.color}
         ">
 
-        👤 ${user.username}
+        ${
+
+        user.username ===
+        ADMIN_NAME
+
+        ?
+
+        "⭐"
+
+        :
+
+        "👤"
+
+        }
+
+        ${user.username}
 
         </span>
 
         `;
 
-        div.onclick = (e)=>{
+        div.onclick = (event)=>{
 
-            e.stopPropagation();
+            event.stopPropagation();
 
             selectedUser =
             user;
 
-            openUserMenu();
+            openUserMenu(event);
 
         };
 
@@ -191,7 +194,7 @@ socket.on(
 
 });
 
-/* SEND */
+/* SEND MESSAGE */
 
 function sendMessage(){
 
@@ -234,7 +237,7 @@ function sendMessage(){
 
 }
 
-/* RECEIVE */
+/* RECEIVE MESSAGE */
 
 socket.on(
 
@@ -249,12 +252,6 @@ socket.on(
         "messages"
     );
 
-    if(!messages){
-
-        return;
-
-    }
-
     const div =
 
     document
@@ -268,12 +265,31 @@ socket.on(
     div.innerHTML = `
 
     <span
+    class="msg-name"
     style="
     color:${data.color};
-    font-weight:bold;
     ">
 
-    &lt;${data.username}&gt;
+    &lt;
+
+    ${
+
+    data.username ===
+    ADMIN_NAME
+
+    ?
+
+    "&"
+
+    :
+
+    ""
+
+    }
+
+    ${data.username}
+
+    &gt;
 
     </span>
 
@@ -281,20 +297,18 @@ socket.on(
 
     `;
 
-    div.onclick = (e)=>{
+    div.onclick = (event)=>{
 
-        e.stopPropagation();
+        event.stopPropagation();
 
         selectedUser =
         data;
 
-        openUserMenu();
+        openUserMenu(event);
 
     };
 
-    messages.appendChild(
-        div
-    );
+    messages.appendChild(div);
 
     messages.scrollTop =
 
@@ -302,11 +316,11 @@ socket.on(
 
 });
 
-/* USERS POPUP */
+/* USERS */
 
-function toggleUsers(e){
+function toggleUsers(event){
 
-    e.stopPropagation();
+    event.stopPropagation();
 
     closeAll();
 
@@ -322,9 +336,9 @@ function toggleUsers(e){
 
 /* SETTINGS */
 
-function toggleSettings(e){
+function toggleSettings(event){
 
-    e.stopPropagation();
+    event.stopPropagation();
 
     closeAll();
 
@@ -338,41 +352,15 @@ function toggleSettings(e){
 
 }
 
-/* PRIVATE */
+/* MENU */
 
-function openPrivateList(e){
+function openUserMenu(event){
 
-    e.stopPropagation();
+    if(event){
 
-    closeAll();
+        event.stopPropagation();
 
-    document
-    .getElementById(
-        "privateBox"
-    )
-
-    .style.display =
-    "flex";
-
-}
-
-function closePrivate(e){
-
-    e.stopPropagation();
-
-    document
-    .getElementById(
-        "privateBox"
-    )
-
-    .style.display =
-    "none";
-
-}
-
-/* USER MENU */
-
-function openUserMenu(){
+    }
 
     const menu =
 
@@ -384,20 +372,61 @@ function openUserMenu(){
     menu.style.display =
     "block";
 
+    if(
+
+        currentUser !==
+        ADMIN_NAME
+
+    ){
+
+        document
+        .getElementById(
+            "adminOptions"
+        )
+
+        .style.display =
+        "none";
+
+        document
+        .getElementById(
+            "userInfoButton"
+        )
+
+        .style.display =
+        "none";
+
+    }else{
+
+        document
+        .getElementById(
+            "adminOptions"
+        )
+
+        .style.display =
+        "block";
+
+        document
+        .getElementById(
+            "userInfoButton"
+        )
+
+        .style.display =
+        "block";
+
+    }
+
 }
 
 /* REPLY */
 
 function replyUser(){
 
-    const input =
-
     document
     .getElementById(
         "messageInput"
-    );
+    )
 
-    input.value +=
+    .value +=
 
     `<${selectedUser.username}> `;
 
@@ -405,7 +434,7 @@ function replyUser(){
 
 }
 
-/* PRIVATE MESSAGE */
+/* PRIVATE */
 
 function openPrivate(){
 
@@ -417,9 +446,123 @@ function openPrivate(){
     .style.display =
     "flex";
 
-    closeAll();
+    document
+    .getElementById(
+        "privateName"
+    )
+
+    .innerText =
+
+    selectedUser.username;
 
 }
+
+function openPrivateList(event){
+
+    event.stopPropagation();
+
+    closeAll();
+
+    document
+    .getElementById(
+        "privateBox"
+    )
+
+    .style.display =
+    "flex";
+
+    privateNotifications = 0;
+
+    document
+    .getElementById(
+        "privateCount"
+    )
+
+    .style.display =
+    "none";
+
+}
+
+function closePrivate(event){
+
+    event.stopPropagation();
+
+    document
+    .getElementById(
+        "privateBox"
+    )
+
+    .style.display =
+    "none";
+
+}
+
+/* SEND PRIVATE */
+
+function sendPrivate(){
+
+    const input =
+
+    document
+    .getElementById(
+        "privateInput"
+    );
+
+    const message =
+    input.value.trim();
+
+    if(!message){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "private message",
+
+        {
+
+            to:
+            selectedUser.id,
+
+            from:
+            currentUser,
+
+            message
+
+        }
+
+    );
+
+    input.value = "";
+
+}
+
+/* PRIVATE RECEIVE */
+
+socket.on(
+
+    "private message",
+
+    ()=>{
+
+    privateNotifications++;
+
+    const badge =
+
+    document
+    .getElementById(
+        "privateCount"
+    );
+
+    badge.style.display =
+    "flex";
+
+    badge.innerText =
+    privateNotifications;
+
+});
 
 /* USER INFO */
 
@@ -462,15 +605,9 @@ function showUserInfo(){
 
 }
 
-/* BAN */
+/* ADMIN */
 
 function banUser(){
-
-    if(!selectedUser){
-
-        return;
-
-    }
 
     socket.emit(
 
@@ -484,15 +621,7 @@ function banUser(){
 
 }
 
-/* DISCONNECT */
-
 function disconnectUser(){
-
-    if(!selectedUser){
-
-        return;
-
-    }
 
     socket.emit(
 
@@ -506,7 +635,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE ALL */
+/* CLOSE */
 
 function closeAll(){
 
@@ -531,8 +660,6 @@ function closeAll(){
     "none";
 
 }
-
-/* CLICK OUTSIDE */
 
 document.addEventListener(
 
@@ -560,5 +687,20 @@ document
         e.stopPropagation();
 
     });
+
+});
+
+document
+.getElementById(
+    "userMenu"
+)
+
+.addEventListener(
+
+    "click",
+
+    (e)=>{
+
+    e.stopPropagation();
 
 });
