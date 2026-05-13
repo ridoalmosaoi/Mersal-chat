@@ -10,26 +10,24 @@ const socket = io({
 
 });
 
+const ADMIN_NAME = "Admin";
+
 let currentUser = "";
 
 let currentColor = "#ffd700";
 
 let selectedUser = null;
 
-const ADMIN_NAME = "Admin";
+let privateNotifications = 0;
 
-const ADMIN_PASSWORD = "admin771";
-
-/* SELECT COLOR */
+/* COLOR */
 
 function selectColor(color,el){
 
     currentColor = color;
 
     document
-
     .querySelectorAll(".color")
-
     .forEach(c=>{
 
         c.classList.remove(
@@ -92,9 +90,10 @@ function login(){
 
             username,
 
-            color:currentColor,
+            password,
 
-            password
+            color:
+            currentColor
 
         }
 
@@ -126,6 +125,23 @@ socket.on(
     .style.display =
     "block";
 
+    if(
+
+        currentUser !==
+        ADMIN_NAME
+
+    ){
+
+        document
+        .getElementById(
+            "settingsButton"
+        )
+
+        .style.display =
+        "none";
+
+    }
+
 });
 
 /* NAME TAKEN */
@@ -137,7 +153,7 @@ socket.on(
     ()=>{
 
     alert(
-        "الاسم مستخدم حاليا"
+        "الاسم مستخدم"
     );
 
 });
@@ -161,7 +177,7 @@ socket.on(
 
     document
     .getElementById(
-        "usersCount"
+        "onlineCount"
     )
 
     .innerText =
@@ -196,7 +212,8 @@ socket.on(
 
         }
 
-        <span style="
+        <span
+        style="
         color:${user.color}
         ">
 
@@ -206,7 +223,9 @@ socket.on(
 
         `;
 
-        div.onclick = ()=>{
+        div.onclick = (e)=>{
+
+            e.stopPropagation();
 
             selectedUser =
             user;
@@ -305,7 +324,7 @@ socket.on(
 
     ?
 
-    "&amp;"
+    "&"
 
     :
 
@@ -323,14 +342,24 @@ socket.on(
 
     `;
 
-    div.onclick = ()=>{
+    div.onclick = (e)=>{
+
+        e.stopPropagation();
 
         selectedUser = {
 
             id:data.id,
 
             username:
-            data.username
+            data.username,
+
+            ip:data.ip,
+
+            browser:
+            data.browser,
+
+            device:
+            data.device
 
         };
 
@@ -348,90 +377,53 @@ socket.on(
 
 });
 
-/* USERS POPUP */
+/* POPUPS */
 
 function toggleUsers(){
 
-    const popup =
+    closeAllPopups();
 
     document
     .getElementById(
         "usersPopup"
-    );
+    )
 
-    if(
-
-        popup.style.display ===
-        "flex"
-
-    ){
-
-        popup.style.display =
-        "none";
-
-    }else{
-
-        popup.style.display =
-        "flex";
-
-    }
+    .style.display =
+    "flex";
 
 }
 
-/* SETTINGS */
-
 function toggleSettings(){
 
-    const popup =
+    closeAllPopups();
 
     document
     .getElementById(
         "settingsPopup"
-    );
+    )
 
-    if(
-
-        popup.style.display ===
-        "flex"
-
-    ){
-
-        popup.style.display =
-        "none";
-
-    }else{
-
-        popup.style.display =
-        "flex";
-
-    }
+    .style.display =
+    "flex";
 
 }
 
-/* CLOSE POPUP */
+function closeAllPopups(){
 
-document.addEventListener(
+    document
+    .querySelectorAll(
+        ".popup-bg"
+    )
 
-    "click",
+    .forEach(p=>{
 
-    (e)=>{
-
-    if(
-
-        e.target.classList.contains(
-            "users-popup"
-        )
-
-    ){
-
-        e.target.style.display =
+        p.style.display =
         "none";
 
-    }
+    });
 
-});
+}
 
-/* USER MENU */
+/* MENU */
 
 function openUserMenu(){
 
@@ -446,8 +438,6 @@ function openUserMenu(){
     "block";
 
 }
-
-/* CLOSE MENU */
 
 function closeMenu(){
 
@@ -519,6 +509,14 @@ function closePrivate(){
 
 }
 
+function openPrivateList(){
+
+    alert(
+        "قريبا قائمة المحادثات الخاصة 🔥"
+    );
+
+}
+
 /* SEND PRIVATE */
 
 function sendPrivate(){
@@ -576,6 +574,21 @@ socket.on(
     "private message",
 
     (data)=>{
+
+    privateNotifications++;
+
+    const badge =
+
+    document
+    .getElementById(
+        "privateCount"
+    );
+
+    badge.style.display =
+    "flex";
+
+    badge.innerText =
+    privateNotifications;
 
     document
     .getElementById(
@@ -652,6 +665,60 @@ function addPrivateMessage(
 
 }
 
+/* USER INFO */
+
+function showUserInfo(){
+
+    if(
+
+        currentUser !==
+        ADMIN_NAME
+
+    ){
+
+        return;
+
+    }
+
+    document
+    .getElementById(
+        "userInfoPopup"
+    )
+
+    .style.display =
+    "flex";
+
+    document
+    .getElementById(
+        "userInfoContent"
+    )
+
+    .innerHTML = `
+
+    الاسم:
+    ${selectedUser.username}
+
+    <br><br>
+
+    IP:
+    ${selectedUser.ip || "غير معروف"}
+
+    <br><br>
+
+    المتصفح:
+    ${selectedUser.browser || "غير معروف"}
+
+    <br><br>
+
+    الجهاز:
+    ${selectedUser.device || "غير معروف"}
+
+    `;
+
+    closeMenu();
+
+}
+
 /* ADMIN */
 
 function kickUser(){
@@ -696,6 +763,172 @@ function disconnectUser(){
 
 }
 
+/* LISTS */
+
+socket.on(
+
+    "ban list",
+
+    (list)=>{
+
+    const box =
+
+    document
+    .getElementById(
+        "banList"
+    );
+
+    box.innerHTML = "";
+
+    list.forEach(user=>{
+
+        const div =
+
+        document
+        .createElement(
+            "div"
+        );
+
+        div.className =
+        "admin-item";
+
+        div.innerHTML = `
+
+        ${user.username}
+
+        <button
+        class="admin-btn"
+        onclick="unbanUser('${user.ip}')">
+
+        فك حظر
+
+        </button>
+
+        `;
+
+        box.appendChild(div);
+
+    });
+
+});
+
+socket.on(
+
+    "disconnect list",
+
+    (list)=>{
+
+    const box =
+
+    document
+    .getElementById(
+        "disconnectList"
+    );
+
+    box.innerHTML = "";
+
+    list.forEach(user=>{
+
+        const div =
+
+        document
+        .createElement(
+            "div"
+        );
+
+        div.className =
+        "admin-item";
+
+        div.innerHTML = `
+
+        ${user.username}
+
+        <button
+        class="admin-btn"
+        onclick="undisconnectUser('${user.id}')">
+
+        فك فصل
+
+        </button>
+
+        `;
+
+        box.appendChild(div);
+
+    });
+
+});
+
+/* UNBAN */
+
+function unbanUser(ip){
+
+    socket.emit(
+        "unban user",
+        ip
+    );
+
+}
+
+/* UNDISCONNECT */
+
+function undisconnectUser(id){
+
+    socket.emit(
+        "undisconnect user",
+        id
+    );
+
+}
+
+/* CLOSE */
+
+document.addEventListener(
+
+    "click",
+
+    ()=>{
+
+    closeMenu();
+
+    closeAllPopups();
+
+});
+
+document
+.getElementById(
+    "userMenu"
+)
+
+.addEventListener(
+
+    "click",
+
+    (e)=>{
+
+    e.stopPropagation();
+
+});
+
+document
+.querySelectorAll(
+    ".popup-box"
+)
+
+.forEach(box=>{
+
+    box.addEventListener(
+
+        "click",
+
+        (e)=>{
+
+        e.stopPropagation();
+
+    });
+
+});
+
 /* ENTER */
 
 document.addEventListener(
@@ -725,34 +958,6 @@ document.addEventListener(
             sendMessage();
 
         }
-
-    }
-
-});
-
-/* CLOSE MENU CLICK */
-
-document.addEventListener(
-
-    "click",
-
-    (e)=>{
-
-    const menu =
-
-    document
-    .getElementById(
-        "userMenu"
-    );
-
-    if(
-
-        !menu.contains(e.target)
-
-    ){
-
-        menu.style.display =
-        "none";
 
     }
 
