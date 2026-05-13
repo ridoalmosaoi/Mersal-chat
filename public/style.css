@@ -62,6 +62,8 @@ body{
     font-weight:bold;
 }
 
+/* COLORS */
+
 .colors{
     display:flex;
     justify-content:center;
@@ -187,6 +189,10 @@ body{
     text-align:center;
     border-bottom:1px solid #222;
     font-size:19px;
+}
+
+#adminOptions div{
+    color:#ff4444;
 }
 
 /* MESSAGES */
