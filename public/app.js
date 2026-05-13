@@ -6,71 +6,43 @@ const socket = io({
 
     reconnectionDelay:1000,
 
-    reconnectionDelayMax:5000,
-
-    timeout:20000,
-
-    transports:[
-        "websocket"
-    ]
+    transports:["websocket"]
 
 });
 
 let currentUser = "";
 
+let currentColor = "#ffd700";
+
 let selectedUser = null;
 
-let privateCount = 0;
+const ADMIN_NAME = "Admin";
 
-/* ADMIN */
+const ADMIN_PASSWORD = "admin771";
 
-const ADMIN_NAME =
-"Admin";
+/* SELECT COLOR */
 
-const ADMIN_PASSWORD =
-"admin771";
+function selectColor(color,el){
 
-/* AUTO SAVE */
+    currentColor = color;
 
-window.onload = ()=>{
+    document
 
-    const savedUser =
+    .querySelectorAll(".color")
 
-    localStorage.getItem(
-        "chatUsername"
+    .forEach(c=>{
+
+        c.classList.remove(
+            "active"
+        );
+
+    });
+
+    el.classList.add(
+        "active"
     );
 
-    const savedPass =
-
-    localStorage.getItem(
-        "chatPassword"
-    );
-
-    if(savedUser){
-
-        document
-        .getElementById(
-            "loginUsername"
-        )
-
-        .value =
-        savedUser;
-
-    }
-
-    if(savedPass){
-
-        document
-        .getElementById(
-            "loginPassword"
-        )
-
-        .value =
-        savedPass;
-
-    }
-
-};
+}
 
 /* LOGIN */
 
@@ -83,7 +55,7 @@ function login(){
         "loginUsername"
     )
 
-    .value;
+    .value.trim();
 
     const password =
 
@@ -92,13 +64,13 @@ function login(){
         "loginPassword"
     )
 
-    .value;
+    .value.trim();
 
     if(
 
-        username.trim() === "" ||
+        username === "" ||
 
-        password.trim() === ""
+        password === ""
 
     ){
 
@@ -110,66 +82,51 @@ function login(){
 
     }
 
-    currentUser =
-    username;
-
-    localStorage.setItem(
-
-        "chatUsername",
-
-        username
-
-    );
-
-    localStorage.setItem(
-
-        "chatPassword",
-
-        password
-
-    );
-
-    if(
-
-        currentUser ===
-        ADMIN_NAME &&
-
-        password ===
-        ADMIN_PASSWORD
-
-    ){
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "block";
-
-    }else{
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "none";
-
-    }
+    currentUser = username;
 
     socket.emit(
 
         "join",
 
         {
-            username
+
+            username,
+
+            color:currentColor,
+
+            password
+
         }
 
     );
 
 }
+
+/* LOGIN SUCCESS */
+
+socket.on(
+
+    "login success",
+
+    ()=>{
+
+    document
+    .getElementById(
+        "loginScreen"
+    )
+
+    .style.display =
+    "none";
+
+    document
+    .getElementById(
+        "chatApp"
+    )
+
+    .style.display =
+    "block";
+
+});
 
 /* NAME TAKEN */
 
@@ -180,28 +137,12 @@ socket.on(
     ()=>{
 
     alert(
-        "الاسم داخل الآن"
+        "الاسم مستخدم حاليا"
     );
 
 });
 
-/* BANNED */
-
-socket.on(
-
-    "banned",
-
-    ()=>{
-
-    alert(
-        "تم حظرك من الشات"
-    );
-
-    location.reload();
-
-});
-
-/* ONLINE USERS */
+/* USERS */
 
 socket.on(
 
@@ -209,57 +150,22 @@ socket.on(
 
     (users)=>{
 
-    if(
-
-        document
-        .getElementById(
-            "chatApp"
-        )
-
-        .style.display
-        !== "block"
-
-    ){
-
-        document
-        .getElementById(
-            "loginScreen"
-        )
-
-        .style.display =
-        "none";
-
-        document
-        .getElementById(
-            "chatApp"
-        )
-
-        .style.display =
-        "block";
-
-    }
-
-    const online =
+    const list =
 
     document
     .getElementById(
-        "onlineList"
+        "usersList"
     );
 
-    online.innerHTML = `
+    list.innerHTML = "";
 
-        <div style="
-        color:#ff9900;
-        font-weight:bold;
-        margin-bottom:10px;
-        ">
+    document
+    .getElementById(
+        "usersCount"
+    )
 
-        المتصلين
-        (${users.length})
-
-        </div>
-
-    `;
+    .innerText =
+    users.length;
 
     users.forEach(user=>{
 
@@ -270,9 +176,8 @@ socket.on(
             "div"
         );
 
-        div.classList.add(
-            "online-user"
-        );
+        div.className =
+        "online-user";
 
         div.innerHTML = `
 
@@ -283,38 +188,40 @@ socket.on(
 
         ?
 
-        "<span style='color:#ff4444'>&amp;</span>"
+        "⭐"
 
         :
 
-        ""
+        "👤"
 
         }
 
+        <span style="
+        color:${user.color}
+        ">
+
         ${user.username}
+
+        </span>
 
         `;
 
-        div.onclick = (e)=>{
-
-            e.stopPropagation();
+        div.onclick = ()=>{
 
             selectedUser =
             user;
 
-            openMenu(e);
+            openUserMenu();
 
         };
 
-        online.appendChild(
-            div
-        );
+        list.appendChild(div);
 
     });
 
 });
 
-/* SEND MESSAGE */
+/* SEND */
 
 function sendMessage(){
 
@@ -326,11 +233,9 @@ function sendMessage(){
     );
 
     const message =
-    input.value;
+    input.value.trim();
 
-    if(
-        message.trim() === ""
-    ){
+    if(message === ""){
 
         return;
 
@@ -345,6 +250,9 @@ function sendMessage(){
             username:
             currentUser,
 
+            color:
+            currentColor,
+
             message
 
         }
@@ -355,7 +263,7 @@ function sendMessage(){
 
 }
 
-/* RECEIVE MESSAGE */
+/* RECEIVE */
 
 socket.on(
 
@@ -377,63 +285,45 @@ socket.on(
         "div"
     );
 
-    div.classList.add(
-        "message"
-    );
-
-    if(
-
-        data.username ===
-        currentUser
-
-    ){
-
-        div.classList.add(
-            "my-message"
-        );
-
-    }
+    div.className =
+    "msg-line";
 
     div.innerHTML = `
 
-        <div class="username">
+    <span
+    class="msg-name"
+    style="
+    color:${data.color}
+    ">
 
-        ${
+    &lt;
 
-        data.username ===
-        ADMIN_NAME
+    ${
 
-        ?
+    data.username ===
+    ADMIN_NAME
 
-        "<span style='color:#ff4444'>&amp;</span>"
+    ?
 
-        :
+    "&amp;"
 
-        ""
+    :
 
-        }
+    ""
 
-        ${data.username}
+    }
 
-        </div>
+    ${data.username}
 
-        <div class="text">
+    &gt;
 
-        ${data.message}
+    </span>
 
-        </div>
-
-        <div class="time">
-
-        ${data.time}
-
-        </div>
+    ${data.message}
 
     `;
 
-    div.onclick = (e)=>{
-
-        e.stopPropagation();
+    div.onclick = ()=>{
 
         selectedUser = {
 
@@ -444,7 +334,7 @@ socket.on(
 
         };
 
-        openMenu(e);
+        openUserMenu();
 
     };
 
@@ -458,47 +348,92 @@ socket.on(
 
 });
 
-/* SYSTEM */
+/* USERS POPUP */
 
-socket.on(
+function toggleUsers(){
 
-    "system",
-
-    (data)=>{
-
-    const messages =
+    const popup =
 
     document
     .getElementById(
-        "messages"
+        "usersPopup"
     );
 
-    const div =
+    if(
+
+        popup.style.display ===
+        "flex"
+
+    ){
+
+        popup.style.display =
+        "none";
+
+    }else{
+
+        popup.style.display =
+        "flex";
+
+    }
+
+}
+
+/* SETTINGS */
+
+function toggleSettings(){
+
+    const popup =
 
     document
-    .createElement(
-        "div"
+    .getElementById(
+        "settingsPopup"
     );
 
-    div.style.color =
-    "#00ff66";
+    if(
 
-    div.style.marginBottom =
-    "10px";
+        popup.style.display ===
+        "flex"
 
-    div.innerHTML =
+    ){
 
-    `<b>${data.text}</b>`;
+        popup.style.display =
+        "none";
 
-    messages.appendChild(
-        div
-    );
+    }else{
+
+        popup.style.display =
+        "flex";
+
+    }
+
+}
+
+/* CLOSE POPUP */
+
+document.addEventListener(
+
+    "click",
+
+    (e)=>{
+
+    if(
+
+        e.target.classList.contains(
+            "users-popup"
+        )
+
+    ){
+
+        e.target.style.display =
+        "none";
+
+    }
 
 });
 
-/* MENU */
+/* USER MENU */
 
-function openMenu(e){
+function openUserMenu(){
 
     const menu =
 
@@ -510,17 +445,11 @@ function openMenu(e){
     menu.style.display =
     "block";
 
-    menu.style.left =
-    e.pageX + "px";
-
-    menu.style.top =
-    e.pageY + "px";
-
 }
 
 /* CLOSE MENU */
 
-function closeMenus(){
+function closeMenu(){
 
     document
     .getElementById(
@@ -532,34 +461,30 @@ function closeMenus(){
 
 }
 
-/* COPY */
+/* REPLY */
 
-function copyUsername(){
+function replyUser(){
 
-    navigator.clipboard
-    .writeText(
+    const input =
 
-        selectedUser.username
-
+    document
+    .getElementById(
+        "messageInput"
     );
 
-    closeMenus();
+    input.value +=
+
+    `<${selectedUser.username}> `;
+
+    input.focus();
+
+    closeMenu();
 
 }
 
 /* PRIVATE */
 
 function openPrivate(){
-
-    privateCount = 0;
-
-    document
-    .getElementById(
-        "privateBadge"
-    )
-
-    .style.display =
-    "none";
 
     document
     .getElementById(
@@ -569,20 +494,16 @@ function openPrivate(){
     .style.display =
     "flex";
 
-    if(selectedUser){
+    document
+    .getElementById(
+        "privateName"
+    )
 
-        document
-        .getElementById(
-            "privateName"
-        )
+    .innerText =
 
-        .innerText =
+    selectedUser.username;
 
-        selectedUser.username;
-
-    }
-
-    closeMenus();
+    closeMenu();
 
 }
 
@@ -598,6 +519,8 @@ function closePrivate(){
 
 }
 
+/* SEND PRIVATE */
+
 function sendPrivate(){
 
     const input =
@@ -608,11 +531,9 @@ function sendPrivate(){
     );
 
     const message =
-    input.value;
+    input.value.trim();
 
-    if(
-        message.trim() === ""
-    ){
+    if(message === ""){
 
         return;
 
@@ -624,7 +545,7 @@ function sendPrivate(){
 
         {
 
-            toSocket:
+            to:
             selectedUser.id,
 
             from:
@@ -655,24 +576,6 @@ socket.on(
     "private message",
 
     (data)=>{
-
-    privateCount++;
-
-    document
-    .getElementById(
-        "privateBadge"
-    )
-
-    .innerText =
-    privateCount;
-
-    document
-    .getElementById(
-        "privateBadge"
-    )
-
-    .style.display =
-    "flex";
 
     document
     .getElementById(
@@ -724,28 +627,24 @@ function addPrivateMessage(
         "div"
     );
 
-    div.style.marginBottom =
-    "10px";
+    div.className =
+    "private-message";
 
     div.innerHTML = `
 
-        <b style="
-        color:#ff9900
-        ">
+    <b>
 
-        ${name}
+    ${name}
 
-        </b>
+    </b>
 
-        <br>
+    <br><br>
 
-        ${msg}
+    ${msg}
 
     `;
 
-    box.appendChild(
-        div
-    );
+    box.appendChild(div);
 
     box.scrollTop =
 
@@ -765,7 +664,7 @@ function kickUser(){
 
     );
 
-    closeMenus();
+    closeMenu();
 
 }
 
@@ -775,16 +674,11 @@ function banUser(){
 
         "ban user",
 
-        {
-
-            id:
-            selectedUser.id
-
-        }
+        selectedUser.id
 
     );
 
-    closeMenus();
+    closeMenu();
 
 }
 
@@ -798,36 +692,9 @@ function disconnectUser(){
 
     );
 
-    closeMenus();
+    closeMenu();
 
 }
-
-/* RECONNECT */
-
-socket.on(
-
-    "connect",
-
-    ()=>{
-
-    if(currentUser !== ""){
-
-        socket.emit(
-
-            "join",
-
-            {
-
-                username:
-                currentUser
-
-            }
-
-        );
-
-    }
-
-});
 
 /* ENTER */
 
@@ -837,9 +704,7 @@ document.addEventListener(
 
     (e)=>{
 
-    if(
-        e.key === "Enter"
-    ){
+    if(e.key === "Enter"){
 
         if(
 
@@ -865,11 +730,11 @@ document.addEventListener(
 
 });
 
-/* HIDE MENU */
+/* CLOSE MENU CLICK */
 
 document.addEventListener(
 
-    "touchstart",
+    "click",
 
     (e)=>{
 
