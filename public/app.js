@@ -119,7 +119,7 @@ socket.on(
 
 });
 
-/* USERS */
+/* ONLINE USERS */
 
 socket.on(
 
@@ -194,7 +194,7 @@ socket.on(
 
 });
 
-/* SEND */
+/* SEND MESSAGE */
 
 function sendMessage(){
 
@@ -206,6 +206,7 @@ function sendMessage(){
     );
 
     const message =
+
     input.value.trim();
 
     if(!message){
@@ -236,7 +237,7 @@ function sendMessage(){
 
 }
 
-/* RECEIVE */
+/* RECEIVE MESSAGE */
 
 socket.on(
 
@@ -351,7 +352,7 @@ function toggleSettings(event){
 
 }
 
-/* MENU */
+/* USER MENU */
 
 function openUserMenu(event){
 
@@ -504,6 +505,48 @@ function closePrivate(event){
 
 }
 
+/* SEND PRIVATE */
+
+function sendPrivate(){
+
+    const input =
+
+    document
+    .getElementById(
+        "privateInput"
+    );
+
+    const message =
+    input.value.trim();
+
+    if(!message){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "private message",
+
+        {
+
+            to:
+            selectedUser.id,
+
+            from:
+            currentUser,
+
+            message
+
+        }
+
+    );
+
+    input.value = "";
+
+}
+
 /* PRIVATE RECEIVE */
 
 socket.on(
@@ -529,7 +572,7 @@ socket.on(
 
 });
 
-/* INFO */
+/* USER INFO */
 
 function showUserInfo(){
 
@@ -578,7 +621,23 @@ function showUserInfo(){
 
 }
 
-/* ADMIN */
+/* KICK */
+
+function kickUser(){
+
+    socket.emit(
+
+        "kick user",
+
+        selectedUser.id
+
+    );
+
+    closeAll();
+
+}
+
+/* BAN */
 
 function banUser(){
 
@@ -593,6 +652,8 @@ function banUser(){
     closeAll();
 
 }
+
+/* DISCONNECT */
 
 function disconnectUser(){
 
