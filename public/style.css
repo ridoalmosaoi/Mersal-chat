@@ -70,6 +70,8 @@ body{
 
     color:gold;
 
+    font-size:38px;
+
 }
 
 .login-box input{
@@ -86,7 +88,7 @@ body{
 
     padding:10px;
 
-    font-size:18px;
+    font-size:20px;
 
     background:#1a1a1a;
 
@@ -108,7 +110,9 @@ body{
 
     color:white;
 
-    font-size:20px;
+    font-size:22px;
+
+    font-weight:bold;
 
 }
 
@@ -126,7 +130,7 @@ body{
 
 }
 
-/* TOP */
+/* TOP BAR */
 
 .top-bar{
 
@@ -152,7 +156,7 @@ body{
 
     color:red;
 
-    font-size:30px;
+    font-size:32px;
 
     font-weight:bold;
 
@@ -190,7 +194,7 @@ body{
 
     background:#111;
 
-    font-size:18px;
+    font-size:20px;
 
 }
 
@@ -198,7 +202,7 @@ body{
 
 .msg-line{
 
-    font-size:30px;
+    font-size:32px;
 
     margin-bottom:12px;
 
@@ -209,6 +213,8 @@ body{
     text-align:left;
 
     direction:ltr;
+
+    word-break:break-word;
 
 }
 
@@ -304,15 +310,17 @@ body{
 
 .popup-box{
 
-    width:90%;
+    width:95%;
 
-    background:#111;
+    max-width:450px;
+
+    background:#000;
 
     border-radius:20px;
 
-    border:2px solid #333;
+    border:3px solid gold;
 
-    padding:20px;
+    padding:15px;
 
     max-height:80vh;
 
@@ -320,15 +328,31 @@ body{
 
 }
 
-/* ONLINE */
+/* ONLINE USERS */
 
 .online-user{
 
-    padding:12px;
+    padding:15px;
 
     border-bottom:1px solid #222;
 
-    font-size:24px;
+    font-size:28px;
+
+    font-weight:bold;
+
+    color:white;
+
+    background:#111;
+
+    transition:.2s;
+
+}
+
+.online-user:hover{
+
+    background:#1f1f1f;
+
+    color:gold;
 
 }
 
@@ -336,14 +360,26 @@ body{
 
 .private-message{
 
-    padding:10px;
+    padding:12px;
 
-    margin-bottom:10px;
+    margin-bottom:12px;
 
     background:#1b1b1b;
 
     border-radius:15px;
 
-    font-size:22px;
+    font-size:24px;
+
+    line-height:1.7;
+
+}
+
+/* USER INFO */
+
+#userInfoContent{
+
+    font-size:24px;
+
+    line-height:2;
 
 }
