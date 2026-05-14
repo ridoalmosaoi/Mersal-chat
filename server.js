@@ -19,9 +19,7 @@ const io = new Server(server,{
 });
 
 app.use(
-
     express.static("public")
-
 );
 
 const ADMIN_NAME = "Admin";
@@ -70,7 +68,9 @@ io.on(
 
     if(
 
-        userAgent.includes("Chrome")
+        userAgent.includes(
+            "Chrome"
+        )
 
     ){
 
@@ -79,7 +79,9 @@ io.on(
 
     }else if(
 
-        userAgent.includes("Safari")
+        userAgent.includes(
+            "Safari"
+        )
 
     ){
 
@@ -90,7 +92,9 @@ io.on(
 
     if(
 
-        userAgent.includes("iPhone")
+        userAgent.includes(
+            "iPhone"
+        )
 
     ){
 
@@ -99,7 +103,9 @@ io.on(
 
     }else if(
 
-        userAgent.includes("Android")
+        userAgent.includes(
+            "Android"
+        )
 
     ){
 
@@ -131,7 +137,9 @@ io.on(
 
         if(
 
-            bannedIPs.includes(ip) &&
+            bannedIPs.includes(ip)
+
+            &&
 
             !isAdmin
 
@@ -153,7 +161,9 @@ io.on(
 
         if(
 
-            disconnected &&
+            disconnected
+
+            &&
 
             !isAdmin
 
@@ -212,20 +222,14 @@ io.on(
 
         });
 
-        /* SUCCESS */
-
         socket.emit(
             "login success"
         );
-
-        /* USERS */
 
         io.emit(
             "online users",
             users
         );
-
-        /* ADMIN MSG */
 
         if(isAdmin){
 
@@ -241,7 +245,7 @@ io.on(
                     "ChanServ",
 
                     color:
-                    "#00d0b4",
+                    "#00ff99",
 
                     message:
                     "** تم توكيل المشرف Admin"
@@ -254,7 +258,7 @@ io.on(
 
     });
 
-    /* PUBLIC */
+    /* PUBLIC MESSAGE */
 
     socket.on(
 
@@ -319,7 +323,7 @@ io.on(
 
     });
 
-    /* BAN */
+    /* BAN USER */
 
     socket.on(
 
@@ -363,13 +367,32 @@ io.on(
             targetIP
         );
 
+        io.emit(
+
+            "chat message",
+
+            {
+
+                username:
+                "ChanServ",
+
+                color:
+                "#ff3333",
+
+                message:
+                `** تم حظر ${target.username}`
+
+            }
+
+        );
+
         target.disconnect(
             true
         );
 
     });
 
-    /* DISCONNECT */
+    /* DISCONNECT USER */
 
     socket.on(
 
@@ -408,13 +431,32 @@ io.on(
 
         });
 
+        io.emit(
+
+            "chat message",
+
+            {
+
+                username:
+                "ChanServ",
+
+                color:
+                "#ffaa00",
+
+                message:
+                `** تم فصل ${target.username}`
+
+            }
+
+        );
+
         target.disconnect(
             true
         );
 
     });
 
-    /* LEAVE */
+    /* DISCONNECT */
 
     socket.on(
 
