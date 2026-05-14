@@ -119,7 +119,7 @@ socket.on(
 
 });
 
-/* ONLINE USERS */
+/* USERS */
 
 socket.on(
 
@@ -194,7 +194,7 @@ socket.on(
 
 });
 
-/* SEND MESSAGE */
+/* SEND */
 
 function sendMessage(){
 
@@ -206,7 +206,6 @@ function sendMessage(){
     );
 
     const message =
-
     input.value.trim();
 
     if(!message){
@@ -237,7 +236,7 @@ function sendMessage(){
 
 }
 
-/* RECEIVE MESSAGE */
+/* RECEIVE */
 
 socket.on(
 
@@ -316,7 +315,7 @@ socket.on(
 
 });
 
-/* USERS */
+/* USERS POPUP */
 
 function toggleUsers(event){
 
@@ -455,6 +454,14 @@ function openPrivate(){
 
     selectedUser.username;
 
+    document
+    .getElementById(
+        "userMenu"
+    )
+
+    .style.display =
+    "none";
+
 }
 
 function openPrivateList(event){
@@ -497,48 +504,6 @@ function closePrivate(event){
 
 }
 
-/* SEND PRIVATE */
-
-function sendPrivate(){
-
-    const input =
-
-    document
-    .getElementById(
-        "privateInput"
-    );
-
-    const message =
-    input.value.trim();
-
-    if(!message){
-
-        return;
-
-    }
-
-    socket.emit(
-
-        "private message",
-
-        {
-
-            to:
-            selectedUser.id,
-
-            from:
-            currentUser,
-
-            message
-
-        }
-
-    );
-
-    input.value = "";
-
-}
-
 /* PRIVATE RECEIVE */
 
 socket.on(
@@ -564,9 +529,17 @@ socket.on(
 
 });
 
-/* USER INFO */
+/* INFO */
 
 function showUserInfo(){
+
+    document
+    .getElementById(
+        "userMenu"
+    )
+
+    .style.display =
+    "none";
 
     document
     .getElementById(
