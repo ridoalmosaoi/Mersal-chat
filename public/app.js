@@ -4,9 +4,11 @@ const socket = io({
 
     reconnection:true,
 
-    reconnectionAttempts:99999,
+    reconnectionAttempts:999999,
 
-    reconnectionDelay:1000
+    reconnectionDelay:500,
+
+    timeout:10000
 
 });
 
@@ -14,33 +16,9 @@ const ADMIN_NAME = "Admin";
 
 let currentUser = "";
 
-let currentColor = "#ffd700";
-
 let selectedUser = null;
 
-let privateNotifications = 0;
-
-/* COLORS */
-
-function selectColor(color,el){
-
-    currentColor = color;
-
-    document
-    .querySelectorAll(".color")
-    .forEach(c=>{
-
-        c.classList.remove(
-            "active"
-        );
-
-    });
-
-    el.classList.add(
-        "active"
-    );
-
-}
+let currentColor = "#ff0000";
 
 /* LOGIN */
 
@@ -66,13 +44,21 @@ function login(){
 
     if(!username){
 
-        alert("اكتب الاسم");
+        alert(
+            "اكتب الاسم"
+        );
 
         return;
 
     }
 
-    currentUser = username;
+    currentUser =
+    username;
+
+    localStorage.setItem(
+        "username",
+        username
+    );
 
     socket.emit(
 
@@ -92,6 +78,30 @@ function login(){
     );
 
 }
+
+/* AUTO LOGIN */
+
+window.onload = ()=>{
+
+    const savedUser =
+
+    localStorage.getItem(
+        "username"
+    );
+
+    if(savedUser){
+
+        document
+        .getElementById(
+            "loginUsername"
+        )
+
+        .value =
+        savedUser;
+
+    }
+
+};
 
 /* LOGIN SUCCESS */
 
@@ -115,7 +125,7 @@ socket.on(
     )
 
     .style.display =
-    "block";
+    "flex";
 
 });
 
@@ -150,10 +160,6 @@ socket.on(
 
         div.innerHTML = `
 
-        <span style="
-        color:${user.color}
-        ">
-
         ${
 
         user.username ===
@@ -171,18 +177,14 @@ socket.on(
 
         ${user.username}
 
-        </span>
-
         `;
 
-        div.onclick = (event)=>{
-
-            event.stopPropagation();
+        div.onclick = ()=>{
 
             selectedUser =
             user;
 
-            openUserMenu(event);
+            openUserMenu();
 
         };
 
@@ -194,7 +196,7 @@ socket.on(
 
 });
 
-/* SEND PUBLIC */
+/* SEND MESSAGE */
 
 function sendMessage(){
 
@@ -236,7 +238,7 @@ function sendMessage(){
 
 }
 
-/* RECEIVE PUBLIC */
+/* RECEIVE MESSAGE */
 
 socket.on(
 
@@ -271,21 +273,6 @@ socket.on(
 
     &lt;
 
-    ${
-
-    data.username ===
-    ADMIN_NAME
-
-    ?
-
-    "&"
-
-    :
-
-    ""
-
-    }
-
     ${data.username}
 
     &gt;
@@ -296,29 +283,26 @@ socket.on(
 
     `;
 
-    div.onclick = (event)=>{
-
-        event.stopPropagation();
+    div.onclick = ()=>{
 
         selectedUser =
         data;
 
-        openUserMenu(event);
-
     };
 
-    messages.appendChild(div);
+    messages.appendChild(
+        div
+    );
 
     messages.scrollTop =
+
     messages.scrollHeight;
 
 });
 
-/* USERS POPUP */
+/* USERS */
 
-function toggleUsers(event){
-
-    event.stopPropagation();
+function toggleUsers(){
 
     closeAll();
 
@@ -332,142 +316,10 @@ function toggleUsers(event){
 
 }
 
-/* SETTINGS */
-
-function toggleSettings(event){
-
-    event.stopPropagation();
-
-    closeAll();
-
-    document
-    .getElementById(
-        "settingsPopup"
-    )
-
-    .style.display =
-    "flex";
-
-}
-
-/* USER MENU */
-
-function openUserMenu(event){
-
-    if(event){
-
-        event.stopPropagation();
-
-    }
-
-    const menu =
-
-    document
-    .getElementById(
-        "userMenu"
-    );
-
-    menu.style.display =
-    "block";
-
-    if(
-
-        currentUser !==
-        ADMIN_NAME
-
-    ){
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "none";
-
-        document
-        .getElementById(
-            "userInfoButton"
-        )
-
-        .style.display =
-        "none";
-
-    }else{
-
-        document
-        .getElementById(
-            "adminOptions"
-        )
-
-        .style.display =
-        "block";
-
-        document
-        .getElementById(
-            "userInfoButton"
-        )
-
-        .style.display =
-        "block";
-
-    }
-
-}
-
-/* REPLY */
-
-function replyUser(){
-
-    document
-    .getElementById(
-        "messageInput"
-    )
-
-    .value +=
-
-    `<${selectedUser.username}> `;
-
-    closeAll();
-
-}
-
-/* OPEN PRIVATE */
+/* PRIVATE */
 
 function openPrivate(){
 
-    document
-    .getElementById(
-        "privateBox"
-    )
-
-    .style.display =
-    "flex";
-
-    document
-    .getElementById(
-        "privateName"
-    )
-
-    .innerText =
-    selectedUser.username;
-
-    document
-    .getElementById(
-        "userMenu"
-    )
-
-    .style.display =
-    "none";
-
-}
-
-/* OPEN PRIVATE LIST */
-
-function openPrivateList(event){
-
-    event.stopPropagation();
-
     closeAll();
 
     document
@@ -477,32 +329,6 @@ function openPrivateList(event){
 
     .style.display =
     "flex";
-
-    privateNotifications = 0;
-
-    document
-    .getElementById(
-        "privateCount"
-    )
-
-    .style.display =
-    "none";
-
-}
-
-/* CLOSE PRIVATE */
-
-function closePrivate(event){
-
-    event.stopPropagation();
-
-    document
-    .getElementById(
-        "privateBox"
-    )
-
-    .style.display =
-    "none";
 
 }
 
@@ -571,9 +397,12 @@ function sendPrivate(){
 
     `;
 
-    box.appendChild(div);
+    box.appendChild(
+        div
+    );
 
     box.scrollTop =
+
     box.scrollHeight;
 
     input.value = "";
@@ -587,21 +416,6 @@ socket.on(
     "private message",
 
     (data)=>{
-
-    privateNotifications++;
-
-    const badge =
-
-    document
-    .getElementById(
-        "privateCount"
-    );
-
-    badge.style.display =
-    "flex";
-
-    badge.innerText =
-    privateNotifications;
 
     const box =
 
@@ -630,16 +444,19 @@ socket.on(
 
     `;
 
-    box.appendChild(div);
+    box.appendChild(
+        div
+    );
 
     box.scrollTop =
+
     box.scrollHeight;
 
 });
 
-/* USER INFO */
+/* MENU */
 
-function showUserInfo(){
+function openUserMenu(){
 
     document
     .getElementById(
@@ -647,7 +464,32 @@ function showUserInfo(){
     )
 
     .style.display =
-    "none";
+    "flex";
+
+}
+
+/* REPLY */
+
+function replyUser(){
+
+    document
+    .getElementById(
+        "messageInput"
+    )
+
+    .value +=
+
+    `<${selectedUser.username}> `;
+
+    closeAll();
+
+}
+
+/* USER INFO */
+
+function showUserInfo(){
+
+    closeAll();
 
     document
     .getElementById(
@@ -734,7 +576,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE ALL */
+/* CLOSE */
 
 function closeAll(){
 
@@ -750,15 +592,9 @@ function closeAll(){
 
     });
 
-    document
-    .getElementById(
-        "userMenu"
-    )
-
-    .style.display =
-    "none";
-
 }
+
+/* CLICK CLOSE */
 
 document.addEventListener(
 
@@ -767,39 +603,5 @@ document.addEventListener(
     ()=>{
 
     closeAll();
-
-});
-
-document
-.querySelectorAll(
-    ".popup-box"
-)
-
-.forEach(box=>{
-
-    box.addEventListener(
-
-        "click",
-
-        (e)=>{
-
-        e.stopPropagation();
-
-    });
-
-});
-
-document
-.getElementById(
-    "userMenu"
-)
-
-.addEventListener(
-
-    "click",
-
-    (e)=>{
-
-    e.stopPropagation();
 
 });
