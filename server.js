@@ -127,54 +127,6 @@ io.on(
 
         (data)=>{
 
-        const isAdmin =
-
-        data.username ===
-        ADMIN_NAME &&
-
-        data.password ===
-        ADMIN_PASSWORD;
-
-        if(
-
-            bannedIPs.includes(ip)
-
-            &&
-
-            !isAdmin
-
-        ){
-
-            socket.disconnect();
-
-            return;
-
-        }
-
-        const disconnected =
-
-        disconnectedUsers.find(
-
-            u => u.ip === ip
-
-        );
-
-        if(
-
-            disconnected
-
-            &&
-
-            !isAdmin
-
-        ){
-
-            socket.disconnect();
-
-            return;
-
-        }
-
         const exists =
 
         users.find(
@@ -196,6 +148,34 @@ io.on(
             socket.emit(
                 "name taken"
             );
+
+            return;
+
+        }
+
+        if(
+
+            bannedIPs.includes(ip)
+
+        ){
+
+            socket.disconnect();
+
+            return;
+
+        }
+
+        const disconnected =
+
+        disconnectedUsers.find(
+
+            u => u.ip === ip
+
+        );
+
+        if(disconnected){
+
+            socket.disconnect();
 
             return;
 
@@ -231,7 +211,17 @@ io.on(
             users
         );
 
-        if(isAdmin){
+        if(
+
+            data.username ===
+            ADMIN_NAME
+
+            &&
+
+            data.password ===
+            ADMIN_PASSWORD
+
+        ){
 
             io.emit(
 
@@ -295,7 +285,7 @@ io.on(
 
     });
 
-    /* PRIVATE */
+    /* PRIVATE MESSAGE */
 
     socket.on(
 
@@ -323,11 +313,11 @@ io.on(
 
     });
 
-    /* BAN USER */
+    /* KICK USER */
 
     socket.on(
 
-        "ban user",
+        "kick user",
 
         (id)=>{
 
@@ -342,12 +332,45 @@ io.on(
 
         }
 
-        if(
+        io.emit(
 
-            target.username ===
-            ADMIN_NAME
+            "chat message",
 
-        ){
+            {
+
+                username:
+                "ChanServ",
+
+                color:
+                "#ffcc00",
+
+                message:
+                `** تم طرد ${target.username}`
+
+            }
+
+        );
+
+        target.disconnect(
+            true
+        );
+
+    });
+
+    /* BAN USER */
+
+    socket.on(
+
+        "ban user",
+
+        (id)=>{
+
+        const target =
+
+        io.sockets.sockets
+        .get(id);
+
+        if(!target){
 
             return;
 
@@ -406,17 +429,6 @@ io.on(
         .get(id);
 
         if(!target){
-
-            return;
-
-        }
-
-        if(
-
-            target.username ===
-            ADMIN_NAME
-
-        ){
 
             return;
 
