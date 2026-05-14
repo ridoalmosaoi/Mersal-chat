@@ -176,7 +176,7 @@ body{
     background:#1b1b1b;
 }
 
-/* MENU */
+/* USER MENU */
 
 .user-menu{
     position:fixed;
@@ -289,23 +289,39 @@ body{
 }
 
 .private-top{
+
     height:55px;
+
     background:#00bfa5;
+
     display:flex;
+
     justify-content:space-between;
+
     align-items:center;
+
     padding:0 15px;
+
     font-size:22px;
+
 }
 
 .private-top button{
+
     width:35px;
+
     height:35px;
+
     border:none;
+
     border-radius:50%;
+
     background:red;
+
     color:white;
+
     cursor:pointer;
+
 }
 
 .private-messages{
@@ -321,36 +337,65 @@ body{
 }
 
 .private-message{
+
     background:#222;
+
     padding:10px;
+
     border-radius:10px;
+
     margin-bottom:10px;
+
     line-height:1.7;
+
 }
 
 .private-input{
+
     display:flex;
+
     gap:5px;
+
     padding:10px;
+
     border-top:1px solid #333;
+
+    background:#111;
+
 }
 
 .private-input input{
+
     flex:1;
+
     border:none;
+
     border-radius:10px;
+
     background:#222;
+
     color:white;
+
     padding:10px;
+
+    font-size:16px;
+
 }
 
 .private-input button{
+
     width:80px;
+
     border:none;
+
     border-radius:10px;
+
     background:#00d0b4;
+
     color:black;
+
     cursor:pointer;
+
 }
 
 /* USER INFO */
