@@ -189,6 +189,11 @@ body{
     text-align:center;
     border-bottom:1px solid #222;
     font-size:19px;
+    cursor:pointer;
+}
+
+.user-menu div:hover{
+    background:#1b1b1b;
 }
 
 #adminOptions div{
@@ -248,14 +253,25 @@ body{
     background:#00d0b4;
     color:black;
     font-weight:bold;
+    cursor:pointer;
 }
 
 /* PRIVATE */
 
 .private-chat{
+
     display:flex;
+
     flex-direction:column;
+
+    width:95%;
+
+    max-width:420px;
+
     height:70vh;
+
+    overflow:hidden;
+
 }
 
 .private-top{
@@ -275,12 +291,19 @@ body{
     border-radius:50%;
     background:red;
     color:white;
+    cursor:pointer;
 }
 
 .private-messages{
+
     flex:1;
-    overflow:auto;
+
+    overflow-y:auto;
+
     padding:10px;
+
+    background:#000;
+
 }
 
 .private-message{
@@ -312,6 +335,7 @@ body{
     border-radius:10px;
     background:#00d0b4;
     color:black;
+    cursor:pointer;
 }
 
 /* USER INFO */
