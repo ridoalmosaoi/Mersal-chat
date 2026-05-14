@@ -194,7 +194,7 @@ socket.on(
 
 });
 
-/* SEND MESSAGE */
+/* SEND PUBLIC */
 
 function sendMessage(){
 
@@ -206,7 +206,6 @@ function sendMessage(){
     );
 
     const message =
-
     input.value.trim();
 
     if(!message){
@@ -237,7 +236,7 @@ function sendMessage(){
 
 }
 
-/* RECEIVE MESSAGE */
+/* RECEIVE PUBLIC */
 
 socket.on(
 
@@ -311,7 +310,6 @@ socket.on(
     messages.appendChild(div);
 
     messages.scrollTop =
-
     messages.scrollHeight;
 
 });
@@ -434,7 +432,7 @@ function replyUser(){
 
 }
 
-/* PRIVATE */
+/* OPEN PRIVATE */
 
 function openPrivate(){
 
@@ -452,7 +450,6 @@ function openPrivate(){
     )
 
     .innerText =
-
     selectedUser.username;
 
     document
@@ -464,6 +461,8 @@ function openPrivate(){
     "none";
 
 }
+
+/* OPEN PRIVATE LIST */
 
 function openPrivateList(event){
 
@@ -490,6 +489,8 @@ function openPrivateList(event){
     "none";
 
 }
+
+/* CLOSE PRIVATE */
 
 function closePrivate(event){
 
@@ -543,17 +544,49 @@ function sendPrivate(){
 
     );
 
+    const box =
+
+    document
+    .getElementById(
+        "privateMessages"
+    );
+
+    const div =
+
+    document
+    .createElement(
+        "div"
+    );
+
+    div.className =
+    "private-message";
+
+    div.innerHTML = `
+
+    <b>أنت</b>
+
+    <br>
+
+    ${message}
+
+    `;
+
+    box.appendChild(div);
+
+    box.scrollTop =
+    box.scrollHeight;
+
     input.value = "";
 
 }
 
-/* PRIVATE RECEIVE */
+/* RECEIVE PRIVATE */
 
 socket.on(
 
     "private message",
 
-    ()=>{
+    (data)=>{
 
     privateNotifications++;
 
@@ -569,6 +602,38 @@ socket.on(
 
     badge.innerText =
     privateNotifications;
+
+    const box =
+
+    document
+    .getElementById(
+        "privateMessages"
+    );
+
+    const div =
+
+    document
+    .createElement(
+        "div"
+    );
+
+    div.className =
+    "private-message";
+
+    div.innerHTML = `
+
+    <b>${data.from}</b>
+
+    <br>
+
+    ${data.message}
+
+    `;
+
+    box.appendChild(div);
+
+    box.scrollTop =
+    box.scrollHeight;
 
 });
 
@@ -669,7 +734,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE */
+/* CLOSE ALL */
 
 function closeAll(){
 
