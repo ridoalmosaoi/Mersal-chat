@@ -265,21 +265,25 @@ socket.on(
 
     div.innerHTML = `
 
+    <div>
+
     <span
     class="msg-name"
     style="
     color:${data.color};
     ">
 
-    &lt;
-
-    ${data.username}
-
-    &gt;
+    &lt;${data.username}&gt;
 
     </span>
 
+    </div>
+
+    <div>
+
     ${data.message}
+
+    </div>
 
     `;
 
