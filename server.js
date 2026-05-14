@@ -42,6 +42,8 @@ io.on(
 
     const ip =
 
+    (
+
     socket.handshake.headers[
         "x-forwarded-for"
     ]
@@ -52,7 +54,17 @@ io.on(
 
     ||
 
-    "Unknown";
+    "Unknown"
+
+    )
+
+    .toString()
+
+    .split(",")
+
+    [0]
+
+    .trim();
 
     const userAgent =
 
@@ -155,7 +167,15 @@ io.on(
 
         if(
 
-            bannedIPs.includes(ip)
+            bannedIPs.some(
+
+                banned =>
+
+                ip.includes(
+                    banned
+                )
+
+            )
 
         ){
 
@@ -169,7 +189,11 @@ io.on(
 
         disconnectedUsers.find(
 
-            u => u.ip === ip
+            u =>
+
+            ip.includes(
+                u.ip
+            )
 
         );
 
@@ -248,7 +272,7 @@ io.on(
 
     });
 
-    /* PUBLIC MESSAGE */
+    /* PUBLIC */
 
     socket.on(
 
@@ -285,7 +309,7 @@ io.on(
 
     });
 
-    /* PRIVATE MESSAGE */
+    /* PRIVATE */
 
     socket.on(
 
@@ -378,13 +402,29 @@ io.on(
 
         const targetIP =
 
+        (
+
         target.handshake.headers[
             "x-forwarded-for"
         ]
 
         ||
 
-        target.handshake.address;
+        target.handshake.address
+
+        ||
+
+        "Unknown"
+
+        )
+
+        .toString()
+
+        .split(",")
+
+        [0]
+
+        .trim();
 
         bannedIPs.push(
             targetIP
@@ -434,12 +474,38 @@ io.on(
 
         }
 
+        const targetIP =
+
+        (
+
+        target.handshake.headers[
+            "x-forwarded-for"
+        ]
+
+        ||
+
+        target.handshake.address
+
+        ||
+
+        "Unknown"
+
+        )
+
+        .toString()
+
+        .split(",")
+
+        [0]
+
+        .trim();
+
         disconnectedUsers.push({
 
             id,
 
             ip:
-            target.handshake.address
+            targetIP
 
         });
 
