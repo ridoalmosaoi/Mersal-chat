@@ -221,7 +221,7 @@ socket.on(
             selectedUser =
             user;
 
-            openPrivate();
+            openUserMenu();
 
         };
 
@@ -347,6 +347,8 @@ socket.on(
 
 function toggleUsers(){
 
+    closeAll();
+
     document
     .getElementById(
         "usersPopup"
@@ -360,6 +362,8 @@ function toggleUsers(){
 /* USER MENU */
 
 function openUserMenu(){
+
+    closeAll();
 
     const menu =
 
@@ -691,7 +695,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE */
+/* CLOSE ALL */
 
 function closeAll(){
 
@@ -709,7 +713,7 @@ function closeAll(){
 
 }
 
-/* CLICK OUTSIDE */
+/* CLOSE OUTSIDE */
 
 document.addEventListener(
 
