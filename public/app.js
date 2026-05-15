@@ -14,6 +14,13 @@ const socket = io({
 
 const ADMIN_NAME = "Admin";
 
+const isAdmin = ()=>{
+
+    return currentUser ===
+    ADMIN_NAME;
+
+};
+
 let currentUser = "";
 
 let selectedUser = null;
@@ -126,6 +133,34 @@ socket.on(
 
     .style.display =
     "flex";
+
+});
+
+/* BANNED */
+
+socket.on(
+
+    "banned",
+
+    (msg)=>{
+
+    document
+    .getElementById(
+        "chatApp"
+    )
+
+    .style.display =
+    "none";
+
+    document
+    .getElementById(
+        "loginScreen"
+    )
+
+    .style.display =
+    "flex";
+
+    alert(msg);
 
 });
 
@@ -306,23 +341,21 @@ socket.on(
 
 });
 
-/* USERS POPUP */
+/* USERS */
 
 function toggleUsers(){
-
-    const popup =
 
     document
     .getElementById(
         "usersPopup"
-    );
+    )
 
-    popup.style.display =
+    .style.display =
     "flex";
 
 }
 
-/* USER MENU */
+/* MENU */
 
 function openUserMenu(){
 
@@ -335,6 +368,29 @@ function openUserMenu(){
 
     menu.style.display =
     "flex";
+
+    const adminOptions =
+
+    document
+    .getElementById(
+        "adminOptions"
+    );
+
+    if(isAdmin()){
+
+        adminOptions
+        .style.display =
+        "block";
+
+    }
+
+    else{
+
+        adminOptions
+        .style.display =
+        "none";
+
+    }
 
 }
 
@@ -427,6 +483,8 @@ function sendPrivate(){
 
     input.value = "";
 
+    closeAll();
+
 }
 
 /* RECEIVE PRIVATE */
@@ -487,6 +545,8 @@ function replyUser(){
 
     `<${selectedUser.username}> `;
 
+    closeAll();
+
 }
 
 /* USER INFO */
@@ -542,6 +602,8 @@ function kickUser(){
 
     );
 
+    closeAll();
+
 }
 
 /* BAN */
@@ -555,6 +617,8 @@ function banUser(){
         selectedUser.id
 
     );
+
+    closeAll();
 
 }
 
@@ -570,4 +634,46 @@ function disconnectUser(){
 
     );
 
+    closeAll();
+
 }
+
+/* CLOSE ALL */
+
+function closeAll(){
+
+    document
+    .querySelectorAll(
+        ".popup-bg"
+    )
+
+    .forEach(p=>{
+
+        p.style.display =
+        "none";
+
+    });
+
+}
+
+/* CLICK OUTSIDE */
+
+document.addEventListener(
+
+    "click",
+
+    (e)=>{
+
+    if(
+
+    e.target.classList.contains(
+        "popup-bg"
+    )
+
+    ){
+
+        closeAll();
+
+    }
+
+});
