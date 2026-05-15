@@ -112,6 +112,9 @@ io.emit(
 
 {
 
+id:
+socket.id,
+
 username:
 "System",
 
@@ -149,6 +152,9 @@ io.emit(
 "chat message",
 
 {
+
+id:
+socket.id,
 
 username:
 data.username,
@@ -211,6 +217,9 @@ io.emit(
 "chat message",
 
 {
+
+id:
+socket.id,
 
 username:
 "System",
@@ -279,6 +288,9 @@ io.emit(
 
 {
 
+id:
+socket.id,
+
 username:
 "System",
 
@@ -337,6 +349,9 @@ io.emit(
 "chat message",
 
 {
+
+id:
+socket.id,
 
 username:
 "System",
