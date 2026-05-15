@@ -221,7 +221,7 @@ socket.on(
             selectedUser =
             user;
 
-            openUserMenu();
+            openPrivate();
 
         };
 
@@ -418,12 +418,14 @@ function openPrivate(){
     if(!selectedUser){
 
         alert(
-        "اختر مستخدم"
+        "اختر مستخدم أولاً"
         );
 
         return;
 
     }
+
+    closeAll();
 
     document
     .getElementById(
@@ -492,7 +494,13 @@ function sendPrivate(){
 
     div.innerHTML = `
 
-    <b>أنت</b>
+    <b style="
+    color:gold;
+    ">
+
+    أنت
+
+    </b>
 
     <br>
 
@@ -547,7 +555,13 @@ socket.on(
 
     div.innerHTML = `
 
-    <b>${data.from}</b>
+    <b style="
+    color:gold;
+    ">
+
+    ${data.from}
+
+    </b>
 
     <br>
 
