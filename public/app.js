@@ -292,6 +292,8 @@ socket.on(
         selectedUser =
         data;
 
+        openUserMenu();
+
     };
 
     messages.appendChild(
@@ -304,18 +306,34 @@ socket.on(
 
 });
 
-/* USERS */
+/* USERS POPUP */
 
 function toggleUsers(){
 
-    closeAll();
+    const popup =
 
     document
     .getElementById(
         "usersPopup"
-    )
+    );
 
-    .style.display =
+    popup.style.display =
+    "flex";
+
+}
+
+/* USER MENU */
+
+function openUserMenu(){
+
+    const menu =
+
+    document
+    .getElementById(
+        "userMenu"
+    );
+
+    menu.style.display =
     "flex";
 
 }
@@ -323,8 +341,6 @@ function toggleUsers(){
 /* PRIVATE */
 
 function openPrivate(){
-
-    closeAll();
 
     document
     .getElementById(
@@ -458,20 +474,6 @@ socket.on(
 
 });
 
-/* MENU */
-
-function openUserMenu(){
-
-    document
-    .getElementById(
-        "userMenu"
-    )
-
-    .style.display =
-    "flex";
-
-}
-
 /* REPLY */
 
 function replyUser(){
@@ -485,15 +487,11 @@ function replyUser(){
 
     `<${selectedUser.username}> `;
 
-    closeAll();
-
 }
 
 /* USER INFO */
 
 function showUserInfo(){
-
-    closeAll();
 
     document
     .getElementById(
@@ -544,8 +542,6 @@ function kickUser(){
 
     );
 
-    closeAll();
-
 }
 
 /* BAN */
@@ -559,8 +555,6 @@ function banUser(){
         selectedUser.id
 
     );
-
-    closeAll();
 
 }
 
@@ -576,36 +570,4 @@ function disconnectUser(){
 
     );
 
-    closeAll();
-
 }
-
-/* CLOSE */
-
-function closeAll(){
-
-    document
-    .querySelectorAll(
-        ".popup-bg"
-    )
-
-    .forEach(p=>{
-
-        p.style.display =
-        "none";
-
-    });
-
-}
-
-/* CLICK CLOSE */
-
-document.addEventListener(
-
-    "click",
-
-    ()=>{
-
-    closeAll();
-
-});
