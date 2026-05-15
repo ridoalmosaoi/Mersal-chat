@@ -14,18 +14,20 @@ const socket = io({
 
 const ADMIN_NAME = "Admin";
 
+let currentUser = "";
+
+let selectedUser = null;
+
+let currentColor = "#ff0000";
+
+/* ADMIN */
+
 const isAdmin = ()=>{
 
     return currentUser ===
     ADMIN_NAME;
 
 };
-
-let currentUser = "";
-
-let selectedUser = null;
-
-let currentColor = "#ff0000";
 
 /* LOGIN */
 
@@ -355,7 +357,7 @@ function toggleUsers(){
 
 }
 
-/* MENU */
+/* USER MENU */
 
 function openUserMenu(){
 
@@ -376,9 +378,20 @@ function openUserMenu(){
         "adminOptions"
     );
 
+    const infoBtn =
+
+    document
+    .getElementById(
+        "userInfoBtn"
+    );
+
     if(isAdmin()){
 
         adminOptions
+        .style.display =
+        "block";
+
+        infoBtn
         .style.display =
         "block";
 
@@ -390,6 +403,10 @@ function openUserMenu(){
         .style.display =
         "none";
 
+        infoBtn
+        .style.display =
+        "none";
+
     }
 
 }
@@ -397,6 +414,16 @@ function openUserMenu(){
 /* PRIVATE */
 
 function openPrivate(){
+
+    if(!selectedUser){
+
+        alert(
+        "اختر مستخدم"
+        );
+
+        return;
+
+    }
 
     document
     .getElementById(
@@ -483,8 +510,6 @@ function sendPrivate(){
 
     input.value = "";
 
-    closeAll();
-
 }
 
 /* RECEIVE PRIVATE */
@@ -494,6 +519,14 @@ socket.on(
     "private message",
 
     (data)=>{
+
+    document
+    .getElementById(
+        "privateBox"
+    )
+
+    .style.display =
+    "flex";
 
     const box =
 
@@ -552,6 +585,12 @@ function replyUser(){
 /* USER INFO */
 
 function showUserInfo(){
+
+    if(!isAdmin()){
+
+        return;
+
+    }
 
     document
     .getElementById(
@@ -638,7 +677,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE ALL */
+/* CLOSE */
 
 function closeAll(){
 
