@@ -97,14 +97,14 @@ socket.emit(
 "login success"
 );
 
-/* UPDATE USERS */
+/* ADMIN MESSAGE */
 
-io.emit(
-"online users",
-users
-);
+if(
 
-/* SYSTEM */
+data.username ===
+"Admin"
+
+){
 
 io.emit(
 
@@ -119,10 +119,19 @@ color:
 "gold",
 
 message:
-`${data.username} دخل الشات`
+"تم توكيل المشرف 👑"
 
 }
 
+);
+
+}
+
+/* UPDATE USERS */
+
+io.emit(
+"online users",
+users
 );
 
 });
@@ -367,31 +376,9 @@ socket.id
 
 if(index !== -1){
 
-const leftUser =
-users[index];
-
 users.splice(
 index,
 1
-);
-
-io.emit(
-
-"chat message",
-
-{
-
-username:
-"System",
-
-color:
-"gray",
-
-message:
-`${leftUser.username} خرج`
-
-}
-
 );
 
 io.emit(
