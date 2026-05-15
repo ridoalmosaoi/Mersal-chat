@@ -71,7 +71,7 @@ id="chatApp"
 class="chat-app"
 style="display:none;">
 
-<!-- TOP -->
+<!-- TOP BAR -->
 
 <div class="top-bar">
 
@@ -96,7 +96,22 @@ margin-left:15px;
 </span>
 
 <span
-onclick="alert('الاعدادات قريباً 😎')"
+onclick="openPrivate()"
+style="
+font-size:32px;
+cursor:pointer;
+margin-left:15px;
+">
+
+💬
+
+</span>
+
+<span
+onclick="
+alert(
+'الاعدادات قريباً 😎'
+)"
 style="
 font-size:32px;
 cursor:pointer;
@@ -145,7 +160,7 @@ placeholder="اكتب هنا...">
 
 </div>
 
-<!-- USERS POPUP -->
+<!-- USERS -->
 
 <div
 id="usersPopup"
@@ -180,7 +195,7 @@ class="popup-bg">
 <div
 class="online-user"
 style="
-color:gold;
+color:#00d0b4;
 ">
 
 💬 مرسال خاص
@@ -237,6 +252,7 @@ onclick="openPrivate()">
 </div>
 
 <div
+id="userInfoBtn"
 class="online-user"
 onclick="showUserInfo()">
 
