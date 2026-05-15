@@ -218,8 +218,13 @@ socket.on(
 
         div.onclick = ()=>{
 
-            selectedUser =
-            user;
+            selectedUser = {
+
+                id:user.id,
+
+                username:user.username
+
+            };
 
             openUserMenu();
 
@@ -326,8 +331,13 @@ socket.on(
 
     div.onclick = ()=>{
 
-        selectedUser =
-        data;
+        selectedUser = {
+
+            id:data.id,
+
+            username:data.username
+
+        };
 
         openUserMenu();
 
@@ -627,21 +637,6 @@ function showUserInfo(){
 
     الاسم:
     ${selectedUser.username}
-
-    <br><br>
-
-    IP:
-    ${selectedUser.ip || "Unknown"}
-
-    <br><br>
-
-    Browser:
-    ${selectedUser.browser || "Unknown"}
-
-    <br><br>
-
-    Device:
-    ${selectedUser.device || "Unknown"}
 
     `;
 
