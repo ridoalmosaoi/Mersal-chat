@@ -1,577 +1,420 @@
 const express = require("express");
 
-const http = require("http");
-
-const { Server } = require("socket.io");
-
 const app = express();
 
-const server = http.createServer(app);
+const http = require("http").createServer(app);
 
-const io = new Server(server,{
-
-    transports:["websocket"],
-
-    pingTimeout:60000,
-
-    pingInterval:25000
-
-});
+const io = require("socket.io")(http);
 
 app.use(
-    express.static("public")
+express.static("public")
 );
 
-const ADMIN_NAME = "Admin";
+const users = [];
 
-const ADMIN_PASSWORD = "admin771";
-
-let users = [];
-
-let bannedIPs = [];
-
-let disconnectedUsers = [];
+const bannedUsers =
+new Set();
 
 /* CONNECTION */
 
 io.on(
 
-    "connection",
+"connection",
 
-    (socket)=>{
+(socket)=>{
 
-    const ip =
+const ip =
 
-    (
+socket.handshake
+.address;
 
-    socket.handshake.headers[
-        "x-forwarded-for"
-    ]
+/* JOIN */
 
-    ||
+socket.on(
 
-    socket.handshake.address
+"join",
 
-    ||
+(data)=>{
 
-    "Unknown"
+/* CHECK BAN */
 
-    )
+if(
 
-    .toString()
+bannedUsers.has(ip)
 
-    .split(",")
+){
 
-    [0]
+socket.emit(
 
-    .trim();
+"banned",
 
-    const userAgent =
+`
 
-    socket.handshake.headers[
-        "user-agent"
-    ] || "";
+تم حظرك من شات مرسال
+بشكل نهائي
 
-    let browser =
-    "Unknown";
+مع تحيات إدارة مرسال ❤️
 
-    let device =
-    "Unknown";
+إذا شعرت أن القرار ظلم
+راسل الإدارة على تيليجرام:
 
-    if(
+Rido77
 
-        userAgent.includes(
-            "Chrome"
-        )
+`
 
-    ){
+);
 
-        browser =
-        "Chrome";
+return;
 
-    }else if(
+}
 
-        userAgent.includes(
-            "Safari"
-        )
+/* SAVE USER */
 
-    ){
+socket.username =
+data.username;
 
-        browser =
-        "Safari";
+socket.userColor =
+data.color;
 
-    }
+users.push({
 
-    if(
+id:
+socket.id,
 
-        userAgent.includes(
-            "iPhone"
-        )
+username:
+data.username,
 
-    ){
+color:
+data.color,
 
-        device =
-        "iPhone";
-
-    }else if(
-
-        userAgent.includes(
-            "Android"
-        )
-
-    ){
-
-        device =
-        "Android";
-
-    }else{
-
-        device =
-        "Desktop";
-
-    }
-
-    /* JOIN */
-
-    socket.on(
-
-        "join",
-
-        (data)=>{
-
-        const exists =
-
-        users.find(
-
-            u =>
-
-            u.username
-            .toLowerCase()
-
-            ===
-
-            data.username
-            .toLowerCase()
-
-        );
-
-        if(exists){
-
-            socket.emit(
-                "name taken"
-            );
-
-            return;
-
-        }
-
-        if(
-
-            bannedIPs.some(
-
-                banned =>
-
-                ip.includes(
-                    banned
-                )
-
-            )
-
-        ){
-
-            socket.disconnect();
-
-            return;
-
-        }
-
-        const disconnected =
-
-        disconnectedUsers.find(
-
-            u =>
-
-            ip.includes(
-                u.ip
-            )
-
-        );
-
-        if(disconnected){
-
-            socket.disconnect();
-
-            return;
-
-        }
-
-        socket.username =
-        data.username;
-
-        users.push({
-
-            id:socket.id,
-
-            username:
-            data.username,
-
-            color:
-            data.color,
-
-            ip,
-
-            browser,
-
-            device
-
-        });
-
-        socket.emit(
-            "login success"
-        );
-
-        io.emit(
-            "online users",
-            users
-        );
-
-        if(
-
-            data.username ===
-            ADMIN_NAME
-
-            &&
-
-            data.password ===
-            ADMIN_PASSWORD
-
-        ){
-
-            io.emit(
-
-                "chat message",
-
-                {
-
-                    id:"system",
-
-                    username:
-                    "ChanServ",
-
-                    color:
-                    "#00ff99",
-
-                    message:
-                    "** تم توكيل المشرف Admin"
-
-                }
-
-            );
-
-        }
-
-    });
-
-    /* PUBLIC */
-
-    socket.on(
-
-        "chat message",
-
-        (data)=>{
-
-        io.emit(
-
-            "chat message",
-
-            {
-
-                id:socket.id,
-
-                username:
-                data.username,
-
-                color:
-                data.color,
-
-                message:
-                data.message,
-
-                ip,
-
-                browser,
-
-                device
-
-            }
-
-        );
-
-    });
-
-    /* PRIVATE */
-
-    socket.on(
-
-        "private message",
-
-        (data)=>{
-
-        io.to(
-            data.to
-        ).emit(
-
-            "private message",
-
-            {
-
-                from:
-                data.from,
-
-                message:
-                data.message
-
-            }
-
-        );
-
-    });
-
-    /* KICK USER */
-
-    socket.on(
-
-        "kick user",
-
-        (id)=>{
-
-        const target =
-
-        io.sockets.sockets
-        .get(id);
-
-        if(!target){
-
-            return;
-
-        }
-
-        io.emit(
-
-            "chat message",
-
-            {
-
-                username:
-                "ChanServ",
-
-                color:
-                "#ffcc00",
-
-                message:
-                `** تم طرد ${target.username}`
-
-            }
-
-        );
-
-        target.disconnect(
-            true
-        );
-
-    });
-
-    /* BAN USER */
-
-    socket.on(
-
-        "ban user",
-
-        (id)=>{
-
-        const target =
-
-        io.sockets.sockets
-        .get(id);
-
-        if(!target){
-
-            return;
-
-        }
-
-        const targetIP =
-
-        (
-
-        target.handshake.headers[
-            "x-forwarded-for"
-        ]
-
-        ||
-
-        target.handshake.address
-
-        ||
-
-        "Unknown"
-
-        )
-
-        .toString()
-
-        .split(",")
-
-        [0]
-
-        .trim();
-
-        bannedIPs.push(
-            targetIP
-        );
-
-        io.emit(
-
-            "chat message",
-
-            {
-
-                username:
-                "ChanServ",
-
-                color:
-                "#ff3333",
-
-                message:
-                `** تم حظر ${target.username}`
-
-            }
-
-        );
-
-        target.disconnect(
-            true
-        );
-
-    });
-
-    /* DISCONNECT USER */
-
-    socket.on(
-
-        "disconnect user",
-
-        (id)=>{
-
-        const target =
-
-        io.sockets.sockets
-        .get(id);
-
-        if(!target){
-
-            return;
-
-        }
-
-        const targetIP =
-
-        (
-
-        target.handshake.headers[
-            "x-forwarded-for"
-        ]
-
-        ||
-
-        target.handshake.address
-
-        ||
-
-        "Unknown"
-
-        )
-
-        .toString()
-
-        .split(",")
-
-        [0]
-
-        .trim();
-
-        disconnectedUsers.push({
-
-            id,
-
-            ip:
-            targetIP
-
-        });
-
-        io.emit(
-
-            "chat message",
-
-            {
-
-                username:
-                "ChanServ",
-
-                color:
-                "#ffaa00",
-
-                message:
-                `** تم فصل ${target.username}`
-
-            }
-
-        );
-
-        target.disconnect(
-            true
-        );
-
-    });
-
-    /* DISCONNECT */
-
-    socket.on(
-
-        "disconnect",
-
-        ()=>{
-
-        users =
-        users.filter(
-
-            user =>
-
-            user.id !==
-            socket.id
-
-        );
-
-        io.emit(
-            "online users",
-            users
-        );
-
-    });
+ip
 
 });
 
-const PORT =
-process.env.PORT || 3000;
+/* LOGIN SUCCESS */
 
-server.listen(
+socket.emit(
+"login success"
+);
 
-    PORT,
+/* UPDATE USERS */
 
-    ()=>{
+io.emit(
+"online users",
+users
+);
 
-    console.log(
-        "Server running"
-    );
+/* SYSTEM */
+
+io.emit(
+
+"chat message",
+
+{
+
+username:
+"System",
+
+color:
+"gold",
+
+message:
+`${data.username} دخل الشات`
+
+}
+
+);
+
+});
+
+/* CHAT */
+
+socket.on(
+
+"chat message",
+
+(data)=>{
+
+io.emit(
+
+"chat message",
+
+{
+
+username:
+data.username,
+
+color:
+data.color,
+
+message:
+data.message
+
+}
+
+);
+
+});
+
+/* PRIVATE */
+
+socket.on(
+
+"private message",
+
+(data)=>{
+
+io.to(data.to).emit(
+
+"private message",
+
+{
+
+from:
+data.from,
+
+message:
+data.message
+
+}
+
+);
+
+});
+
+/* KICK */
+
+socket.on(
+
+"kick user",
+
+(id)=>{
+
+const target =
+
+io.sockets.sockets
+.get(id);
+
+if(target){
+
+io.emit(
+
+"chat message",
+
+{
+
+username:
+"System",
+
+color:
+"orange",
+
+message:
+`${target.username} تم طرده`
+
+}
+
+);
+
+target.disconnect();
+
+}
+
+});
+
+/* BAN */
+
+socket.on(
+
+"ban user",
+
+(id)=>{
+
+const target =
+
+io.sockets.sockets
+.get(id);
+
+if(target){
+
+bannedUsers.add(
+
+target.handshake
+.address
+
+);
+
+target.emit(
+
+"banned",
+
+`
+
+تم حظرك من شات مرسال
+بشكل نهائي
+
+مع تحيات إدارة مرسال ❤️
+
+إذا شعرت أن القرار ظلم
+راسل الإدارة على تيليجرام:
+
+Rido77
+
+`
+
+);
+
+io.emit(
+
+"chat message",
+
+{
+
+username:
+"System",
+
+color:
+"red",
+
+message:
+`${target.username} تم حظره`
+
+}
+
+);
+
+target.disconnect(true);
+
+}
+
+});
+
+/* DISCONNECT USER */
+
+socket.on(
+
+"disconnect user",
+
+(id)=>{
+
+const target =
+
+io.sockets.sockets
+.get(id);
+
+if(target){
+
+target.emit(
+
+"banned",
+
+`
+
+تم فصلك من شات مرسال
+
+مع تحيات إدارة مرسال ❤️
+
+إذا شعرت أن القرار ظلم
+راسل الإدارة على تيليجرام:
+
+Rido77
+
+`
+
+);
+
+io.emit(
+
+"chat message",
+
+{
+
+username:
+"System",
+
+color:
+"#ff4444",
+
+message:
+`${target.username} تم فصله`
+
+}
+
+);
+
+target.disconnect(true);
+
+}
+
+});
+
+/* DISCONNECT */
+
+socket.on(
+
+"disconnect",
+
+()=>{
+
+const index =
+
+users.findIndex(
+
+u=>u.id ===
+socket.id
+
+);
+
+if(index !== -1){
+
+const leftUser =
+users[index];
+
+users.splice(
+index,
+1
+);
+
+io.emit(
+
+"chat message",
+
+{
+
+username:
+"System",
+
+color:
+"gray",
+
+message:
+`${leftUser.username} خرج`
+
+}
+
+);
+
+io.emit(
+"online users",
+users
+);
+
+}
+
+});
+
+});
+
+http.listen(
+
+3000,
+
+()=>{
+
+console.log(
+
+"Server running"
+
+);
 
 });
