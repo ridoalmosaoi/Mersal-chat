@@ -1,171 +1,721 @@
-/* =========================
-   بيانات المستخدم الحالي
-========================= */
+const socket = io({
 
-let currentPrivateUser = "Ahmed";
+    transports:["websocket"],
 
-/* =========================
-   فتح الخاص
-========================= */
+    reconnection:true,
 
-function openPrivateChat(username) {
+    reconnectionAttempts:999999,
 
-    currentPrivateUser = username;
+    reconnectionDelay:500,
 
-    const privateBox =
-        document.getElementById("privateChatBox");
+    timeout:10000
 
-    privateBox.style.display = "block";
+});
 
-    document.getElementById("privateChatTitle").innerText =
-        username;
+const ADMIN_NAME = "Admin";
 
-    scrollMessagesToBottom();
-}
+let currentUser = "";
 
-/* =========================
-   اغلاق الخاص
-========================= */
+let selectedUser = null;
 
-function closePrivateChat() {
+let currentColor = "#ff0000";
 
-    document.getElementById("privateChatBox").style.display =
-        "none";
-}
+/* LOGIN */
 
-/* =========================
-   ارسال رسالة
-========================= */
+function login(){
 
-function sendPrivateMessage() {
+    const username =
 
-    const input =
-        document.getElementById("privateMessageInput");
+    document
+    .getElementById(
+        "loginUsername"
+    )
+    .value
+    .trim();
 
-    const messages =
-        document.getElementById("privateMessages");
+    const password =
 
-    const text =
-        input.value.trim();
+    document
+    .getElementById(
+        "loginPassword"
+    )
+    .value
+    .trim();
 
-    /* منع الرسالة الفارغة */
+    if(!username){
 
-    if(text === ""){
+        alert(
+            "اكتب الاسم"
+        );
 
         return;
+
     }
 
-    /* إنشاء الرسالة */
+    currentUser =
+    username;
 
-    const msg =
-        document.createElement("div");
+    localStorage.setItem(
+        "username",
+        username
+    );
 
-    msg.classList.add("message");
+    socket.emit(
 
-    msg.classList.add("my-message");
+        "join",
 
-    msg.innerText = text;
+        {
 
-    messages.appendChild(msg);
+            username,
 
-    /* تنظيف الانبوت */
+            password,
+
+            color:
+            currentColor,
+
+            browser:
+            navigator.userAgent,
+
+            device:
+            navigator.platform
+
+        }
+
+    );
+
+}
+
+/* AUTO LOGIN */
+
+window.onload = ()=>{
+
+    const savedUser =
+
+    localStorage.getItem(
+        "username"
+    );
+
+    if(savedUser){
+
+        document
+        .getElementById(
+            "loginUsername"
+        )
+        .value =
+        savedUser;
+
+    }
+
+};
+
+/* LOGIN SUCCESS */
+
+socket.on(
+
+    "login success",
+
+    ()=>{
+
+        document
+        .getElementById(
+            "loginScreen"
+        )
+        .style.display =
+        "none";
+
+        document
+        .getElementById(
+            "chatApp"
+        )
+        .style.display =
+        "flex";
+
+});
+
+/* BANNED */
+
+socket.on(
+
+    "banned",
+
+    (msg)=>{
+
+        document
+        .getElementById(
+            "chatApp"
+        )
+        .style.display =
+        "none";
+
+        document
+        .getElementById(
+            "loginScreen"
+        )
+        .style.display =
+        "flex";
+
+        alert(msg);
+
+});
+
+/* ONLINE USERS */
+
+socket.on(
+
+    "online users",
+
+    (users)=>{
+
+        const usersList =
+
+        document
+        .getElementById(
+            "usersList"
+        );
+
+        usersList.innerHTML = "";
+
+        users.forEach(user=>{
+
+            const div =
+
+            document
+            .createElement(
+                "div"
+            );
+
+            div.className =
+            "online-user";
+
+            div.innerHTML = `
+
+            ${
+
+            user.username ===
+            ADMIN_NAME
+
+            ?
+
+            "⭐"
+
+            :
+
+            "👤"
+
+            }
+
+            ${user.username}
+
+            `;
+
+            div.onclick = ()=>{
+
+                selectedUser =
+                user;
+
+                openUserMenu();
+
+            };
+
+            usersList.appendChild(
+                div
+            );
+
+        });
+
+});
+
+/* SEND MESSAGE */
+
+function sendMessage(){
+
+    const input =
+
+    document
+    .getElementById(
+        "messageInput"
+    );
+
+    const message =
+    input.value.trim();
+
+    if(!message){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "chat message",
+
+        {
+
+            username:
+            currentUser,
+
+            color:
+            currentColor,
+
+            message
+
+        }
+
+    );
 
     input.value = "";
 
-    /* نزول تلقائي */
-
-    scrollMessagesToBottom();
-
-    /* رد وهمي للتجربة */
-
-    fakeReply();
 }
 
-/* =========================
-   رد وهمي للتجربة
-========================= */
+/* RECEIVE MESSAGE */
 
-function fakeReply(){
+socket.on(
 
-    const messages =
-        document.getElementById("privateMessages");
+    "chat message",
 
-    const replies = [
+    (data)=>{
 
-        "هلا وغلا 😄",
+        const messages =
 
-        "شلونك",
+        document
+        .getElementById(
+            "messages"
+        );
 
-        "تمام 🔥",
+        const div =
 
-        "نورت الخاص",
+        document
+        .createElement(
+            "div"
+        );
 
-        "هههه 😂",
+        div.className =
+        "msg-line";
 
-        "اوكي 👍",
+        div.innerHTML = `
 
-        "صار خير 😎"
-    ];
+        <span
+        class="msg-name"
+        style="
+        color:${data.color};
+        ">
 
-    const randomReply =
-        replies[Math.floor(Math.random() * replies.length)];
+        &lt;${data.username}&gt;
 
-    setTimeout(() => {
+        </span>
 
-        const reply =
-            document.createElement("div");
+        <div>
 
-        reply.classList.add("message");
+        ${data.message}
 
-        reply.innerText = randomReply;
+        </div>
 
-        messages.appendChild(reply);
+        `;
 
-        scrollMessagesToBottom();
+        div.onclick = ()=>{
 
-    }, 1200);
-}
+            selectedUser = {
 
-/* =========================
-   النزول التلقائي
-========================= */
+                id:data.id,
 
-function scrollMessagesToBottom(){
+                username:data.username,
 
-    const messages =
-        document.getElementById("privateMessages");
+                ip:data.ip,
 
-    messages.scrollTop =
+                browser:data.browser,
+
+                device:data.device
+
+            };
+
+            openUserMenu();
+
+        };
+
+        messages.appendChild(
+            div
+        );
+
+        messages.scrollTop =
+
         messages.scrollHeight;
-}
 
-/* =========================
-   ارسال بالإنتر
-========================= */
-
-document
-.getElementById("privateMessageInput")
-.addEventListener("keypress", function(event){
-
-    if(event.key === "Enter"){
-
-        sendPrivateMessage();
-    }
 });
 
-/* =========================
-   فتح خاص تجريبي
-========================= */
+/* USERS */
 
-openPrivateChat("Admin");
+function toggleUsers(){
 
-/* =========================
-   بيانات وهمية للمستخدم
-========================= */
+    document
+    .getElementById(
+        "usersPopup"
+    )
+    .style.display =
+    "flex";
 
-function loadUserInfo(){
-
-    console.log("تم تحميل معلومات المستخدم");
 }
 
-loadUserInfo();
+/* USER MENU */
+
+function openUserMenu(){
+
+    document
+    .getElementById(
+        "userMenu"
+    )
+    .style.display =
+    "flex";
+
+    const isAdmin =
+    currentUser ===
+    ADMIN_NAME;
+
+    document
+    .getElementById(
+        "adminOptions"
+    )
+    .style.display =
+
+    isAdmin
+
+    ?
+
+    "block"
+
+    :
+
+    "none";
+
+    document
+    .getElementById(
+        "userInfoBtn"
+    )
+    .style.display =
+
+    isAdmin
+
+    ?
+
+    "block"
+
+    :
+
+    "none";
+
+}
+
+/* PRIVATE */
+
+function openPrivate(){
+
+    if(!selectedUser){
+
+        return;
+
+    }
+
+    document
+    .getElementById(
+        "userMenu"
+    )
+    .style.display =
+    "none";
+
+    document
+    .getElementById(
+        "usersPopup"
+    )
+    .style.display =
+    "none";
+
+    document
+    .getElementById(
+        "privateBox"
+    )
+    .style.display =
+    "flex";
+
+}
+
+/* SEND PRIVATE */
+
+function sendPrivate(){
+
+    const input =
+
+    document
+    .getElementById(
+        "privateInput"
+    );
+
+    const message =
+    input.value.trim();
+
+    if(!message){
+
+        return;
+
+    }
+
+    socket.emit(
+
+        "private message",
+
+        {
+
+            to:
+            selectedUser.id,
+
+            from:
+            currentUser,
+
+            message
+
+        }
+
+    );
+
+    const box =
+
+    document
+    .getElementById(
+        "privateMessages"
+    );
+
+    const div =
+
+    document
+    .createElement(
+        "div"
+    );
+
+    div.className =
+    "private-message";
+
+    div.innerHTML = `
+
+    <b style="
+    color:gold;
+    ">
+
+    أنت
+
+    </b>
+
+    <br>
+
+    ${message}
+
+    `;
+
+    box.appendChild(
+        div
+    );
+
+    box.scrollTop =
+
+    box.scrollHeight;
+
+    input.value = "";
+
+}
+
+/* RECEIVE PRIVATE */
+
+socket.on(
+
+    "private message",
+
+    (data)=>{
+
+        document
+        .getElementById(
+            "privateBox"
+        )
+        .style.display =
+        "flex";
+
+        const box =
+
+        document
+        .getElementById(
+            "privateMessages"
+        );
+
+        const div =
+
+        document
+        .createElement(
+            "div"
+        );
+
+        div.className =
+        "private-message";
+
+        div.innerHTML = `
+
+        <b style="
+        color:gold;
+        ">
+
+        ${data.from}
+
+        </b>
+
+        <br>
+
+        ${data.message}
+
+        `;
+
+        box.appendChild(
+            div
+        );
+
+        box.scrollTop =
+
+        box.scrollHeight;
+
+});
+
+/* USER INFO */
+
+function showUserInfo(){
+
+    document
+    .getElementById(
+        "userInfoPopup"
+    )
+    .style.display =
+    "flex";
+
+    document
+    .getElementById(
+        "userInfoContent"
+    )
+    .innerHTML = `
+
+    الاسم:
+    ${selectedUser.username}
+
+    <br><br>
+
+    IP:
+    ${selectedUser.ip || "Unknown"}
+
+    <br><br>
+
+    Browser:
+    ${selectedUser.browser || "Unknown"}
+
+    <br><br>
+
+    Device:
+    ${selectedUser.device || "Unknown"}
+
+    `;
+
+}
+
+/* REPLY */
+
+function replyUser(){
+
+    document
+    .getElementById(
+        "messageInput"
+    )
+    .value +=
+
+    `<${selectedUser.username}> `;
+
+    closeAll();
+
+}
+
+/* KICK */
+
+function kickUser(){
+
+    socket.emit(
+
+        "kick user",
+
+        selectedUser.id
+
+    );
+
+    closeAll();
+
+}
+
+/* BAN */
+
+function banUser(){
+
+    socket.emit(
+
+        "ban user",
+
+        selectedUser.id
+
+    );
+
+    closeAll();
+
+}
+
+/* DISCONNECT */
+
+function disconnectUser(){
+
+    socket.emit(
+
+        "disconnect user",
+
+        selectedUser.id
+
+    );
+
+    closeAll();
+
+}
+
+/* CLOSE */
+
+function closeAll(){
+
+    document
+    .querySelectorAll(
+        ".popup-bg"
+    )
+    .forEach(p=>{
+
+        p.style.display =
+        "none";
+
+    });
+
+}
+
+/* OUTSIDE CLICK */
+
+document.addEventListener(
+
+    "click",
+
+    (e)=>{
+
+        if(
+
+        e.target.classList.contains(
+            "popup-bg"
+        )
+
+        ){
+
+            closeAll();
+
+        }
+
+});
