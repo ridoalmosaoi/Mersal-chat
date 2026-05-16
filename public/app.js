@@ -20,15 +20,6 @@ let selectedUser = null;
 
 let currentColor = "#ff0000";
 
-/* ADMIN */
-
-const isAdmin = ()=>{
-
-    return currentUser ===
-    ADMIN_NAME;
-
-};
-
 /* LOGIN */
 
 function login(){
@@ -39,8 +30,8 @@ function login(){
     .getElementById(
         "loginUsername"
     )
-
-    .value.trim();
+    .value
+    .trim();
 
     const password =
 
@@ -48,8 +39,8 @@ function login(){
     .getElementById(
         "loginPassword"
     )
-
-    .value.trim();
+    .value
+    .trim();
 
     if(!username){
 
@@ -80,7 +71,13 @@ function login(){
             password,
 
             color:
-            currentColor
+            currentColor,
+
+            browser:
+            navigator.userAgent,
+
+            device:
+            navigator.platform
 
         }
 
@@ -104,7 +101,6 @@ window.onload = ()=>{
         .getElementById(
             "loginUsername"
         )
-
         .value =
         savedUser;
 
@@ -120,21 +116,19 @@ socket.on(
 
     ()=>{
 
-    document
-    .getElementById(
-        "loginScreen"
-    )
+        document
+        .getElementById(
+            "loginScreen"
+        )
+        .style.display =
+        "none";
 
-    .style.display =
-    "none";
-
-    document
-    .getElementById(
-        "chatApp"
-    )
-
-    .style.display =
-    "flex";
+        document
+        .getElementById(
+            "chatApp"
+        )
+        .style.display =
+        "flex";
 
 });
 
@@ -146,23 +140,21 @@ socket.on(
 
     (msg)=>{
 
-    document
-    .getElementById(
-        "chatApp"
-    )
+        document
+        .getElementById(
+            "chatApp"
+        )
+        .style.display =
+        "none";
 
-    .style.display =
-    "none";
+        document
+        .getElementById(
+            "loginScreen"
+        )
+        .style.display =
+        "flex";
 
-    document
-    .getElementById(
-        "loginScreen"
-    )
-
-    .style.display =
-    "flex";
-
-    alert(msg);
+        alert(msg);
 
 });
 
@@ -174,67 +166,62 @@ socket.on(
 
     (users)=>{
 
-    const usersList =
-
-    document
-    .getElementById(
-        "usersList"
-    );
-
-    usersList.innerHTML = "";
-
-    users.forEach(user=>{
-
-        const div =
+        const usersList =
 
         document
-        .createElement(
-            "div"
+        .getElementById(
+            "usersList"
         );
 
-        div.className =
-        "online-user";
+        usersList.innerHTML = "";
 
-        div.innerHTML = `
+        users.forEach(user=>{
 
-        ${
+            const div =
 
-        user.username ===
-        ADMIN_NAME
+            document
+            .createElement(
+                "div"
+            );
 
-        ?
+            div.className =
+            "online-user";
 
-        "⭐"
+            div.innerHTML = `
 
-        :
+            ${
 
-        "👤"
+            user.username ===
+            ADMIN_NAME
 
-        }
+            ?
 
-        ${user.username}
+            "⭐"
 
-        `;
+            :
 
-        div.onclick = ()=>{
+            "👤"
 
-            selectedUser = {
+            }
 
-                id:user.id,
+            ${user.username}
 
-                username:user.username
+            `;
+
+            div.onclick = ()=>{
+
+                selectedUser =
+                user;
+
+                openUserMenu();
 
             };
 
-            openUserMenu();
+            usersList.appendChild(
+                div
+            );
 
-        };
-
-        usersList.appendChild(
-            div
-        );
-
-    });
+        });
 
 });
 
@@ -288,68 +275,70 @@ socket.on(
 
     (data)=>{
 
-    const messages =
+        const messages =
 
-    document
-    .getElementById(
-        "messages"
-    );
+        document
+        .getElementById(
+            "messages"
+        );
 
-    const div =
+        const div =
 
-    document
-    .createElement(
-        "div"
-    );
+        document
+        .createElement(
+            "div"
+        );
 
-    div.className =
-    "msg-line";
+        div.className =
+        "msg-line";
 
-    div.innerHTML = `
+        div.innerHTML = `
 
-    <div>
+        <span
+        class="msg-name"
+        style="
+        color:${data.color};
+        ">
 
-    <span
-    class="msg-name"
-    style="
-    color:${data.color};
-    ">
+        &lt;${data.username}&gt;
 
-    &lt;${data.username}&gt;
+        </span>
 
-    </span>
+        <div>
 
-    </div>
+        ${data.message}
 
-    <div>
+        </div>
 
-    ${data.message}
+        `;
 
-    </div>
+        div.onclick = ()=>{
 
-    `;
+            selectedUser = {
 
-    div.onclick = ()=>{
+                id:data.id,
 
-        selectedUser = {
+                username:data.username,
 
-            id:data.id,
+                ip:data.ip,
 
-            username:data.username
+                browser:data.browser,
+
+                device:data.device
+
+            };
+
+            openUserMenu();
 
         };
 
-        openUserMenu();
+        messages.appendChild(
+            div
+        );
 
-    };
+        messages.scrollTop =
 
-    messages.appendChild(
-        div
-    );
-
-    messages.scrollTop =
-
-    messages.scrollHeight;
+        messages.scrollHeight;
 
 });
 
@@ -361,7 +350,6 @@ function toggleUsers(){
     .getElementById(
         "usersPopup"
     )
-
     .style.display =
     "flex";
 
@@ -371,53 +359,48 @@ function toggleUsers(){
 
 function openUserMenu(){
 
-    const menu =
-
     document
     .getElementById(
         "userMenu"
-    );
-
-    menu.style.display =
+    )
+    .style.display =
     "flex";
 
-    const adminOptions =
+    const isAdmin =
+    currentUser ===
+    ADMIN_NAME;
 
     document
     .getElementById(
         "adminOptions"
-    );
+    )
+    .style.display =
 
-    const infoBtn =
+    isAdmin
+
+    ?
+
+    "block"
+
+    :
+
+    "none";
 
     document
     .getElementById(
         "userInfoBtn"
-    );
+    )
+    .style.display =
 
-    if(isAdmin()){
+    isAdmin
 
-        adminOptions
-        .style.display =
-        "block";
+    ?
 
-        infoBtn
-        .style.display =
-        "block";
+    "block"
 
-    }
+    :
 
-    else{
-
-        adminOptions
-        .style.display =
-        "none";
-
-        infoBtn
-        .style.display =
-        "none";
-
-    }
+    "none";
 
 }
 
@@ -427,21 +410,14 @@ function openPrivate(){
 
     if(!selectedUser){
 
-        alert(
-        "اختر مستخدم أولاً"
-        );
-
         return;
 
     }
-
-    /* CLOSE ONLY */
 
     document
     .getElementById(
         "userMenu"
     )
-
     .style.display =
     "none";
 
@@ -449,17 +425,13 @@ function openPrivate(){
     .getElementById(
         "usersPopup"
     )
-
     .style.display =
     "none";
-
-    /* OPEN PRIVATE */
 
     document
     .getElementById(
         "privateBox"
     )
-
     .style.display =
     "flex";
 
@@ -556,56 +528,94 @@ socket.on(
 
     (data)=>{
 
+        document
+        .getElementById(
+            "privateBox"
+        )
+        .style.display =
+        "flex";
+
+        const box =
+
+        document
+        .getElementById(
+            "privateMessages"
+        );
+
+        const div =
+
+        document
+        .createElement(
+            "div"
+        );
+
+        div.className =
+        "private-message";
+
+        div.innerHTML = `
+
+        <b style="
+        color:gold;
+        ">
+
+        ${data.from}
+
+        </b>
+
+        <br>
+
+        ${data.message}
+
+        `;
+
+        box.appendChild(
+            div
+        );
+
+        box.scrollTop =
+
+        box.scrollHeight;
+
+});
+
+/* USER INFO */
+
+function showUserInfo(){
+
     document
     .getElementById(
-        "privateBox"
+        "userInfoPopup"
     )
-
     .style.display =
     "flex";
 
-    const box =
-
     document
     .getElementById(
-        "privateMessages"
-    );
+        "userInfoContent"
+    )
+    .innerHTML = `
 
-    const div =
+    الاسم:
+    ${selectedUser.username}
 
-    document
-    .createElement(
-        "div"
-    );
+    <br><br>
 
-    div.className =
-    "private-message";
+    IP:
+    ${selectedUser.ip || "Unknown"}
 
-    div.innerHTML = `
+    <br><br>
 
-    <b style="
-    color:gold;
-    ">
+    Browser:
+    ${selectedUser.browser || "Unknown"}
 
-    ${data.from}
+    <br><br>
 
-    </b>
-
-    <br>
-
-    ${data.message}
+    Device:
+    ${selectedUser.device || "Unknown"}
 
     `;
 
-    box.appendChild(
-        div
-    );
-
-    box.scrollTop =
-
-    box.scrollHeight;
-
-});
+}
 
 /* REPLY */
 
@@ -615,44 +625,11 @@ function replyUser(){
     .getElementById(
         "messageInput"
     )
-
     .value +=
 
     `<${selectedUser.username}> `;
 
     closeAll();
-
-}
-
-/* USER INFO */
-
-function showUserInfo(){
-
-    if(!isAdmin()){
-
-        return;
-
-    }
-
-    document
-    .getElementById(
-        "userInfoPopup"
-    )
-
-    .style.display =
-    "flex";
-
-    document
-    .getElementById(
-        "userInfoContent"
-    )
-
-    .innerHTML = `
-
-    الاسم:
-    ${selectedUser.username}
-
-    `;
 
 }
 
@@ -712,7 +689,6 @@ function closeAll(){
     .querySelectorAll(
         ".popup-bg"
     )
-
     .forEach(p=>{
 
         p.style.display =
@@ -730,16 +706,16 @@ document.addEventListener(
 
     (e)=>{
 
-    if(
+        if(
 
-    e.target.classList.contains(
-        "popup-bg"
-    )
+        e.target.classList.contains(
+            "popup-bg"
+        )
 
-    ){
+        ){
 
-        closeAll();
+            closeAll();
 
-    }
+        }
 
 });
