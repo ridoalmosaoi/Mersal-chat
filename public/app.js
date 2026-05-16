@@ -357,8 +357,6 @@ socket.on(
 
 function toggleUsers(){
 
-    closeAll();
-
     document
     .getElementById(
         "usersPopup"
@@ -372,8 +370,6 @@ function toggleUsers(){
 /* USER MENU */
 
 function openUserMenu(){
-
-    closeAll();
 
     const menu =
 
@@ -439,7 +435,25 @@ function openPrivate(){
 
     }
 
-    closeAll();
+    /* CLOSE ONLY */
+
+    document
+    .getElementById(
+        "userMenu"
+    )
+
+    .style.display =
+    "none";
+
+    document
+    .getElementById(
+        "usersPopup"
+    )
+
+    .style.display =
+    "none";
+
+    /* OPEN PRIVATE */
 
     document
     .getElementById(
@@ -690,7 +704,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE ALL */
+/* CLOSE */
 
 function closeAll(){
 
@@ -708,7 +722,7 @@ function closeAll(){
 
 }
 
-/* CLOSE OUTSIDE */
+/* OUTSIDE CLICK */
 
 document.addEventListener(
 
