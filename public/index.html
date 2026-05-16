@@ -71,7 +71,7 @@ id="chatApp"
 class="chat-app"
 style="display:none;">
 
-<!-- TOP -->
+<!-- TOP BAR -->
 
 <div class="top-bar">
 
@@ -191,7 +191,8 @@ color:gold;
 
 <div
 id="privateBox"
-class="popup-bg">
+class="popup-bg"
+style="display:none;">
 
 <div class="popup-box">
 
@@ -199,15 +200,36 @@ class="popup-bg">
 class="online-user"
 style="
 color:#00d0b4;
+font-size:38px;
 ">
 
 💬 مرسال خاص
 
 </div>
 
-<div id="privateMessages"></div>
+<!-- PRIVATE MESSAGES -->
 
-<div class="chat-input">
+<div
+id="privateMessages"
+style="
+height:250px;
+overflow-y:auto;
+background:#000;
+border-radius:15px;
+padding:10px;
+margin-top:10px;
+color:white;
+">
+
+</div>
+
+<!-- PRIVATE INPUT -->
+
+<div
+class="chat-input"
+style="
+margin-top:15px;
+">
 
 <button
 onclick="sendPrivate()">
