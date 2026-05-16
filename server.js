@@ -14,6 +14,8 @@ const io = require("socket.io")(http,{
 
 const path = require("path");
 
+/* STATIC */
+
 app.use(
 
     express.static(
@@ -27,11 +29,9 @@ app.use(
 
 );
 
-/* USERS */
+/* DATA */
 
 let users = [];
-
-/* BANNED */
 
 let bannedUsers = [];
 
@@ -61,7 +61,7 @@ io.on(
 
         /* CHECK BAN */
 
-        const isBanned =
+        const banned =
 
         bannedUsers.find(
 
@@ -71,13 +71,22 @@ io.on(
 
         );
 
-        if(isBanned){
+        if(banned){
 
             socket.emit(
 
                 "banned",
 
-                "تم حظرك من شات مرسال بشكل نهائي 🚫\n\nإذا شعرت أن القرار ظالم راسل الإدارة على تلجرام:\nRido77"
+                `
+
+تم حظرك من شات مرسال 🚫
+
+إذا شعرت أن القرار ظالم
+راسل الإدارة على تلجرام:
+
+Rido77
+
+`
 
             );
 
@@ -85,7 +94,7 @@ io.on(
 
         }
 
-        /* SAVE USER */
+        /* USER */
 
         const user = {
 
@@ -116,13 +125,13 @@ io.on(
 
         users.push(user);
 
-        /* LOGIN SUCCESS */
+        /* LOGIN */
 
         socket.emit(
             "login success"
         );
 
-        /* ONLINE USERS */
+        /* USERS */
 
         io.emit(
 
@@ -132,30 +141,39 @@ io.on(
 
         );
 
-        /* SYSTEM MESSAGE */
+        /* ADMIN MESSAGE */
 
-        io.emit(
+        if(
 
-            "chat message",
+            data.username ===
+            "Admin"
 
-            {
+        ){
 
-                id:"system",
+            io.emit(
 
-                username:"System",
+                "chat message",
 
-                color:"gold",
+                {
 
-                message:
-                "تم توكيل المشرف 👑"
+                    id:"system",
 
-            }
+                    username:"System",
 
-        );
+                    color:"gold",
+
+                    message:
+                    "تم توكيل المشرف 👑"
+
+                }
+
+            );
+
+        }
 
     });
 
-    /* CHAT */
+    /* PUBLIC CHAT */
 
     socket.on(
 
@@ -185,7 +203,8 @@ io.on(
 
             {
 
-                id:user.id,
+                id:
+                user.id,
 
                 username:
                 user.username,
@@ -245,17 +264,24 @@ io.on(
 
         (userId)=>{
 
-        io.to(userId).emit(
-
-            "banned",
-
-            "تم طردك من الشات ⚠️"
-
-        );
+        const target =
 
         io.sockets.sockets
-        .get(userId)
-        ?.disconnect();
+        .get(userId);
+
+        if(target){
+
+            io.to(userId).emit(
+
+                "banned",
+
+                "تم طردك من الشات ⚠️"
+
+            );
+
+            target.disconnect();
+
+        }
 
     });
 
@@ -267,7 +293,7 @@ io.on(
 
         (userId)=>{
 
-        const target =
+        const targetUser =
 
         users.find(
 
@@ -277,7 +303,7 @@ io.on(
 
         );
 
-        if(!target){
+        if(!targetUser){
 
             return;
 
@@ -286,7 +312,7 @@ io.on(
         bannedUsers.push({
 
             ip:
-            target.ip
+            targetUser.ip
 
         });
 
@@ -294,7 +320,16 @@ io.on(
 
             "banned",
 
-            "تم حظرك من شات مرسال بشكل نهائي 🚫\n\nإذا شعرت أن القرار ظالم راسل الإدارة على تلجرام:\nRido77"
+            `
+
+تم حظرك من شات مرسال 🚫
+
+إذا شعرت أن القرار ظالم
+راسل الإدارة على تلجرام:
+
+Rido77
+
+`
 
         );
 
@@ -304,7 +339,7 @@ io.on(
 
     });
 
-    /* DISCONNECT USER */
+    /* FULL DISCONNECT */
 
     socket.on(
 
@@ -326,7 +361,7 @@ io.on(
 
     });
 
-    /* DISCONNECT */
+    /* LEAVE */
 
     socket.on(
 
