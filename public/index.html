@@ -1,186 +1,339 @@
 <!DOCTYPE html>
 
-<html lang="ar">
+<html lang="ar" dir="rtl">
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+<meta
+name="viewport"
+content="
+width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no
+">
 
-    <title>مرسال شات</title>
+<title>
 
-    <link rel="stylesheet"
-          href="style.css">
+مرسال شات
+
+</title>
+
+<link
+rel="stylesheet"
+href="style.css">
 
 </head>
 
 <body>
 
-    <!-- =========================
-         شريط الغرفة
-    ========================== -->
+<!-- LOGIN -->
 
-    <div class="room-bar">
+<div
+id="loginScreen"
+class="login-screen">
 
-        <div class="room-icons">
+<div class="login-box">
 
-            <span>⚙️</span>
+<h2>
 
-            <span>💬</span>
+مرسال شات
 
-            <span>👥</span>
+</h2>
 
-        </div>
+<input
+type="text"
+id="loginUsername"
+placeholder="الاسم">
 
-        <div class="room-name">
+<input
+type="password"
+id="loginPassword"
+placeholder="كلمة المرور">
 
-            #العراق
+<button
+onclick="login()">
 
-        </div>
+دخول
 
-    </div>
+</button>
 
-    <!-- =========================
-         معلومات المستخدم
-    ========================== -->
+</div>
 
-    <div class="user-info">
+</div>
 
-        <div class="user-info-title">
+<!-- CHAT -->
 
-            ℹ️ معلومات المستخدم
+<div
+id="chatApp"
+class="chat-app"
+style="display:none;">
 
-        </div>
+<!-- TOP BAR -->
 
-        <div class="user-info-content">
+<div class="top-bar">
 
-            <div class="user-name">
+<div class="room-name">
 
-                Admin :الاسم
+#العراق
 
-            </div>
+</div>
 
-            <div class="user-ip">
+<div
+style="
+display:flex;
+align-items:center;
+gap:18px;
+">
 
-                IP: 2a01:799:1f32:4400:1885:ce5b:e6d8:9191
+<span
+onclick="
+alert(
+'الإعدادات قريباً 😎'
+)"
+style="
+font-size:34px;
+cursor:pointer;
+">
 
-            </div>
+⚙️
 
-            <div class="user-browser">
+</span>
 
-                Browser: Mozilla/5.0 (iPhone; CPU iPhone OS 18_4 like Mac OS X)
+<span
+onclick="
+toggleUsers()
+"
+style="
+font-size:34px;
+cursor:pointer;
+">
 
-            </div>
+👥
 
-            <div class="user-device">
+</span>
 
-                📱 iPhone
+<span
+onclick="
+alert(
+'اختر مستخدم ثم اضغط عليه 😎'
+)"
+style="
+font-size:34px;
+cursor:pointer;
+">
 
-            </div>
+💬
 
-        </div>
+</span>
 
-    </div>
+</div>
 
-    <!-- =========================
-         الشات الخاص
-    ========================== -->
+</div>
 
-    <div id="privateChatBox"
-         class="private-chat-box">
+<!-- MESSAGES -->
 
-        <!-- الهيدر -->
+<div
+id="messages"
+class="messages">
 
-        <div class="private-header">
+<div class="notice-box">
 
-            <div class="private-user-info">
+❤️ اهلاً بكم في مرسال شات،
+نتمنى لكم وقت ممتع
 
-                <div class="private-avatar">
+</div>
 
-                    👤
+</div>
 
-                </div>
+<!-- INPUT -->
 
-                <div class="private-name-status">
+<div class="chat-input">
 
-                    <div id="privateChatTitle"
-                         class="private-username">
+<button
+onclick="sendMessage()">
 
-                        Ahmed
+➤
 
-                    </div>
+</button>
 
-                    <div class="private-status">
+<input
+type="text"
+id="messageInput"
+placeholder="اكتب هنا...">
 
-                        متصل الآن
+</div>
 
-                    </div>
+</div>
 
-                </div>
+<!-- USERS POPUP -->
 
-            </div>
+<div
+id="usersPopup"
+class="popup-bg">
 
-            <button class="close-private-btn"
-                    onclick="closePrivateChat()">
+<div class="popup-box">
 
-                ✕
+<div
+class="online-user"
+style="
+color:gold;
+">
 
-            </button>
+⭐ المتواجدين
 
-        </div>
+</div>
 
-        <!-- الرسائل -->
+<div id="usersList"></div>
 
-        <div id="privateMessages"
-             class="private-messages">
+</div>
 
-            <div class="message">
+</div>
 
-                هلا بيك 😄
+<!-- PRIVATE -->
 
-            </div>
+<div
+id="privateBox"
+class="popup-bg">
 
-            <div class="message my-message">
+<div class="popup-box">
 
-                هلا والله 🔥
+<div
+class="online-user"
+style="
+color:#00d0b4;
+">
 
-            </div>
+💬 مرسال خاص
 
-            <div class="message">
+</div>
 
-                هذا الشكل الجديد للخاص
+<div id="privateMessages"></div>
 
-            </div>
+<div class="chat-input">
 
-        </div>
+<button
+onclick="sendPrivate()">
 
-        <!-- الكتابة -->
+➤
 
-        <div class="private-input-area">
+</button>
 
-            <input type="text"
-                   id="privateMessageInput"
-                   placeholder="اكتب رسالة خاصة">
+<input
+type="text"
+id="privateInput"
+placeholder="رسالة خاصة">
 
-            <button onclick="sendPrivateMessage()">
+</div>
 
-                ➤
+</div>
 
-            </button>
+</div>
 
-        </div>
+<!-- USER MENU -->
 
-    </div>
+<div
+id="userMenu"
+class="popup-bg">
 
-    <!-- =========================
-         الجافاسكربت
-    ========================== -->
+<div class="popup-box">
 
-    <script src="app.js"></script>
+<div
+class="online-user"
+onclick="replyUser()">
+
+📋 نسخ الاسم للرد
+
+</div>
+
+<div
+class="online-user"
+onclick="openPrivate()">
+
+💬 مرسال خاص
+
+</div>
+
+<div
+id="userInfoBtn"
+class="online-user"
+onclick="showUserInfo()">
+
+ℹ️ معلومات المستخدم
+
+</div>
+
+<div id="adminOptions">
+
+<div
+class="online-user"
+onclick="kickUser()"
+style="
+color:orange;
+">
+
+⚠️ طرد
+
+</div>
+
+<div
+class="online-user"
+onclick="banUser()"
+style="
+color:red;
+">
+
+⛔ حظر
+
+</div>
+
+<div
+class="online-user"
+onclick="disconnectUser()"
+style="
+color:#ff4444;
+">
+
+🚫 فصل كلي
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- USER INFO -->
+
+<div
+id="userInfoPopup"
+class="popup-bg">
+
+<div class="popup-box">
+
+<div
+class="online-user"
+style="
+color:gold;
+">
+
+ℹ️ معلومات المستخدم
+
+</div>
+
+<div id="userInfoContent"></div>
+
+</div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script src="app.js"></script>
 
 </body>
 
 </html>
-``
