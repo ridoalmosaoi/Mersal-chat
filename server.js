@@ -4,419 +4,376 @@ const app = express();
 
 const http = require("http").createServer(app);
 
-const io = require("socket.io")(http);
+const io = require("socket.io")(http,{
+
+    cors:{
+        origin:"*"
+    }
+
+});
+
+const path = require("path");
 
 app.use(
-express.static("public")
+
+    express.static(
+
+        path.join(
+            __dirname,
+            "public"
+        )
+
+    )
+
 );
 
-const users = [];
+/* USERS */
 
-const bannedUsers =
-new Set();
+let users = [];
+
+/* BANNED */
+
+let bannedUsers = [];
 
 /* CONNECTION */
 
 io.on(
 
-"connection",
+    "connection",
 
-(socket)=>{
+    (socket)=>{
 
-const ip =
+    console.log(
+        "User Connected"
+    );
 
-socket.handshake
-.address;
+    /* JOIN */
 
-/* JOIN */
+    socket.on(
 
-socket.on(
+        "join",
 
-"join",
+        (data)=>{
 
-(data)=>{
+        const ip =
 
-/* CHECK BAN */
+        socket.handshake.address;
 
-if(
+        /* CHECK BAN */
 
-bannedUsers.has(ip)
+        const isBanned =
 
-){
+        bannedUsers.find(
 
-socket.emit(
+            b=>
 
-"banned",
+            b.ip === ip
 
-`
+        );
 
-تم حظرك من شات مرسال
-بشكل نهائي
+        if(isBanned){
 
-مع تحيات إدارة مرسال ❤️
+            socket.emit(
 
-إذا شعرت أن القرار ظلم
-راسل الإدارة على تيليجرام:
+                "banned",
 
-Rido77
+                "تم حظرك من شات مرسال بشكل نهائي 🚫\n\nإذا شعرت أن القرار ظالم راسل الإدارة على تلجرام:\nRido77"
 
-`
+            );
 
-);
+            return;
 
-return;
+        }
 
-}
+        /* SAVE USER */
 
-/* SAVE USER */
+        const user = {
 
-socket.username =
-data.username;
+            id:
+            socket.id,
 
-socket.userColor =
-data.color;
+            username:
+            data.username,
 
-users.push({
+            color:
+            data.color ||
 
-id:
-socket.id,
+            "#ff0000",
 
-username:
-data.username,
+            ip,
 
-color:
-data.color,
+            browser:
+            data.browser ||
 
-ip
+            "Unknown",
+
+            device:
+            data.device ||
+
+            "Unknown"
+
+        };
+
+        users.push(user);
+
+        /* LOGIN SUCCESS */
+
+        socket.emit(
+            "login success"
+        );
+
+        /* ONLINE USERS */
+
+        io.emit(
+
+            "online users",
+
+            users
+
+        );
+
+        /* SYSTEM MESSAGE */
+
+        io.emit(
+
+            "chat message",
+
+            {
+
+                id:"system",
+
+                username:"System",
+
+                color:"gold",
+
+                message:
+                "تم توكيل المشرف 👑"
+
+            }
+
+        );
+
+    });
+
+    /* CHAT */
+
+    socket.on(
+
+        "chat message",
+
+        (data)=>{
+
+        const user =
+
+        users.find(
+
+            u=>
+
+            u.id === socket.id
+
+        );
+
+        if(!user){
+
+            return;
+
+        }
+
+        io.emit(
+
+            "chat message",
+
+            {
+
+                id:user.id,
+
+                username:
+                user.username,
+
+                color:
+                user.color,
+
+                message:
+                data.message,
+
+                ip:
+                user.ip,
+
+                browser:
+                user.browser,
+
+                device:
+                user.device
+
+            }
+
+        );
+
+    });
+
+    /* PRIVATE */
+
+    socket.on(
+
+        "private message",
+
+        (data)=>{
+
+        io.to(data.to).emit(
+
+            "private message",
+
+            {
+
+                from:
+                data.from,
+
+                message:
+                data.message
+
+            }
+
+        );
+
+    });
+
+    /* KICK */
+
+    socket.on(
+
+        "kick user",
+
+        (userId)=>{
+
+        io.to(userId).emit(
+
+            "banned",
+
+            "تم طردك من الشات ⚠️"
+
+        );
+
+        io.sockets.sockets
+        .get(userId)
+        ?.disconnect();
+
+    });
+
+    /* BAN */
+
+    socket.on(
+
+        "ban user",
+
+        (userId)=>{
+
+        const target =
+
+        users.find(
+
+            u=>
+
+            u.id === userId
+
+        );
+
+        if(!target){
+
+            return;
+
+        }
+
+        bannedUsers.push({
+
+            ip:
+            target.ip
+
+        });
+
+        io.to(userId).emit(
+
+            "banned",
+
+            "تم حظرك من شات مرسال بشكل نهائي 🚫\n\nإذا شعرت أن القرار ظالم راسل الإدارة على تلجرام:\nRido77"
+
+        );
+
+        io.sockets.sockets
+        .get(userId)
+        ?.disconnect();
+
+    });
+
+    /* DISCONNECT USER */
+
+    socket.on(
+
+        "disconnect user",
+
+        (userId)=>{
+
+        io.to(userId).emit(
+
+            "banned",
+
+            "تم فصلك من الشات 🚫"
+
+        );
+
+        io.sockets.sockets
+        .get(userId)
+        ?.disconnect();
+
+    });
+
+    /* DISCONNECT */
+
+    socket.on(
+
+        "disconnect",
+
+        ()=>{
+
+        users =
+
+        users.filter(
+
+            u=>
+
+            u.id !== socket.id
+
+        );
+
+        io.emit(
+
+            "online users",
+
+            users
+
+        );
+
+    });
 
 });
 
-/* LOGIN SUCCESS */
+/* START */
 
-socket.emit(
-"login success"
-);
+const PORT =
 
-/* ADMIN MESSAGE */
+process.env.PORT ||
 
-if(
-
-data.username ===
-"Admin"
-
-){
-
-io.emit(
-
-"chat message",
-
-{
-
-id:
-socket.id,
-
-username:
-"System",
-
-color:
-"gold",
-
-message:
-"تم توكيل المشرف 👑"
-
-}
-
-);
-
-}
-
-/* UPDATE USERS */
-
-io.emit(
-"online users",
-users
-);
-
-});
-
-/* CHAT */
-
-socket.on(
-
-"chat message",
-
-(data)=>{
-
-io.emit(
-
-"chat message",
-
-{
-
-id:
-socket.id,
-
-username:
-data.username,
-
-color:
-data.color,
-
-message:
-data.message
-
-}
-
-);
-
-});
-
-/* PRIVATE */
-
-socket.on(
-
-"private message",
-
-(data)=>{
-
-io.to(data.to).emit(
-
-"private message",
-
-{
-
-from:
-data.from,
-
-message:
-data.message
-
-}
-
-);
-
-});
-
-/* KICK */
-
-socket.on(
-
-"kick user",
-
-(id)=>{
-
-const target =
-
-io.sockets.sockets
-.get(id);
-
-if(target){
-
-io.emit(
-
-"chat message",
-
-{
-
-id:
-socket.id,
-
-username:
-"System",
-
-color:
-"orange",
-
-message:
-`${target.username} تم طرده`
-
-}
-
-);
-
-target.disconnect();
-
-}
-
-});
-
-/* BAN */
-
-socket.on(
-
-"ban user",
-
-(id)=>{
-
-const target =
-
-io.sockets.sockets
-.get(id);
-
-if(target){
-
-bannedUsers.add(
-
-target.handshake
-.address
-
-);
-
-target.emit(
-
-"banned",
-
-`
-
-تم حظرك من شات مرسال
-بشكل نهائي
-
-مع تحيات إدارة مرسال ❤️
-
-إذا شعرت أن القرار ظلم
-راسل الإدارة على تيليجرام:
-
-Rido77
-
-`
-
-);
-
-io.emit(
-
-"chat message",
-
-{
-
-id:
-socket.id,
-
-username:
-"System",
-
-color:
-"red",
-
-message:
-`${target.username} تم حظره`
-
-}
-
-);
-
-target.disconnect(true);
-
-}
-
-});
-
-/* DISCONNECT USER */
-
-socket.on(
-
-"disconnect user",
-
-(id)=>{
-
-const target =
-
-io.sockets.sockets
-.get(id);
-
-if(target){
-
-target.emit(
-
-"banned",
-
-`
-
-تم فصلك من شات مرسال
-
-مع تحيات إدارة مرسال ❤️
-
-إذا شعرت أن القرار ظلم
-راسل الإدارة على تيليجرام:
-
-Rido77
-
-`
-
-);
-
-io.emit(
-
-"chat message",
-
-{
-
-id:
-socket.id,
-
-username:
-"System",
-
-color:
-"#ff4444",
-
-message:
-`${target.username} تم فصله`
-
-}
-
-);
-
-target.disconnect(true);
-
-}
-
-});
-
-/* DISCONNECT */
-
-socket.on(
-
-"disconnect",
-
-()=>{
-
-const index =
-
-users.findIndex(
-
-u=>u.id ===
-socket.id
-
-);
-
-if(index !== -1){
-
-users.splice(
-index,
-1
-);
-
-io.emit(
-"online users",
-users
-);
-
-}
-
-});
-
-});
+3000;
 
 http.listen(
 
-3000,
+    PORT,
 
-()=>{
+    ()=>{
 
-console.log(
+    console.log(
 
-"Server running"
+        "Server Running 🚀"
 
-);
+    );
 
 });
