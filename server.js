@@ -29,9 +29,11 @@ app.use(
 
 );
 
-/* DATA */
+/* USERS */
 
 let users = [];
+
+/* BANNED */
 
 let bannedUsers = [];
 
@@ -55,7 +57,41 @@ io.on(
 
         (data)=>{
 
+        /* ADMIN PASSWORD */
+
+        if(
+
+        data.username ===
+        "Admin"
+
+        &&
+
+        data.password !==
+        "admin771"
+
+        ){
+
+            socket.emit(
+
+                "banned",
+
+                "كلمة سر الإدارة خاطئة 🚫"
+
+            );
+
+            return;
+
+        }
+
+        /* REAL IP */
+
         const ip =
+
+        socket.handshake.headers[
+            "x-forwarded-for"
+        ]
+
+        ||
 
         socket.handshake.address;
 
@@ -125,7 +161,7 @@ Rido77
 
         users.push(user);
 
-        /* LOGIN */
+        /* LOGIN SUCCESS */
 
         socket.emit(
             "login success"
@@ -141,7 +177,7 @@ Rido77
 
         );
 
-        /* ADMIN MESSAGE */
+        /* SYSTEM MESSAGE */
 
         if(
 
@@ -158,7 +194,7 @@ Rido77
 
                     id:"system",
 
-                    username:"System",
+                    username:"",
 
                     color:"gold",
 
@@ -361,7 +397,7 @@ Rido77
 
     });
 
-    /* LEAVE */
+    /* DISCONNECT */
 
     socket.on(
 
