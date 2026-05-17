@@ -85,7 +85,7 @@ style="display:none;">
 style="
 display:flex;
 align-items:center;
-gap:18px;
+gap:15px;
 ">
 
 <span
@@ -94,7 +94,7 @@ alert(
 'الإعدادات قريباً 😎'
 )"
 style="
-font-size:34px;
+font-size:28px;
 cursor:pointer;
 ">
 
@@ -107,7 +107,7 @@ onclick="
 toggleUsers()
 "
 style="
-font-size:34px;
+font-size:28px;
 cursor:pointer;
 ">
 
@@ -118,10 +118,10 @@ cursor:pointer;
 <span
 onclick="
 alert(
-'اختر مستخدم ثم اضغط عليه 😎'
+'اختر مستخدم ثم اضغط مرسال خاص 😎'
 )"
 style="
-font-size:34px;
+font-size:28px;
 cursor:pointer;
 ">
 
@@ -141,7 +141,7 @@ class="messages">
 
 <div class="notice-box">
 
-❤️ اهلاً بكم في مرسال شات،
+❤️ أهلاً بكم في مرسال شات،
 نتمنى لكم وقت ممتع
 
 </div>
@@ -168,7 +168,7 @@ placeholder="اكتب هنا...">
 
 </div>
 
-<!-- USERS POPUP -->
+<!-- USERS -->
 
 <div
 id="usersPopup"
@@ -201,6 +201,7 @@ class="popup-bg">
 <div class="popup-box">
 
 <div
+id="privateTitle"
 class="online-user"
 style="
 color:#00d0b4;
@@ -324,7 +325,10 @@ color:gold;
 
 </div>
 
-<div id="userInfoContent"></div>
+<div
+id="userInfoContent">
+
+</div>
 
 </div>
 
