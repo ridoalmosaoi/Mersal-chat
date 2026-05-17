@@ -167,7 +167,7 @@ Rido77
             "login success"
         );
 
-        /* USERS */
+        /* ONLINE USERS */
 
         io.emit(
 
@@ -177,7 +177,7 @@ Rido77
 
         );
 
-        /* SYSTEM MESSAGE */
+        /* ADMIN MESSAGE */
 
         if(
 
@@ -194,12 +194,12 @@ Rido77
 
                     id:"system",
 
-                    username:"",
+                    username:"System",
 
                     color:"gold",
 
                     message:
-                    "تم توكيل المشرف 👑"
+                    `تم توكيل ${data.username} مشرف 👑`
 
                 }
 
@@ -300,12 +300,41 @@ Rido77
 
         (userId)=>{
 
+        const targetUser =
+
+        users.find(
+
+            u=>
+
+            u.id === userId
+
+        );
+
         const target =
 
         io.sockets.sockets
         .get(userId);
 
         if(target){
+
+            io.emit(
+
+                "chat message",
+
+                {
+
+                    id:"system",
+
+                    username:"System",
+
+                    color:"orange",
+
+                    message:
+                    `تم طرد ${targetUser?.username || "مستخدم"} ⚠️`
+
+                }
+
+            );
 
             io.to(userId).emit(
 
@@ -352,6 +381,25 @@ Rido77
 
         });
 
+        io.emit(
+
+            "chat message",
+
+            {
+
+                id:"system",
+
+                username:"System",
+
+                color:"red",
+
+                message:
+                `تم حظر ${targetUser.username} 🚫`
+
+            }
+
+        );
+
         io.to(userId).emit(
 
             "banned",
@@ -382,6 +430,35 @@ Rido77
         "disconnect user",
 
         (userId)=>{
+
+        const targetUser =
+
+        users.find(
+
+            u=>
+
+            u.id === userId
+
+        );
+
+        io.emit(
+
+            "chat message",
+
+            {
+
+                id:"system",
+
+                username:"System",
+
+                color:"#ff4444",
+
+                message:
+                `تم فصل ${targetUser?.username || "مستخدم"} 🚫`
+
+            }
+
+        );
 
         io.to(userId).emit(
 
