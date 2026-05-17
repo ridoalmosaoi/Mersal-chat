@@ -367,6 +367,7 @@ function openUserMenu(){
     "flex";
 
     const isAdmin =
+
     currentUser ===
     ADMIN_NAME;
 
@@ -427,6 +428,14 @@ function openPrivate(){
     )
     .style.display =
     "none";
+
+    document
+    .getElementById(
+        "privateTitle"
+    )
+    .innerHTML =
+
+    `💬 مرسال خاص - ${selectedUser.username}`;
 
     document
     .getElementById(
@@ -555,7 +564,7 @@ socket.on(
         div.innerHTML = `
 
         <b style="
-        color:gold;
+        color:#00d0b4;
         ">
 
         ${data.from}
@@ -582,6 +591,19 @@ socket.on(
 
 function showUserInfo(){
 
+    const shortBrowser =
+
+    selectedUser.browser
+    ?.includes("iPhone")
+
+    ?
+
+    "Chrome iPhone"
+
+    :
+
+    "Browser";
+
     document
     .getElementById(
         "userInfoPopup"
@@ -606,7 +628,7 @@ function showUserInfo(){
     <br><br>
 
     Browser:
-    ${selectedUser.browser || "Unknown"}
+    ${shortBrowser}
 
     <br><br>
 
