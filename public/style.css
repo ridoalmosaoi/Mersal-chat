@@ -14,7 +14,7 @@ body{
 
 background:#000;
 
-color:white;
+color:#fff;
 
 height:100vh;
 
@@ -36,9 +36,9 @@ align-items:center;
 
 height:100vh;
 
-background:#000;
-
 padding:20px;
+
+background:#000;
 
 }
 
@@ -46,7 +46,7 @@ padding:20px;
 
 width:100%;
 
-max-width:360px;
+max-width:340px;
 
 background:#050505;
 
@@ -76,19 +76,19 @@ color:gold;
 
 .login-box input{
 
-height:52px;
+height:50px;
 
 border:none;
 
-border-radius:16px;
+border-radius:14px;
 
 padding:14px;
 
-font-size:19px;
+font-size:18px;
 
 background:#111;
 
-color:white;
+color:#fff;
 
 outline:none;
 
@@ -100,7 +100,7 @@ height:52px;
 
 border:none;
 
-border-radius:16px;
+border-radius:14px;
 
 background:gold;
 
@@ -138,23 +138,19 @@ justify-content:space-between;
 
 align-items:center;
 
-padding:10px 15px;
+padding:0 14px;
 
 border-bottom:1px solid #222;
 
 background:#000;
 
-position:sticky;
-
-top:0;
-
-z-index:999;
+flex-shrink:0;
 
 }
 
 .room-name{
 
-font-size:30px;
+font-size:28px;
 
 font-weight:bold;
 
@@ -170,13 +166,15 @@ flex:1;
 
 overflow-y:auto;
 
-padding:15px;
+padding:10px 12px;
 
 display:flex;
 
 flex-direction:column;
 
-gap:18px;
+gap:10px;
+
+min-height:0;
 
 }
 
@@ -186,13 +184,13 @@ gap:18px;
 
 border:3px solid gold;
 
-border-radius:22px;
+border-radius:20px;
 
-padding:18px;
+padding:14px;
 
 text-align:center;
 
-font-size:22px;
+font-size:20px;
 
 line-height:1.7;
 
@@ -200,37 +198,29 @@ background:#050505;
 
 }
 
-/* MESSAGE LINE */
+/* MESSAGE */
 
 .msg-line{
 
-font-size:27px;
+font-size:22px;
 
-line-height:1.7;
-
-word-break:break-word;
-
-cursor:pointer;
+line-height:1.5;
 
 display:flex;
 
+flex-wrap:wrap;
+
 align-items:center;
 
-gap:12px;
+gap:8px;
+
+padding:2px 0;
 
 direction:ltr;
 
-justify-content:flex-start;
-
-text-align:left;
-
-flex-wrap:wrap;
-
-padding:5px 0;
+cursor:pointer;
 
 }
-
-/* NAME */
 
 .msg-name{
 
@@ -240,13 +230,13 @@ direction:ltr;
 
 }
 
-/* MESSAGE TEXT */
-
-.msg-line div:last-child{
+.msg-text{
 
 direction:rtl;
 
-text-align:right;
+display:inline-block;
+
+word-break:break-word;
 
 }
 
@@ -260,11 +250,13 @@ align-items:center;
 
 gap:10px;
 
-padding:12px;
+padding:10px;
+
+border-top:1px solid #222;
 
 background:#000;
 
-border-top:1px solid #222;
+flex-shrink:0;
 
 }
 
@@ -272,29 +264,29 @@ border-top:1px solid #222;
 
 flex:1;
 
-height:62px;
+height:58px;
 
 border:none;
 
-border-radius:35px;
+border-radius:30px;
 
-padding:16px;
+padding:0 18px;
 
-font-size:23px;
+font-size:20px;
 
 background:#eee;
 
-outline:none;
-
 color:#000;
+
+outline:none;
 
 }
 
 .chat-input button{
 
-width:72px;
+width:64px;
 
-height:72px;
+height:64px;
 
 border:none;
 
@@ -302,13 +294,13 @@ background:none;
 
 color:gold;
 
-font-size:46px;
+font-size:40px;
 
 cursor:pointer;
 
 }
 
-/* POPUPS */
+/* POPUP */
 
 .popup-bg{
 
@@ -324,7 +316,7 @@ width:100%;
 
 height:100%;
 
-background:rgba(0,0,0,0.72);
+background:rgba(0,0,0,.7);
 
 justify-content:center;
 
@@ -332,47 +324,53 @@ align-items:center;
 
 z-index:9999;
 
-}
+padding:15px;
 
-/* POPUP BOX */
+}
 
 .popup-box{
 
-width:90%;
+width:100%;
 
-max-width:480px;
+max-width:420px;
 
 background:#050505;
 
 border:3px solid gold;
 
-border-radius:24px;
+border-radius:22px;
 
 overflow:hidden;
 
+max-height:92vh;
+
+display:flex;
+
+flex-direction:column;
+
 }
 
-/* ONLINE USERS */
+/* USERS */
 
 .online-user{
 
-padding:20px;
+padding:18px;
 
-font-size:27px;
+font-size:24px;
 
 border-bottom:1px solid #222;
 
-cursor:pointer;
-
 text-align:center;
 
-background:#0b0b0b;
+background:#0a0a0a;
+
+cursor:pointer;
 
 }
 
 .online-user:hover{
 
-background:#171717;
+background:#161616;
 
 }
 
@@ -380,19 +378,23 @@ background:#171717;
 
 #privateMessages{
 
-height:240px;
+flex:1;
 
 overflow-y:auto;
 
-padding:15px;
-
-background:#000;
+padding:12px;
 
 display:flex;
 
 flex-direction:column;
 
-gap:12px;
+gap:10px;
+
+background:#000;
+
+min-height:240px;
+
+max-height:320px;
 
 }
 
@@ -402,9 +404,9 @@ background:#111;
 
 padding:12px;
 
-border-radius:15px;
+border-radius:14px;
 
-font-size:23px;
+font-size:20px;
 
 line-height:1.6;
 
@@ -416,11 +418,13 @@ word-break:break-word;
 
 #userInfoContent{
 
-padding:20px;
+padding:18px;
 
-font-size:23px;
+font-size:20px;
 
 line-height:1.8;
+
+word-break:break-word;
 
 }
 
@@ -428,7 +432,7 @@ line-height:1.8;
 
 ::-webkit-scrollbar{
 
-width:5px;
+width:4px;
 
 }
 
@@ -446,39 +450,51 @@ border-radius:10px;
 
 .room-name{
 
-font-size:28px;
+font-size:24px;
 
 }
 
 .msg-line{
 
-font-size:24px;
+font-size:20px;
 
 }
 
 .online-user{
 
-font-size:24px;
+font-size:21px;
+
+padding:16px;
 
 }
 
 .chat-input input{
 
-font-size:21px;
+height:54px;
 
-height:58px;
+font-size:18px;
 
 }
 
 .chat-input button{
 
-font-size:40px;
+width:58px;
+
+height:58px;
+
+font-size:34px;
 
 }
 
 .notice-box{
 
-font-size:20px;
+font-size:18px;
+
+}
+
+.private-message{
+
+font-size:18px;
 
 }
 
