@@ -304,7 +304,7 @@ socket.on(
 
         </span>
 
-        <div>
+        <div class="msg-text">
 
         ${data.message}
 
@@ -313,6 +313,17 @@ socket.on(
         `;
 
         div.onclick = ()=>{
+
+            if(
+
+            data.username ===
+            "System"
+
+            ){
+
+                return;
+
+            }
 
             selectedUser = {
 
@@ -415,19 +426,7 @@ function openPrivate(){
 
     }
 
-    document
-    .getElementById(
-        "userMenu"
-    )
-    .style.display =
-    "none";
-
-    document
-    .getElementById(
-        "usersPopup"
-    )
-    .style.display =
-    "none";
+    closeAll();
 
     document
     .getElementById(
@@ -436,6 +435,12 @@ function openPrivate(){
     .innerHTML =
 
     `💬 مرسال خاص - ${selectedUser.username}`;
+
+    document
+    .getElementById(
+        "privateMessages"
+    )
+    .innerHTML = "";
 
     document
     .getElementById(
@@ -591,18 +596,33 @@ socket.on(
 
 function showUserInfo(){
 
-    const shortBrowser =
+    let shortBrowser =
+
+    "Unknown";
+
+    if(
 
     selectedUser.browser
     ?.includes("iPhone")
 
-    ?
+    ){
 
-    "Chrome iPhone"
+        shortBrowser =
+        "iPhone Browser";
 
-    :
+    }
 
-    "Browser";
+    if(
+
+    selectedUser.browser
+    ?.includes("Android")
+
+    ){
+
+        shortBrowser =
+        "Android Browser";
+
+    }
 
     document
     .getElementById(
@@ -703,7 +723,7 @@ function disconnectUser(){
 
 }
 
-/* CLOSE */
+/* CLOSE ALL */
 
 function closeAll(){
 
@@ -720,7 +740,7 @@ function closeAll(){
 
 }
 
-/* OUTSIDE CLICK */
+/* CLOSE OUTSIDE */
 
 document.addEventListener(
 
@@ -737,6 +757,46 @@ document.addEventListener(
         ){
 
             closeAll();
+
+        }
+
+});
+
+/* ENTER SEND */
+
+document.addEventListener(
+
+    "keydown",
+
+    (e)=>{
+
+        if(
+
+        e.key ===
+        "Enter"
+
+        ){
+
+            if(
+
+            document
+            .getElementById(
+                "privateBox"
+            )
+            .style.display ===
+            "flex"
+
+            ){
+
+                sendPrivate();
+
+            }
+
+            else{
+
+                sendMessage();
+
+            }
 
         }
 
