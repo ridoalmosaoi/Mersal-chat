@@ -1,14 +1,14 @@
 const socket = io({
 
-    transports:["websocket"],
+transports:["websocket"],
 
-    reconnection:true,
+reconnection:true,
 
-    reconnectionAttempts:999999,
+reconnectionAttempts:999999,
 
-    reconnectionDelay:500,
+reconnectionDelay:500,
 
-    timeout:10000
+timeout:10000
 
 });
 
@@ -18,70 +18,70 @@ let currentUser = "";
 
 let selectedUser = null;
 
-let currentColor = "#ff0000";
+let currentColor = "#ffd700";
 
 /* LOGIN */
 
 function login(){
 
-    const username =
+const username =
 
-    document
-    .getElementById(
-        "loginUsername"
-    )
-    .value
-    .trim();
+document
+.getElementById(
+"loginUsername"
+)
+.value
+.trim();
 
-    const password =
+const password =
 
-    document
-    .getElementById(
-        "loginPassword"
-    )
-    .value
-    .trim();
+document
+.getElementById(
+"loginPassword"
+)
+.value
+.trim();
 
-    if(!username){
+if(!username){
 
-        alert(
-            "اكتب الاسم"
-        );
+alert(
+"اكتب الاسم"
+);
 
-        return;
+return;
 
-    }
+}
 
-    currentUser =
-    username;
+currentUser =
+username;
 
-    localStorage.setItem(
-        "username",
-        username
-    );
+localStorage.setItem(
+"username",
+username
+);
 
-    socket.emit(
+socket.emit(
 
-        "join",
+"join",
 
-        {
+{
 
-            username,
+username,
 
-            password,
+password,
 
-            color:
-            currentColor,
+color:
+currentColor,
 
-            browser:
-            navigator.userAgent,
+browser:
+navigator.userAgent,
 
-            device:
-            navigator.platform
+device:
+navigator.platform
 
-        }
+}
 
-    );
+);
 
 }
 
@@ -89,22 +89,22 @@ function login(){
 
 window.onload = ()=>{
 
-    const savedUser =
+const savedUser =
 
-    localStorage.getItem(
-        "username"
-    );
+localStorage.getItem(
+"username"
+);
 
-    if(savedUser){
+if(savedUser){
 
-        document
-        .getElementById(
-            "loginUsername"
-        )
-        .value =
-        savedUser;
+document
+.getElementById(
+"loginUsername"
+)
+.value =
+savedUser;
 
-    }
+}
 
 };
 
@@ -112,158 +112,164 @@ window.onload = ()=>{
 
 socket.on(
 
-    "login success",
+"login success",
 
-    ()=>{
+()=>{
 
-        document
-        .getElementById(
-            "loginScreen"
-        )
-        .style.display =
-        "none";
+document
+.getElementById(
+"loginScreen"
+)
+.style.display =
+"none";
 
-        document
-        .getElementById(
-            "chatApp"
-        )
-        .style.display =
-        "flex";
+document
+.getElementById(
+"chatApp"
+)
+.style.display =
+"flex";
 
-});
+}
 
 /* BANNED */
 
+);
+
 socket.on(
 
-    "banned",
+"banned",
 
-    (msg)=>{
+(msg)=>{
 
-        document
-        .getElementById(
-            "chatApp"
-        )
-        .style.display =
-        "none";
+document
+.getElementById(
+"chatApp"
+)
+.style.display =
+"none";
 
-        document
-        .getElementById(
-            "loginScreen"
-        )
-        .style.display =
-        "flex";
+document
+.getElementById(
+"loginScreen"
+)
+.style.display =
+"flex";
 
-        alert(msg);
+alert(msg);
 
-});
+}
+
+);
 
 /* ONLINE USERS */
 
 socket.on(
 
-    "online users",
+"online users",
 
-    (users)=>{
+(users)=>{
 
-        const usersList =
+const usersList =
 
-        document
-        .getElementById(
-            "usersList"
-        );
+document
+.getElementById(
+"usersList"
+);
 
-        usersList.innerHTML = "";
+usersList.innerHTML = "";
 
-        users.forEach(user=>{
+users.forEach(user=>{
 
-            const div =
+const div =
 
-            document
-            .createElement(
-                "div"
-            );
+document
+.createElement(
+"div"
+);
 
-            div.className =
-            "online-user";
+div.className =
+"online-user";
 
-            div.innerHTML = `
+div.innerHTML = `
 
-            ${
+${
 
-            user.username ===
-            ADMIN_NAME
+user.username ===
+ADMIN_NAME
 
-            ?
+?
 
-            "⭐"
+"⭐"
 
-            :
+:
 
-            "👤"
+"👤"
 
-            }
+}
 
-            ${user.username}
+${user.username}
 
-            `;
+`;
 
-            div.onclick = ()=>{
+div.onclick = ()=>{
 
-                selectedUser =
-                user;
+selectedUser =
+user;
 
-                openUserMenu();
+openUserMenu();
 
-            };
+};
 
-            usersList.appendChild(
-                div
-            );
-
-        });
+usersList.appendChild(
+div
+);
 
 });
+
+}
+
+);
 
 /* SEND MESSAGE */
 
 function sendMessage(){
 
-    const input =
+const input =
 
-    document
-    .getElementById(
-        "messageInput"
-    );
+document
+.getElementById(
+"messageInput"
+);
 
-    const message =
-    input.value.trim();
+const message =
+input.value.trim();
 
-    if(!message){
+if(!message){
 
-        return;
+return;
 
-    }
+}
 
-    socket.emit(
+socket.emit(
 
-        "chat message",
+"chat message",
 
-        {
+{
 
-            username:
-            currentUser,
+username:
+currentUser,
 
-            color:
-            currentColor,
+color:
+currentColor,
 
-            message
+message
 
-        }
+}
 
-    );
+);
 
-    input.value = "";
+input.value = "";
 
 }
 
@@ -271,98 +277,100 @@ function sendMessage(){
 
 socket.on(
 
-    "chat message",
+"chat message",
 
-    (data)=>{
+(data)=>{
 
-        const messages =
+const messages =
 
-        document
-        .getElementById(
-            "messages"
-        );
+document
+.getElementById(
+"messages"
+);
 
-        const div =
+const div =
 
-        document
-        .createElement(
-            "div"
-        );
+document
+.createElement(
+"div"
+);
 
-        div.className =
-        "msg-line";
+div.className =
+"msg-line";
 
-        div.innerHTML = `
+div.innerHTML = `
 
-        <span
-        class="msg-name"
-        style="
-        color:${data.color};
-        ">
+<span
+class="msg-name"
+style="
+color:${data.color};
+">
 
-        &lt;${data.username}&gt;
+&lt;${data.username}&gt;
 
-        </span>
+</span>
 
-        <div class="msg-text">
+<span
+class="msg-text">
 
-        ${data.message}
+${data.message}
 
-        </div>
+</span>
 
-        `;
+`;
 
-        div.onclick = ()=>{
+div.onclick = ()=>{
 
-            if(
+if(
 
-            data.username ===
-            "System"
+data.username ===
+"System"
 
-            ){
+){
 
-                return;
+return;
 
-            }
+}
 
-            selectedUser = {
+selectedUser = {
 
-                id:data.id,
+id:data.id,
 
-                username:data.username,
+username:data.username,
 
-                ip:data.ip,
+ip:data.ip,
 
-                browser:data.browser,
+browser:data.browser,
 
-                device:data.device
+device:data.device
 
-            };
+};
 
-            openUserMenu();
+openUserMenu();
 
-        };
+};
 
-        messages.appendChild(
-            div
-        );
+messages.appendChild(
+div
+);
 
-        messages.scrollTop =
+messages.scrollTop =
+messages.scrollHeight;
 
-        messages.scrollHeight;
+}
 
-});
+);
 
 /* USERS */
 
 function toggleUsers(){
 
-    document
-    .getElementById(
-        "usersPopup"
-    )
-    .style.display =
-    "flex";
+document
+.getElementById(
+"usersPopup"
+)
+.style.display =
+"flex";
 
 }
 
@@ -370,49 +378,49 @@ function toggleUsers(){
 
 function openUserMenu(){
 
-    document
-    .getElementById(
-        "userMenu"
-    )
-    .style.display =
-    "flex";
+document
+.getElementById(
+"userMenu"
+)
+.style.display =
+"flex";
 
-    const isAdmin =
+const isAdmin =
 
-    currentUser ===
-    ADMIN_NAME;
+currentUser ===
+ADMIN_NAME;
 
-    document
-    .getElementById(
-        "adminOptions"
-    )
-    .style.display =
+document
+.getElementById(
+"adminOptions"
+)
+.style.display =
 
-    isAdmin
+isAdmin
 
-    ?
+?
 
-    "block"
+"block"
 
-    :
+:
 
-    "none";
+"none";
 
-    document
-    .getElementById(
-        "userInfoBtn"
-    )
-    .style.display =
+document
+.getElementById(
+"userInfoBtn"
+)
+.style.display =
 
-    isAdmin
+isAdmin
 
-    ?
+?
 
-    "block"
+"block"
 
-    :
+:
 
-    "none";
+"none";
 
 }
 
@@ -420,34 +428,34 @@ function openUserMenu(){
 
 function openPrivate(){
 
-    if(!selectedUser){
+if(!selectedUser){
 
-        return;
+return;
 
-    }
+}
 
-    closeAll();
+closeAll();
 
-    document
-    .getElementById(
-        "privateTitle"
-    )
-    .innerHTML =
+document
+.getElementById(
+"privateTitle"
+)
+.innerHTML =
 
-    `💬 مرسال خاص - ${selectedUser.username}`;
+`💬 مرسال - ${selectedUser.username}`;
 
-    document
-    .getElementById(
-        "privateMessages"
-    )
-    .innerHTML = "";
+document
+.getElementById(
+"privateMessages"
+)
+.innerHTML = "";
 
-    document
-    .getElementById(
-        "privateBox"
-    )
-    .style.display =
-    "flex";
+document
+.getElementById(
+"privateBox"
+)
+.style.display =
+"flex";
 
 }
 
@@ -455,82 +463,81 @@ function openPrivate(){
 
 function sendPrivate(){
 
-    const input =
+const input =
 
-    document
-    .getElementById(
-        "privateInput"
-    );
+document
+.getElementById(
+"privateInput"
+);
 
-    const message =
-    input.value.trim();
+const message =
+input.value.trim();
 
-    if(!message){
+if(!message){
 
-        return;
+return;
 
-    }
+}
 
-    socket.emit(
+socket.emit(
 
-        "private message",
+"private message",
 
-        {
+{
 
-            to:
-            selectedUser.id,
+to:
+selectedUser.id,
 
-            from:
-            currentUser,
+from:
+currentUser,
 
-            message
+message
 
-        }
+}
 
-    );
+);
 
-    const box =
+const box =
 
-    document
-    .getElementById(
-        "privateMessages"
-    );
+document
+.getElementById(
+"privateMessages"
+);
 
-    const div =
+const div =
 
-    document
-    .createElement(
-        "div"
-    );
+document
+.createElement(
+"div"
+);
 
-    div.className =
-    "private-message";
+div.className =
+"private-message";
 
-    div.innerHTML = `
+div.innerHTML = `
 
-    <b style="
-    color:gold;
-    ">
+<b style="
+color:#ffd700;
+">
 
-    أنت
+أنت
 
-    </b>
+</b>
 
-    <br>
+<br>
 
-    ${message}
+${message}
 
-    `;
+`;
 
-    box.appendChild(
-        div
-    );
+box.appendChild(
+div
+);
 
-    box.scrollTop =
+box.scrollTop =
+box.scrollHeight;
 
-    box.scrollHeight;
-
-    input.value = "";
+input.value = "";
 
 }
 
@@ -538,124 +545,124 @@ function sendPrivate(){
 
 socket.on(
 
-    "private message",
+"private message",
 
-    (data)=>{
+(data)=>{
 
-        document
-        .getElementById(
-            "privateBox"
-        )
-        .style.display =
-        "flex";
+document
+.getElementById(
+"privateBox"
+)
+.style.display =
+"flex";
 
-        const box =
+const box =
 
-        document
-        .getElementById(
-            "privateMessages"
-        );
+document
+.getElementById(
+"privateMessages"
+);
 
-        const div =
+const div =
 
-        document
-        .createElement(
-            "div"
-        );
+document
+.createElement(
+"div"
+);
 
-        div.className =
-        "private-message";
+div.className =
+"private-message";
 
-        div.innerHTML = `
+div.innerHTML = `
 
-        <b style="
-        color:#00d0b4;
-        ">
+<b style="
+color:#00d0b4;
+">
 
-        ${data.from}
+${data.from}
 
-        </b>
+</b>
 
-        <br>
+<br>
 
-        ${data.message}
+${data.message}
 
-        `;
+`;
 
-        box.appendChild(
-            div
-        );
+box.appendChild(
+div
+);
 
-        box.scrollTop =
+box.scrollTop =
+box.scrollHeight;
 
-        box.scrollHeight;
+}
 
-});
+);
 
 /* USER INFO */
 
 function showUserInfo(){
 
-    let shortBrowser =
+let shortBrowser =
+"Unknown";
 
-    "Unknown";
+if(
 
-    if(
+selectedUser.browser
+?.includes("iPhone")
 
-    selectedUser.browser
-    ?.includes("iPhone")
+){
 
-    ){
+shortBrowser =
+"iPhone";
 
-        shortBrowser =
-        "iPhone Browser";
+}
 
-    }
+if(
 
-    if(
+selectedUser.browser
+?.includes("Android")
 
-    selectedUser.browser
-    ?.includes("Android")
+){
 
-    ){
+shortBrowser =
+"Android";
 
-        shortBrowser =
-        "Android Browser";
+}
 
-    }
+document
+.getElementById(
+"userInfoPopup"
+)
+.style.display =
+"flex";
 
-    document
-    .getElementById(
-        "userInfoPopup"
-    )
-    .style.display =
-    "flex";
+document
+.getElementById(
+"userInfoContent"
+)
+.innerHTML = `
 
-    document
-    .getElementById(
-        "userInfoContent"
-    )
-    .innerHTML = `
+الاسم:
+${selectedUser.username}
 
-    الاسم:
-    ${selectedUser.username}
+<br><br>
 
-    <br><br>
+IP:
+${selectedUser.ip || "Unknown"}
 
-    IP:
-    ${selectedUser.ip || "Unknown"}
+<br><br>
 
-    <br><br>
+Browser:
+${shortBrowser}
 
-    Browser:
-    ${shortBrowser}
+<br><br>
 
-    <br><br>
+Device:
+${selectedUser.device || "Unknown"}
 
-    Device:
-    ${selectedUser.device || "Unknown"}
-
-    `;
+`;
 
 }
 
@@ -663,15 +670,15 @@ function showUserInfo(){
 
 function replyUser(){
 
-    document
-    .getElementById(
-        "messageInput"
-    )
-    .value +=
+document
+.getElementById(
+"messageInput"
+)
+.value +=
 
-    `<${selectedUser.username}> `;
+`<${selectedUser.username}> `;
 
-    closeAll();
+closeAll();
 
 }
 
@@ -679,15 +686,15 @@ function replyUser(){
 
 function kickUser(){
 
-    socket.emit(
+socket.emit(
 
-        "kick user",
+"kick user",
 
-        selectedUser.id
+selectedUser.id
 
-    );
+);
 
-    closeAll();
+closeAll();
 
 }
 
@@ -695,15 +702,15 @@ function kickUser(){
 
 function banUser(){
 
-    socket.emit(
+socket.emit(
 
-        "ban user",
+"ban user",
 
-        selectedUser.id
+selectedUser.id
 
-    );
+);
 
-    closeAll();
+closeAll();
 
 }
 
@@ -711,32 +718,32 @@ function banUser(){
 
 function disconnectUser(){
 
-    socket.emit(
+socket.emit(
 
-        "disconnect user",
+"disconnect user",
 
-        selectedUser.id
+selectedUser.id
 
-    );
+);
 
-    closeAll();
+closeAll();
 
 }
 
-/* CLOSE ALL */
+/* CLOSE */
 
 function closeAll(){
 
-    document
-    .querySelectorAll(
-        ".popup-bg"
-    )
-    .forEach(p=>{
+document
+.querySelectorAll(
+".popup-bg"
+)
+.forEach(p=>{
 
-        p.style.display =
-        "none";
+p.style.display =
+"none";
 
-    });
+});
 
 }
 
@@ -744,60 +751,64 @@ function closeAll(){
 
 document.addEventListener(
 
-    "click",
+"click",
 
-    (e)=>{
+(e)=>{
 
-        if(
+if(
 
-        e.target.classList.contains(
-            "popup-bg"
-        )
+e.target.classList.contains(
+"popup-bg"
+)
 
-        ){
+){
 
-            closeAll();
+closeAll();
 
-        }
+}
 
-});
+}
+
+);
 
 /* ENTER SEND */
 
 document.addEventListener(
 
-    "keydown",
+"keydown",
 
-    (e)=>{
+(e)=>{
 
-        if(
+if(
 
-        e.key ===
-        "Enter"
+e.key ===
+"Enter"
 
-        ){
+){
 
-            if(
+if(
 
-            document
-            .getElementById(
-                "privateBox"
-            )
-            .style.display ===
-            "flex"
+document
+.getElementById(
+"privateBox"
+)
+.style.display ===
+"flex"
 
-            ){
+){
 
-                sendPrivate();
+sendPrivate();
 
-            }
+}
 
-            else{
+else{
 
-                sendMessage();
+sendMessage();
 
-            }
+}
 
-        }
+}
 
-});
+}
+
+);
