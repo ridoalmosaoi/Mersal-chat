@@ -6,26 +6,28 @@ const http = require("http").createServer(app);
 
 const io = require("socket.io")(http,{
 
-    cors:{
-        origin:"*"
-    }
+cors:{
+origin:"*"
+}
 
 });
 
 const path = require("path");
 
+const fs = require("fs");
+
 /* STATIC */
 
 app.use(
 
-    express.static(
+express.static(
 
-        path.join(
-            __dirname,
-            "public"
-        )
+path.join(
+__dirname,
+"public"
+)
 
-    )
+)
 
 );
 
@@ -37,83 +39,101 @@ let users = [];
 
 let bannedUsers = [];
 
+if(
+
+fs.existsSync(
+"banned.json"
+)
+
+){
+
+bannedUsers = JSON.parse(
+
+fs.readFileSync(
+"banned.json"
+)
+
+);
+
+}
+
 /* CONNECTION */
 
 io.on(
 
-    "connection",
+"connection",
 
-    (socket)=>{
+(socket)=>{
 
-    console.log(
-        "User Connected"
-    );
+console.log(
+"User Connected"
+);
 
-    /* JOIN */
+/* JOIN */
 
-    socket.on(
+socket.on(
 
-        "join",
+"join",
 
-        (data)=>{
+(data)=>{
 
-        /* ADMIN PASSWORD */
+/* ADMIN PASSWORD */
 
-        if(
+if(
 
-        data.username ===
-        "Admin"
+data.username ===
+"Admin"
 
-        &&
+&&
 
-        data.password !==
-        "admin771"
+data.password !==
+"admin771"
 
-        ){
+){
 
-            socket.emit(
+socket.emit(
 
-                "banned",
+"banned",
 
-                "كلمة سر الإدارة خاطئة 🚫"
+"كلمة سر الإدارة خاطئة 🚫"
 
-            );
+);
 
-            return;
+return;
 
-        }
+}
 
-        /* REAL IP */
+/* IP */
 
-        const ip =
+const ip =
 
-        socket.handshake.headers[
-            "x-forwarded-for"
-        ]
+socket.handshake.headers[
+"x-forwarded-for"
+]
 
-        ||
+||
 
-        socket.handshake.address;
+socket.handshake.address;
 
-        /* CHECK BAN */
+/* CHECK BAN */
 
-        const banned =
+const banned =
 
-        bannedUsers.find(
+bannedUsers.find(
 
-            b=>
+b=>
 
-            b.ip === ip
+b.ip === ip
 
-        );
+);
 
-        if(banned){
+if(banned){
 
-            socket.emit(
+socket.emit(
 
-                "banned",
+"banned",
 
-                `
+`
 
 تم حظرك من شات مرسال 🚫
 
@@ -124,287 +144,310 @@ Rido77
 
 `
 
-            );
+);
 
-            return;
+return;
 
-        }
+}
 
-        /* USER */
+/* USER */
 
-        const user = {
+const user = {
 
-            id:
-            socket.id,
+id:
+socket.id,
 
-            username:
-            data.username,
+username:
+data.username,
 
-            color:
-            data.color ||
+color:
+data.color ||
 
-            "#ff0000",
+"#ffd700",
 
-            ip,
+ip,
 
-            browser:
-            data.browser ||
+browser:
+data.browser ||
 
-            "Unknown",
+"Unknown",
 
-            device:
-            data.device ||
+device:
+data.device ||
 
-            "Unknown"
+"Unknown"
 
-        };
+};
 
-        users.push(user);
+users.push(user);
 
-        /* LOGIN SUCCESS */
+/* LOGIN SUCCESS */
 
-        socket.emit(
-            "login success"
-        );
+socket.emit(
+"login success"
+);
 
-        /* ONLINE USERS */
+/* USERS ONLINE */
 
-        io.emit(
+io.emit(
 
-            "online users",
+"online users",
 
-            users
+users
 
-        );
+);
 
-        /* ADMIN MESSAGE */
+/* ADMIN MESSAGE */
 
-        if(
+if(
 
-            data.username ===
-            "Admin"
+data.username ===
+"Admin"
 
-        ){
+){
 
-            io.emit(
+io.emit(
 
-                "chat message",
+"chat message",
 
-                {
+{
 
-                    id:"system",
+id:"system",
 
-                    username:"System",
+username:"Chanserv",
 
-                    color:"gold",
+color:"gold",
 
-                    message:
-                    `تم توكيل ${data.username} مشرف 👑`
+message:
+`تم توكيل ${data.username} مشرف 👑`
 
-                }
+}
 
-            );
+);
 
-        }
+}
 
-    });
+}
 
-    /* PUBLIC CHAT */
+/* CHAT */
 
-    socket.on(
+);
 
-        "chat message",
+socket.on(
 
-        (data)=>{
+"chat message",
 
-        const user =
+(data)=>{
 
-        users.find(
+const user =
 
-            u=>
+users.find(
 
-            u.id === socket.id
+u=>
 
-        );
+u.id === socket.id
 
-        if(!user){
+);
 
-            return;
+if(!user){
 
-        }
+return;
 
-        io.emit(
+}
 
-            "chat message",
+io.emit(
 
-            {
+"chat message",
 
-                id:
-                user.id,
+{
 
-                username:
-                user.username,
+id:
+user.id,
 
-                color:
-                user.color,
+username:
+user.username,
 
-                message:
-                data.message,
+color:
+user.color,
 
-                ip:
-                user.ip,
+message:
+data.message,
 
-                browser:
-                user.browser,
+ip:
+user.ip,
 
-                device:
-                user.device
+browser:
+user.browser,
 
-            }
+device:
+user.device
 
-        );
+}
 
-    });
+);
 
-    /* PRIVATE */
+}
 
-    socket.on(
+);
 
-        "private message",
+/* PRIVATE */
 
-        (data)=>{
+socket.on(
 
-        io.to(data.to).emit(
+"private message",
 
-            "private message",
+(data)=>{
 
-            {
+io.to(data.to).emit(
 
-                from:
-                data.from,
+"private message",
 
-                message:
-                data.message
+{
 
-            }
+from:
+data.from,
 
-        );
+message:
+data.message
 
-    });
+}
 
-    /* KICK */
+);
 
-    socket.on(
+}
 
-        "kick user",
+);
 
-        (userId)=>{
+/* KICK */
 
-        const targetUser =
+socket.on(
 
-        users.find(
+"kick user",
 
-            u=>
+(userId)=>{
 
-            u.id === userId
+const targetUser =
 
-        );
+users.find(
 
-        const target =
+u=>
 
-        io.sockets.sockets
-        .get(userId);
+u.id === userId
 
-        if(target){
+);
 
-            io.emit(
+const target =
 
-                "chat message",
+io.sockets.sockets.get(
+userId
+);
 
-                {
+if(target){
 
-                    id:"system",
+io.emit(
 
-                    username:"System",
+"chat message",
 
-                    color:"orange",
+{
 
-                    message:
-                    `تم طرد ${targetUser?.username || "مستخدم"} ⚠️`
+id:"system",
 
-                }
+username:"System",
 
-            );
+color:"orange",
 
-            io.to(userId).emit(
+message:
+`تم طرد ${targetUser?.username || "مستخدم"} ⚠️`
 
-                "banned",
+}
 
-                "تم طردك من الشات ⚠️"
+);
 
-            );
+io.to(userId).emit(
 
-            target.disconnect();
+"banned",
 
-        }
+"تم طردك من الشات ⚠️"
 
-    });
+);
 
-    /* BAN */
+target.disconnect();
 
-    socket.on(
+}
 
-        "ban user",
+}
 
-        (userId)=>{
+);
 
-        const targetUser =
+/* BAN */
 
-        users.find(
+socket.on(
 
-            u=>
+"ban user",
 
-            u.id === userId
+(userId)=>{
 
-        );
+const targetUser =
 
-        if(!targetUser){
+users.find(
 
-            return;
+u=>
 
-        }
+u.id === userId
 
-        bannedUsers.push({
+);
 
-            ip:
-            targetUser.ip
+if(!targetUser){
 
-        });
+return;
 
-        io.emit(
+}
 
-            "chat message",
+bannedUsers.push({
 
-            {
+ip:
+targetUser.ip
 
-                id:"system",
+});
 
-                username:"System",
+/* SAVE BANS */
 
-                color:"red",
+fs.writeFileSync(
 
-                message:
-                `تم حظر ${targetUser.username} 🚫`
+"banned.json",
 
-            }
+JSON.stringify(
+bannedUsers,
+null,
+2
+)
 
-        );
+);
 
-        io.to(userId).emit(
+io.emit(
 
-            "banned",
+"chat message",
 
-            `
+{
+
+id:"system",
+
+username:"System",
+
+color:"red",
+
+message:
+`تم حظر ${targetUser.username} 🚫`
+
+}
+
+);
+
+io.to(userId).emit(
+
+"banned",
+
+`
 
 تم حظرك من شات مرسال 🚫
 
@@ -415,92 +458,98 @@ Rido77
 
 `
 
-        );
+);
 
-        io.sockets.sockets
-        .get(userId)
-        ?.disconnect();
+io.sockets.sockets
+.get(userId)
+?.disconnect();
 
-    });
+}
 
-    /* FULL DISCONNECT */
+);
 
-    socket.on(
+/* FULL DISCONNECT */
 
-        "disconnect user",
+socket.on(
 
-        (userId)=>{
+"disconnect user",
 
-        const targetUser =
+(userId)=>{
 
-        users.find(
+const targetUser =
 
-            u=>
+users.find(
 
-            u.id === userId
+u=>
 
-        );
+u.id === userId
 
-        io.emit(
+);
 
-            "chat message",
+io.emit(
 
-            {
+"chat message",
 
-                id:"system",
+{
 
-                username:"System",
+id:"system",
 
-                color:"#ff4444",
+username:"System",
 
-                message:
-                `تم فصل ${targetUser?.username || "مستخدم"} 🚫`
+color:"#ff4444",
 
-            }
+message:
+`تم فصل ${targetUser?.username || "مستخدم"} 🚫`
 
-        );
+}
 
-        io.to(userId).emit(
+);
 
-            "banned",
+io.to(userId).emit(
 
-            "تم فصلك من الشات 🚫"
+"banned",
 
-        );
+"تم فصلك من الشات 🚫"
 
-        io.sockets.sockets
-        .get(userId)
-        ?.disconnect();
+);
 
-    });
+io.sockets.sockets
+.get(userId)
+?.disconnect();
 
-    /* DISCONNECT */
+}
 
-    socket.on(
+);
 
-        "disconnect",
+/* DISCONNECT */
 
-        ()=>{
+socket.on(
 
-        users =
+"disconnect",
 
-        users.filter(
+()=>{
 
-            u=>
+users =
 
-            u.id !== socket.id
+users.filter(
 
-        );
+u=>
 
-        io.emit(
+u.id !== socket.id
 
-            "online users",
+);
 
-            users
+io.emit(
 
-        );
+"online users",
 
-    });
+users
+
+);
+
+}
+
+);
 
 });
 
@@ -514,14 +563,14 @@ process.env.PORT ||
 
 http.listen(
 
-    PORT,
+PORT,
 
-    ()=>{
+()=>{
 
-    console.log(
+console.log(
 
-        "Server Running 🚀"
+"Server Running 🚀"
 
-    );
+);
 
 });
