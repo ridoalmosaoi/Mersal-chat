@@ -124,6 +124,16 @@ height:100vh;
 
 background:#000;
 
+overflow:hidden;
+
+position:fixed;
+
+top:0;
+
+left:0;
+
+width:100%;
+
 }
 
 /* TOP BAR */
@@ -148,9 +158,41 @@ flex-shrink:0;
 
 }
 
+/* TOP ICONS */
+
+.top-icons{
+
+display:flex;
+
+align-items:center;
+
+gap:18px;
+
+}
+
+.top-icon{
+
+font-size:30px;
+
+cursor:pointer;
+
+transition:.2s;
+
+user-select:none;
+
+}
+
+.top-icon:hover{
+
+transform:scale(1.1);
+
+}
+
+/* ROOM */
+
 .room-name{
 
-font-size:28px;
+font-size:26px;
 
 font-weight:bold;
 
@@ -175,6 +217,8 @@ flex-direction:column;
 gap:10px;
 
 min-height:0;
+
+padding-bottom:80px;
 
 }
 
@@ -250,13 +294,23 @@ align-items:center;
 
 gap:10px;
 
-padding:10px;
+padding:8px 10px;
 
 border-top:1px solid #222;
 
 background:#000;
 
+position:sticky;
+
+bottom:0;
+
+left:0;
+
+width:100%;
+
 flex-shrink:0;
+
+z-index:999;
 
 }
 
@@ -264,15 +318,15 @@ flex-shrink:0;
 
 flex:1;
 
-height:58px;
+height:52px;
 
 border:none;
 
-border-radius:30px;
+border-radius:28px;
 
-padding:0 18px;
+padding:0 16px;
 
-font-size:20px;
+font-size:18px;
 
 background:#eee;
 
@@ -284,9 +338,9 @@ outline:none;
 
 .chat-input button{
 
-width:64px;
+width:56px;
 
-height:64px;
+height:56px;
 
 border:none;
 
@@ -294,9 +348,11 @@ background:none;
 
 color:gold;
 
-font-size:40px;
+font-size:34px;
 
 cursor:pointer;
+
+flex-shrink:0;
 
 }
 
@@ -450,7 +506,13 @@ border-radius:10px;
 
 .room-name{
 
-font-size:24px;
+font-size:23px;
+
+}
+
+.top-icon{
+
+font-size:28px;
 
 }
 
@@ -470,7 +532,7 @@ padding:16px;
 
 .chat-input input{
 
-height:54px;
+height:50px;
 
 font-size:18px;
 
@@ -478,11 +540,11 @@ font-size:18px;
 
 .chat-input button{
 
-width:58px;
+width:54px;
 
-height:58px;
+height:54px;
 
-font-size:34px;
+font-size:32px;
 
 }
 
