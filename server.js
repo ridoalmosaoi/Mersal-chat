@@ -57,7 +57,7 @@ socket.on("join",(data)=>{
 if(
 data.username === "Admin"
 &&
-data.password !== "admin771"
+data.password !== "123456"
 ){
 
 socket.emit(
@@ -69,7 +69,7 @@ return;
 
 }
 
-/* USER IP */
+/* IP */
 
 const ip =
 
@@ -126,7 +126,7 @@ return;
 
 }
 
-/* CREATE USER */
+/* USER */
 
 const user = {
 
@@ -148,13 +148,13 @@ fingerprint
 
 users.push(user);
 
-/* LOGIN SUCCESS */
+/* LOGIN */
 
 socket.emit(
 "login success"
 );
 
-/* ONLINE USERS */
+/* USERS */
 
 io.emit(
 "online users",
@@ -190,7 +190,7 @@ message:
 
 });
 
-/* PUBLIC MESSAGE */
+/* PUBLIC CHAT */
 
 socket.on(
 
@@ -232,9 +232,9 @@ device:user.device
 
 }
 
-/* PRIVATE */
-
 );
+
+/* PRIVATE */
 
 socket.on(
 
@@ -260,7 +260,7 @@ message:data.message
 
 );
 
-/* KICK USER */
+/* KICK */
 
 socket.on(
 
@@ -312,7 +312,7 @@ target.disconnect();
 
 );
 
-/* BAN USER */
+/* BAN */
 
 socket.on(
 
@@ -398,6 +398,86 @@ Rido77
 io.sockets.sockets
 .get(userId)
 ?.disconnect();
+
+}
+
+);
+
+/* GET BANNED USERS */
+
+socket.on(
+
+"get banned users",
+
+()=>{
+
+socket.emit(
+
+"banned users list",
+
+bannedUsers
+
+);
+
+}
+
+);
+
+/* UNBAN USER */
+
+socket.on(
+
+"unban user",
+
+(index)=>{
+
+bannedUsers.splice(
+index,
+1
+);
+
+/* SAVE */
+
+fs.writeFileSync(
+
+"banned.json",
+
+JSON.stringify(
+bannedUsers,
+null,
+2
+)
+
+);
+
+/* UPDATE */
+
+io.emit(
+
+"banned users updated",
+
+bannedUsers
+
+);
+
+io.emit(
+
+"chat message",
+
+{
+
+id:"system",
+
+username:"System",
+
+color:"lime",
+
+message:
+"تم فك حظر مستخدم ✅"
+
+}
+
+);
 
 }
 
