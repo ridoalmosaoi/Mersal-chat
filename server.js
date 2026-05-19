@@ -5,9 +5,15 @@ const app = express();
 const http = require("http").createServer(app);
 
 const io = require("socket.io")(http,{
+
 cors:{
 origin:"*"
-}
+},
+
+pingTimeout:60000,
+
+pingInterval:25000
+
 });
 
 const path = require("path");
@@ -190,7 +196,7 @@ message:
 
 });
 
-/* PUBLIC CHAT */
+/* PUBLIC MESSAGE */
 
 socket.on(
 
@@ -314,7 +320,7 @@ io.to(userId).emit(
 
 );
 
-target.disconnect();
+target.disconnect(true);
 
 }
 
@@ -421,7 +427,7 @@ Rido77
 
 io.sockets.sockets
 .get(userId)
-?.disconnect();
+?.disconnect(true);
 
 }
 
@@ -457,7 +463,7 @@ bannedUsers
 
 );
 
-/* UNBAN USER */
+/* UNBAN */
 
 socket.on(
 
@@ -578,7 +584,7 @@ io.to(userId).emit(
 
 io.sockets.sockets
 .get(userId)
-?.disconnect();
+?.disconnect(true);
 
 }
 
