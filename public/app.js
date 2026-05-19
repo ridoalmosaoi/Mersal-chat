@@ -2,13 +2,23 @@ const socket = io({
 
 transports:["websocket"],
 
+upgrade:false,
+
+rememberUpgrade:true,
+
 reconnection:true,
 
 reconnectionAttempts:999999,
 
-reconnectionDelay:500,
+reconnectionDelay:1000,
 
-timeout:10000
+reconnectionDelayMax:3000,
+
+timeout:20000,
+
+pingTimeout:60000,
+
+pingInterval:25000
 
 });
 
@@ -19,6 +29,145 @@ let currentUser = "";
 let selectedUser = null;
 
 let currentColor = "#ffd700";
+
+/* KEEP CONNECTION */
+
+document.addEventListener(
+
+"visibilitychange",
+
+()=>{
+
+if(
+
+document.visibilityState ===
+"visible"
+
+){
+
+if(
+
+!socket.connected
+
+){
+
+socket.connect();
+
+}
+
+}
+
+});
+
+/* CONNECTION STATUS */
+
+socket.on(
+
+"disconnect",
+
+()=>{
+
+const div =
+
+document.createElement(
+"div"
+);
+
+div.className =
+"msg-line";
+
+div.innerHTML = `
+
+<span style="
+color:red;
+font-weight:bold;
+">
+
+⚠️ انقطع الاتصال...
+
+</span>
+
+`;
+
+document
+.getElementById(
+"messages"
+)
+?.appendChild(div);
+
+});
+
+socket.on(
+
+"reconnect",
+
+()=>{
+
+const div =
+
+document.createElement(
+"div"
+);
+
+div.className =
+"msg-line";
+
+div.innerHTML = `
+
+<span style="
+color:lime;
+font-weight:bold;
+">
+
+✅ عاد الاتصال
+
+</span>
+
+`;
+
+document
+.getElementById(
+"messages"
+)
+?.appendChild(div);
+
+});
+
+socket.on(
+
+"reconnecting",
+
+()=>{
+
+const div =
+
+document.createElement(
+"div"
+);
+
+div.className =
+"msg-line";
+
+div.innerHTML = `
+
+<span style="
+color:orange;
+font-weight:bold;
+">
+
+🔄 جاري إعادة الاتصال...
+
+</span>
+
+`;
+
+document
+.getElementById(
+"messages"
+)
+?.appendChild(div);
+
+});
 
 /* LOGIN */
 
