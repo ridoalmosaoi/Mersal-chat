@@ -130,6 +130,24 @@ document
 .style.display =
 "flex";
 
+/* ADMIN BUTTON */
+
+if(
+
+currentUser ===
+ADMIN_NAME
+
+){
+
+document
+.getElementById(
+"bannedPanelBtn"
+)
+.style.display =
+"block";
+
+}
+
 }
 
 );
@@ -706,6 +724,12 @@ closeAll();
 
 function openBannedPanel(){
 
+if(
+currentUser !== ADMIN_NAME
+){
+return;
+}
+
 socket.emit(
 "get banned users"
 );
@@ -799,7 +823,13 @@ div.className =
 
 div.innerHTML = `
 
-🚫 محظور
+🚫 ${ban.username || "مستخدم"}
+
+<br><br>
+
+IP:
+
+${ban.ip}
 
 <br><br>
 
@@ -834,6 +864,12 @@ div
 /* UNBAN */
 
 function unbanUser(index){
+
+if(
+currentUser !== ADMIN_NAME
+){
+return;
+}
 
 socket.emit(
 "unban user",
