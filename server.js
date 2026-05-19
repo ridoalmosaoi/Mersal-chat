@@ -268,6 +268,16 @@ socket.on(
 
 (userId)=>{
 
+const sender = users.find(
+u=>u.id === socket.id
+);
+
+if(
+sender?.username !== "Admin"
+){
+return;
+}
+
 const targetUser = users.find(
 u=>u.id === userId
 );
@@ -320,6 +330,16 @@ socket.on(
 
 (userId)=>{
 
+const sender = users.find(
+u=>u.id === socket.id
+);
+
+if(
+sender?.username !== "Admin"
+){
+return;
+}
+
 const targetUser = users.find(
 u=>u.id === userId
 );
@@ -332,10 +352,14 @@ return;
 
 bannedUsers.push({
 
-ip:targetUser.ip,
+ip:
+targetUser.ip,
 
 fingerprint:
-targetUser.fingerprint
+targetUser.fingerprint,
+
+username:
+targetUser.username
 
 });
 
@@ -411,6 +435,16 @@ socket.on(
 
 ()=>{
 
+const sender = users.find(
+u=>u.id === socket.id
+);
+
+if(
+sender?.username !== "Admin"
+){
+return;
+}
+
 socket.emit(
 
 "banned users list",
@@ -430,6 +464,16 @@ socket.on(
 "unban user",
 
 (index)=>{
+
+const sender = users.find(
+u=>u.id === socket.id
+);
+
+if(
+sender?.username !== "Admin"
+){
+return;
+}
 
 bannedUsers.splice(
 index,
@@ -490,6 +534,16 @@ socket.on(
 "disconnect user",
 
 (userId)=>{
+
+const sender = users.find(
+u=>u.id === socket.id
+);
+
+if(
+sender?.username !== "Admin"
+){
+return;
+}
 
 const targetUser = users.find(
 u=>u.id === userId
