@@ -5,11 +5,9 @@ const app = express();
 const http = require("http").createServer(app);
 
 const io = require("socket.io")(http,{
-
 cors:{
 origin:"*"
 }
-
 });
 
 const path = require("path");
@@ -19,16 +17,9 @@ const fs = require("fs");
 /* STATIC */
 
 app.use(
-
 express.static(
-
-path.join(
-__dirname,
-"public"
+path.join(__dirname,"public")
 )
-
-)
-
 );
 
 /* USERS */
@@ -39,71 +30,46 @@ let users = [];
 
 let bannedUsers = [];
 
+/* LOAD BANS */
+
 if(
-
-fs.existsSync(
-"banned.json"
-)
-
+fs.existsSync("banned.json")
 ){
 
 bannedUsers = JSON.parse(
-
-fs.readFileSync(
-"banned.json"
-)
-
+fs.readFileSync("banned.json")
 );
 
 }
 
 /* CONNECTION */
 
-io.on(
+io.on("connection",(socket)=>{
 
-"connection",
-
-(socket)=>{
-
-console.log(
-"User Connected"
-);
+console.log("User Connected");
 
 /* JOIN */
 
-socket.on(
-
-"join",
-
-(data)=>{
+socket.on("join",(data)=>{
 
 /* ADMIN PASSWORD */
 
 if(
-
-data.username ===
-"Admin"
-
+data.username === "Admin"
 &&
-
-data.password !==
-"admin771"
-
+data.password !== "admin771"
 ){
 
 socket.emit(
-
 "banned",
-
 "كلمة سر الإدارة خاطئة 🚫"
-
 );
 
 return;
 
 }
 
-/* IP */
+/* USER IP */
 
 const ip =
 
@@ -115,15 +81,25 @@ socket.handshake.headers[
 
 socket.handshake.address;
 
+/* FINGERPRINT */
+
+const fingerprint =
+
+(data.browser || "") +
+
+(data.device || "");
+
 /* CHECK BAN */
 
-const banned =
-
-bannedUsers.find(
+const banned = bannedUsers.find(
 
 b=>
 
 b.ip === ip
+
+||
+
+b.fingerprint === fingerprint
 
 );
 
@@ -150,32 +126,23 @@ return;
 
 }
 
-/* USER */
+/* CREATE USER */
 
 const user = {
 
-id:
-socket.id,
+id:socket.id,
 
-username:
-data.username,
+username:data.username,
 
-color:
-data.color ||
-
-"#ffd700",
+color:data.color || "#ffd700",
 
 ip,
 
-browser:
-data.browser ||
+browser:data.browser || "Unknown",
 
-"Unknown",
+device:data.device || "Unknown",
 
-device:
-data.device ||
-
-"Unknown"
+fingerprint
 
 };
 
@@ -187,23 +154,17 @@ socket.emit(
 "login success"
 );
 
-/* USERS ONLINE */
+/* ONLINE USERS */
 
 io.emit(
-
 "online users",
-
 users
-
 );
 
-/* ADMIN MESSAGE */
+/* ADMIN JOIN */
 
 if(
-
-data.username ===
-"Admin"
-
+data.username === "Admin"
 ){
 
 io.emit(
@@ -214,7 +175,7 @@ io.emit(
 
 id:"system",
 
-username:"Chanserv",
+username:"System",
 
 color:"gold",
 
@@ -227,11 +188,9 @@ message:
 
 }
 
-}
+});
 
-/* CHAT */
-
-);
+/* PUBLIC MESSAGE */
 
 socket.on(
 
@@ -239,20 +198,12 @@ socket.on(
 
 (data)=>{
 
-const user =
-
-users.find(
-
-u=>
-
-u.id === socket.id
-
+const user = users.find(
+u=>u.id === socket.id
 );
 
 if(!user){
-
 return;
-
 }
 
 io.emit(
@@ -261,36 +212,29 @@ io.emit(
 
 {
 
-id:
-user.id,
+id:user.id,
 
-username:
-user.username,
+username:user.username,
 
-color:
-user.color,
+color:user.color,
 
-message:
-data.message,
+message:data.message,
 
-ip:
-user.ip,
+ip:user.ip,
 
-browser:
-user.browser,
+browser:user.browser,
 
-device:
-user.device
+device:user.device
 
 }
 
 );
 
 }
-
-);
 
 /* PRIVATE */
+
+);
 
 socket.on(
 
@@ -304,11 +248,9 @@ io.to(data.to).emit(
 
 {
 
-from:
-data.from,
+from:data.from,
 
-message:
-data.message
+message:data.message
 
 }
 
@@ -318,7 +260,7 @@ data.message
 
 );
 
-/* KICK */
+/* KICK USER */
 
 socket.on(
 
@@ -326,21 +268,12 @@ socket.on(
 
 (userId)=>{
 
-const targetUser =
-
-users.find(
-
-u=>
-
-u.id === userId
-
+const targetUser = users.find(
+u=>u.id === userId
 );
 
 const target =
-
-io.sockets.sockets.get(
-userId
-);
+io.sockets.sockets.get(userId);
 
 if(target){
 
@@ -379,7 +312,7 @@ target.disconnect();
 
 );
 
-/* BAN */
+/* BAN USER */
 
 socket.on(
 
@@ -387,30 +320,26 @@ socket.on(
 
 (userId)=>{
 
-const targetUser =
-
-users.find(
-
-u=>
-
-u.id === userId
-
+const targetUser = users.find(
+u=>u.id === userId
 );
 
 if(!targetUser){
-
 return;
-
 }
+
+/* SAVE BAN */
 
 bannedUsers.push({
 
-ip:
-targetUser.ip
+ip:targetUser.ip,
+
+fingerprint:
+targetUser.fingerprint
 
 });
 
-/* SAVE BANS */
+/* SAVE FILE */
 
 fs.writeFileSync(
 
@@ -423,6 +352,8 @@ null,
 )
 
 );
+
+/* SYSTEM MESSAGE */
 
 io.emit(
 
@@ -443,6 +374,8 @@ message:
 
 );
 
+/* SEND BAN */
+
 io.to(userId).emit(
 
 "banned",
@@ -460,6 +393,8 @@ Rido77
 
 );
 
+/* DISCONNECT */
+
 io.sockets.sockets
 .get(userId)
 ?.disconnect();
@@ -476,14 +411,8 @@ socket.on(
 
 (userId)=>{
 
-const targetUser =
-
-users.find(
-
-u=>
-
-u.id === userId
-
+const targetUser = users.find(
+u=>u.id === userId
 );
 
 io.emit(
@@ -529,22 +458,13 @@ socket.on(
 
 ()=>{
 
-users =
-
-users.filter(
-
-u=>
-
-u.id !== socket.id
-
+users = users.filter(
+u=>u.id !== socket.id
 );
 
 io.emit(
-
 "online users",
-
 users
-
 );
 
 }
@@ -556,21 +476,10 @@ users
 /* START */
 
 const PORT =
+process.env.PORT || 3000;
 
-process.env.PORT ||
+http.listen(PORT,()=>{
 
-3000;
-
-http.listen(
-
-PORT,
-
-()=>{
-
-console.log(
-
-"Server Running 🚀"
-
-);
+console.log("Server Running 🚀");
 
 });
