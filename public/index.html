@@ -17,7 +17,7 @@ user-scalable=no
 
 <title>
 
-مرسال شات
+مرسال
 
 </title>
 
@@ -39,7 +39,7 @@ class="login-screen">
 
 <h2>
 
-مرسال شات
+مرسال
 
 </h2>
 
@@ -75,57 +75,43 @@ style="display:none;">
 
 <div class="top-bar">
 
+<div class="top-icons">
+
+<span
+class="top-icon"
+onclick="toggleUsers()">
+
+👥
+
+</span>
+
+</div>
+
 <div class="room-name">
 
 #العراق
 
 </div>
 
-<div
-style="
-display:flex;
-align-items:center;
-gap:15px;
-">
+<div class="top-icons">
 
 <span
+class="top-icon"
+onclick="openBannedPanel()">
+
+🚫
+
+</span>
+
+<span
+class="top-icon"
 onclick="
 alert(
-'الإعدادات قريباً 😎'
-)"
-style="
-font-size:28px;
-cursor:pointer;
+'مرسال 😎'
+)
 ">
 
 ⚙️
-
-</span>
-
-<span
-onclick="
-toggleUsers()
-"
-style="
-font-size:28px;
-cursor:pointer;
-">
-
-👥
-
-</span>
-
-<span
-onclick="
-alert(
-'اختر مستخدم ثم اضغط مرسال خاص 😎'
-)"
-style="
-font-size:28px;
-cursor:pointer;
-">
-
-💬
 
 </span>
 
@@ -141,7 +127,7 @@ class="messages">
 
 <div class="notice-box">
 
-❤️ أهلاً بكم في مرسال شات،
+❤️ أهلاً بكم في مرسال،
 نتمنى لكم وقت ممتع
 
 </div>
@@ -187,47 +173,6 @@ color:gold;
 </div>
 
 <div id="usersList"></div>
-
-</div>
-
-</div>
-
-<!-- PRIVATE -->
-
-<div
-id="privateBox"
-class="popup-bg">
-
-<div class="popup-box">
-
-<div
-id="privateTitle"
-class="online-user"
-style="
-color:#00d0b4;
-">
-
-💬 مرسال خاص
-
-</div>
-
-<div id="privateMessages"></div>
-
-<div class="chat-input">
-
-<button
-onclick="sendPrivate()">
-
-➤
-
-</button>
-
-<input
-type="text"
-id="privateInput"
-placeholder="رسالة خاصة">
-
-</div>
 
 </div>
 
@@ -286,7 +231,7 @@ style="
 color:red;
 ">
 
-⛔ حظر
+🚫 حظر
 
 </div>
 
@@ -297,9 +242,50 @@ style="
 color:#ff4444;
 ">
 
-🚫 فصل كلي
+⛔ فصل كلي
 
 </div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- PRIVATE -->
+
+<div
+id="privateBox"
+class="popup-bg">
+
+<div class="popup-box">
+
+<div
+id="privateTitle"
+class="online-user"
+style="
+color:#00d0b4;
+">
+
+💬 مرسال خاص
+
+</div>
+
+<div id="privateMessages"></div>
+
+<div class="chat-input">
+
+<button
+onclick="sendPrivate()">
+
+➤
+
+</button>
+
+<input
+type="text"
+id="privateInput"
+placeholder="رسالة خاصة">
 
 </div>
 
@@ -329,6 +315,30 @@ color:gold;
 id="userInfoContent">
 
 </div>
+
+</div>
+
+</div>
+
+<!-- BANNED USERS -->
+
+<div
+id="bannedPopup"
+class="popup-bg">
+
+<div class="popup-box">
+
+<div
+class="online-user"
+style="
+color:red;
+">
+
+🚫 المحظورين
+
+</div>
+
+<div id="bannedList"></div>
 
 </div>
 
