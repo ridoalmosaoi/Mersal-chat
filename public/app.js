@@ -132,9 +132,9 @@ document
 
 }
 
-/* BANNED */
-
 );
+
+/* BANNED */
 
 socket.on(
 
@@ -322,14 +322,9 @@ ${data.message}
 div.onclick = ()=>{
 
 if(
-
-data.username ===
-"System"
-
+data.username === "System"
 ){
-
 return;
-
 }
 
 selectedUser = {
@@ -429,9 +424,7 @@ isAdmin
 function openPrivate(){
 
 if(!selectedUser){
-
 return;
-
 }
 
 closeAll();
@@ -474,9 +467,7 @@ const message =
 input.value.trim();
 
 if(!message){
-
 return;
-
 }
 
 socket.emit(
@@ -485,11 +476,9 @@ socket.emit(
 
 {
 
-to:
-selectedUser.id,
+to:selectedUser.id,
 
-from:
-currentUser,
+from:currentUser,
 
 message
 
@@ -608,27 +597,19 @@ let shortBrowser =
 "Unknown";
 
 if(
-
 selectedUser.browser
 ?.includes("iPhone")
-
 ){
-
 shortBrowser =
 "iPhone";
-
 }
 
 if(
-
 selectedUser.browser
 ?.includes("Android")
-
 ){
-
 shortBrowser =
 "Android";
-
 }
 
 document
@@ -687,11 +668,8 @@ closeAll();
 function kickUser(){
 
 socket.emit(
-
 "kick user",
-
 selectedUser.id
-
 );
 
 closeAll();
@@ -703,11 +681,8 @@ closeAll();
 function banUser(){
 
 socket.emit(
-
 "ban user",
-
 selectedUser.id
-
 );
 
 closeAll();
@@ -719,14 +694,151 @@ closeAll();
 function disconnectUser(){
 
 socket.emit(
-
 "disconnect user",
-
 selectedUser.id
-
 );
 
 closeAll();
+
+}
+
+/* OPEN BANNED PANEL */
+
+function openBannedPanel(){
+
+socket.emit(
+"get banned users"
+);
+
+document
+.getElementById(
+"bannedPopup"
+)
+.style.display =
+"flex";
+
+}
+
+/* RECEIVE BANNED */
+
+socket.on(
+
+"banned users list",
+
+(list)=>{
+
+renderBannedUsers(
+list
+);
+
+}
+
+);
+
+/* UPDATE BANNED */
+
+socket.on(
+
+"banned users updated",
+
+(list)=>{
+
+renderBannedUsers(
+list
+);
+
+}
+
+);
+
+/* RENDER BANNED */
+
+function renderBannedUsers(list){
+
+const box =
+
+document
+.getElementById(
+"bannedList"
+);
+
+if(!box){
+return;
+}
+
+box.innerHTML = "";
+
+if(list.length <= 0){
+
+box.innerHTML = `
+
+<div
+class="online-user">
+
+لا يوجد محظورين 😎
+
+</div>
+
+`;
+
+return;
+
+}
+
+list.forEach((ban,index)=>{
+
+const div =
+
+document
+.createElement(
+"div"
+);
+
+div.className =
+"online-user";
+
+div.innerHTML = `
+
+🚫 محظور
+
+<br><br>
+
+<button
+onclick="
+unbanUser(${index})
+"
+style="
+margin-top:10px;
+padding:10px 16px;
+border:none;
+border-radius:10px;
+background:lime;
+font-size:18px;
+cursor:pointer;
+">
+
+فك الحظر
+
+</button>
+
+`;
+
+box.appendChild(
+div
+);
+
+});
+
+}
+
+/* UNBAN */
+
+function unbanUser(index){
+
+socket.emit(
+"unban user",
+index
+);
 
 }
 
@@ -780,10 +892,7 @@ document.addEventListener(
 (e)=>{
 
 if(
-
-e.key ===
-"Enter"
-
+e.key === "Enter"
 ){
 
 if(
@@ -792,8 +901,7 @@ document
 .getElementById(
 "privateBox"
 )
-.style.display ===
-"flex"
+.style.display === "flex"
 
 ){
 
