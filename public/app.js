@@ -1,6 +1,6 @@
 const socket = io({
 
-transports:["websocket"],
+transports:["websocket","polling"],
 
 forceNew:false,
 
@@ -357,9 +357,7 @@ document
 
 }
 
-}
-
-);
+});
 
 /* NORMAL BAN */
 
@@ -385,9 +383,7 @@ document
 
 alert(msg);
 
-}
-
-);
+});
 
 /* FULL DEVICE BLOCK */
 
@@ -558,9 +554,7 @@ const message =
 input.value.trim();
 
 if(!message){
-
 return;
-
 }
 
 socket.emit(
