@@ -1,8 +1,6 @@
 const socket = io({
 
-transports:["websocket","polling"],
-
-forceNew:false,
+transports:["polling","websocket"],
 
 upgrade:true,
 
@@ -18,11 +16,7 @@ reconnectionDelayMax:5000,
 
 randomizationFactor:0,
 
-timeout:60000,
-
-pingTimeout:180000,
-
-pingInterval:30000
+timeout:60000
 
 });
 
@@ -76,11 +70,7 @@ document.visibilityState ===
 
 ){
 
-if(
-
-!socket.connected
-
-){
+if(!socket.connected){
 
 socket.connect();
 
@@ -90,7 +80,58 @@ socket.connect();
 
 });
 
-/* CONNECTION STATUS */
+/* KEEP ALIVE */
+
+setInterval(()=>{
+
+if(socket.connected){
+
+socket.emit(
+"ping alive"
+);
+
+}
+
+},15000);
+
+socket.on(
+
+"pong alive",
+
+()=>{
+
+console.log(
+"alive"
+);
+
+});
+
+/* CONNECTION */
+
+socket.on(
+
+"connect",
+
+()=>{
+
+console.log(
+"Connected ✅"
+);
+
+});
+
+socket.on(
+
+"connect_error",
+
+(err)=>{
+
+console.log(
+"Connect Error:",
+err.message
+);
+
+});
 
 socket.on(
 
@@ -182,51 +223,6 @@ messages.scrollHeight;
 
 });
 
-socket.on(
-
-"reconnecting",
-
-()=>{
-
-const messages =
-
-document.getElementById(
-"messages"
-);
-
-if(!messages){
-return;
-}
-
-const div =
-
-document.createElement(
-"div"
-);
-
-div.className =
-"msg-line";
-
-div.innerHTML = `
-
-<span style="
-color:orange;
-font-weight:bold;
-">
-
-🔄 جاري إعادة الاتصال...
-
-</span>
-
-`;
-
-messages.appendChild(div);
-
-messages.scrollTop =
-messages.scrollHeight;
-
-});
-
 /* LOGIN */
 
 function login(){
@@ -254,6 +250,18 @@ if(!username){
 alert(
 "اكتب الاسم"
 );
+
+return;
+
+}
+
+if(!socket.connected){
+
+alert(
+"السيرفر غير متصل 🚫"
+);
+
+socket.connect();
 
 return;
 
@@ -339,8 +347,6 @@ document
 .style.display =
 "flex";
 
-/* ADMIN BUTTON */
-
 if(
 
 currentUser ===
@@ -359,7 +365,7 @@ document
 
 });
 
-/* NORMAL BAN */
+/* BANNED */
 
 socket.on(
 
@@ -385,7 +391,7 @@ alert(msg);
 
 });
 
-/* FULL DEVICE BLOCK */
+/* FULL BLOCK */
 
 socket.on(
 
@@ -420,7 +426,7 @@ document
 
 });
 
-/* BLOCK DEVICE */
+/* DEVICE BLOCK */
 
 if(
 
@@ -982,7 +988,7 @@ closeAll();
 
 }
 
-/* NORMAL BAN */
+/* BAN */
 
 function banUser(){
 
