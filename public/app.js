@@ -41,6 +41,28 @@ let selectedUser = null;
 
 let currentColor = "#ffd700";
 
+/* COLOR SELECT */
+
+function selectColor(color){
+
+currentColor = color;
+
+document
+.querySelectorAll(
+".color-btn"
+)
+.forEach(btn=>{
+
+btn.style.border =
+"3px solid white";
+
+});
+
+event.target.style.border =
+"3px solid red";
+
+}
+
 /* DEVICE TOKEN */
 
 let deviceToken =
@@ -82,7 +104,7 @@ socket.emit(
 
 },15000);
 
-/* RECONNECT WHEN RETURN */
+/* RETURN RECONNECT */
 
 document.addEventListener(
 
@@ -342,7 +364,7 @@ document
 
 });
 
-/* FULL DEVICE BLOCK */
+/* FULL BLOCK */
 
 socket.on(
 
@@ -458,6 +480,38 @@ if(!messages){
 return;
 }
 
+let messageText =
+data.message;
+
+/* RED NAME */
+
+const regex =
+/<([^>]+)>/g;
+
+messageText =
+messageText.replace(
+
+regex,
+
+(match)=>{
+
+return `
+
+<span style="
+color:red;
+font-weight:bold;
+">
+
+${match}
+
+</span>
+
+`;
+
+}
+
+);
+
 const div =
 
 document
@@ -474,6 +528,7 @@ div.innerHTML = `
 class="msg-name"
 style="
 color:${data.color};
+font-weight:bold;
 ">
 
 &lt;${data.username}&gt;
@@ -483,7 +538,7 @@ color:${data.color};
 <span
 class="msg-text">
 
-${data.message}
+${messageText}
 
 </span>
 
@@ -695,7 +750,7 @@ input.value = "";
 
 }
 
-/* USERS POPUP */
+/* USERS */
 
 function toggleUsers(){
 
@@ -841,7 +896,7 @@ closeAll();
 
 }
 
-/* ADMIN ACTIONS */
+/* ADMIN */
 
 function kickUser(){
 
