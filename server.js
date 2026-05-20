@@ -10,11 +10,11 @@ cors:{
 origin:"*"
 },
 
-transports:["websocket"],
+transports:["websocket","polling"],
 
-pingTimeout:120000,
+pingTimeout:180000,
 
-pingInterval:25000
+pingInterval:30000
 
 });
 
