@@ -68,7 +68,7 @@ let users = [];
 
 let bannedUsers = [];
 
-/* LOAD BANS */
+/* LOAD BANNED */
 
 if(
 fs.existsSync("banned.json")
@@ -77,7 +77,11 @@ fs.existsSync("banned.json")
 try{
 
 bannedUsers = JSON.parse(
-fs.readFileSync("banned.json")
+
+fs.readFileSync(
+"banned.json"
+)
+
 );
 
 }catch{
@@ -88,7 +92,7 @@ bannedUsers = [];
 
 }
 
-/* SAVE BANS */
+/* SAVE BANNED */
 
 function saveBans(){
 
@@ -135,7 +139,7 @@ message:text
 io.on("connection",(socket)=>{
 
 console.log(
-"User Connected:",
+"Connected:",
 socket.id
 );
 
@@ -163,25 +167,17 @@ socket.on(
 
 try{
 
-/* CLEAN DUPLICATES */
-
 users = users.filter(
 u=>u.id !== socket.id
 );
-
-/* USERNAME */
 
 const username =
 (data.username || "")
 .trim();
 
-/* PASSWORD */
-
 const password =
 (data.password || "")
 .trim();
-
-/* VALIDATE */
 
 if(!username){
 
@@ -197,21 +193,25 @@ return;
 /* ADMIN */
 
 if(
+
 username === "Admin"
+
 &&
+
 password !== "123456"
+
 ){
 
 socket.emit(
 "banned",
-"كلمة سر الإدارة خاطئة 🚫"
+"كلمة سر الإدارة خطأ 🚫"
 );
 
 return;
 
 }
 
-/* DUPLICATE USER */
+/* DUPLICATE */
 
 const sameUser = users.find(
 
@@ -229,14 +229,14 @@ if(sameUser){
 
 socket.emit(
 "banned",
-"الاسم مستخدم بالفعل 🚫"
+"الاسم مستخدم 🚫"
 );
 
 return;
 
 }
 
-/* USER IP */
+/* IP */
 
 const ip =
 
@@ -256,7 +256,9 @@ socket.handshake.address
 
 const fingerprint =
 
-(data.browser || "") +
+(data.browser || "")
+
++
 
 (data.device || "");
 
@@ -290,11 +292,7 @@ socket.emit(
 
 "full device banned",
 
-`
-
-🚫 تم فصلك كليًا من شات مرسال
-
-`
+"🚫 تم فصلك كليًا"
 
 );
 
@@ -306,11 +304,7 @@ socket.emit(
 
 "banned",
 
-`
-
-🚫 تم حظرك من شات مرسال
-
-`
+"🚫 تم حظرك"
 
 );
 
@@ -318,7 +312,7 @@ return;
 
 }
 
-/* CREATE USER */
+/* USER */
 
 const user = {
 
@@ -332,10 +326,10 @@ data.color || "#ffd700",
 ip,
 
 browser:
-data.browser || "Unknown",
+data.browser || "",
 
 device:
-data.device || "Unknown",
+data.device || "",
 
 deviceToken:
 data.deviceToken || "",
@@ -346,7 +340,7 @@ fingerprint
 
 users.push(user);
 
-/* LOGIN */
+/* SUCCESS */
 
 socket.emit(
 "login success"
@@ -359,21 +353,15 @@ io.emit(
 users
 );
 
-/* ADMIN MESSAGE */
-
-if(
-username === "Admin"
-){
+/* SYSTEM */
 
 systemMessage(
-`تم توكيل ${username} مشرف 👑`,
-"gold"
+`${username} دخل الشات`,
+"#ffd700"
 );
 
-}
-
 console.log(
-`${username} Joined`
+`${username} joined`
 );
 
 }catch(err){
@@ -387,7 +375,7 @@ err
 
 });
 
-/* PUBLIC MESSAGE */
+/* CHAT MESSAGE */
 
 socket.on(
 
@@ -407,13 +395,11 @@ return;
 
 const message =
 (data.message || "")
-trim();
+.trim();
 
 if(!message){
 return;
 }
-
-/* LIMIT MESSAGE */
 
 if(message.length > 500){
 return;
@@ -454,7 +440,7 @@ err
 
 });
 
-/* PRIVATE MESSAGE */
+/* PRIVATE */
 
 socket.on(
 
@@ -493,7 +479,7 @@ err
 
 });
 
-/* KICK USER */
+/* KICK */
 
 socket.on(
 
@@ -511,22 +497,22 @@ sender?.username !== "Admin"
 return;
 }
 
-const targetUser = users.find(
+const target = users.find(
 u=>u.id === userId
 );
 
-if(!targetUser){
+if(!target){
 return;
 }
 
 systemMessage(
-`تم طرد ${targetUser.username} ⚠️`,
+`تم طرد ${target.username}`,
 "orange"
 );
 
 io.to(userId).emit(
 "banned",
-"تم طردك من الشات ⚠️"
+"⚠️ تم طردك"
 );
 
 io.sockets.sockets
@@ -535,7 +521,7 @@ io.sockets.sockets
 
 });
 
-/* NORMAL BAN */
+/* BAN */
 
 socket.on(
 
@@ -553,29 +539,27 @@ sender?.username !== "Admin"
 return;
 }
 
-const targetUser = users.find(
+const target = users.find(
 u=>u.id === userId
 );
 
-if(!targetUser){
+if(!target){
 return;
 }
-
-/* SAVE BAN */
 
 bannedUsers.push({
 
 ip:
-targetUser.ip,
+target.ip,
 
 fingerprint:
-targetUser.fingerprint,
+target.fingerprint,
 
 deviceToken:
-targetUser.deviceToken,
+target.deviceToken,
 
 username:
-targetUser.username,
+target.username,
 
 fullDisconnect:false
 
@@ -583,24 +567,15 @@ fullDisconnect:false
 
 saveBans();
 
-/* MESSAGE */
-
 systemMessage(
-`تم حظر ${targetUser.username} 🚫`,
+`تم حظر ${target.username}`,
 "red"
 );
 
-/* SEND */
-
 io.to(userId).emit(
-
 "banned",
-
-"🚫 تم حظرك من الشات"
-
+"🚫 تم حظرك"
 );
-
-/* DISCONNECT */
 
 io.sockets.sockets
 .get(userId)
@@ -626,29 +601,27 @@ sender?.username !== "Admin"
 return;
 }
 
-const targetUser = users.find(
+const target = users.find(
 u=>u.id === userId
 );
 
-if(!targetUser){
+if(!target){
 return;
 }
-
-/* SAVE FULL BAN */
 
 bannedUsers.push({
 
 ip:
-targetUser.ip,
+target.ip,
 
 fingerprint:
-targetUser.fingerprint,
+target.fingerprint,
 
 deviceToken:
-targetUser.deviceToken,
+target.deviceToken,
 
 username:
-targetUser.username,
+target.username,
 
 fullDisconnect:true
 
@@ -656,14 +629,10 @@ fullDisconnect:true
 
 saveBans();
 
-/* MESSAGE */
-
 systemMessage(
-`تم فصل ${targetUser.username} كليًا ⛔`,
+`تم فصل ${target.username} كليًا`,
 "#ff2222"
 );
-
-/* SEND */
 
 io.to(userId).emit(
 
@@ -672,8 +641,6 @@ io.to(userId).emit(
 "🚫 تم فصلك كليًا"
 
 );
-
-/* DISCONNECT */
 
 io.sockets.sockets
 .get(userId)
@@ -774,8 +741,13 @@ users
 
 if(disconnectedUser){
 
+systemMessage(
+`${disconnectedUser.username} خرج`,
+"#666"
+);
+
 console.log(
-`${disconnectedUser.username} Left`
+`${disconnectedUser.username} left`
 );
 
 }
