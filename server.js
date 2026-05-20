@@ -440,7 +440,7 @@ err
 
 });
 
-/* PRIVATE */
+/* PRIVATE MESSAGE */
 
 socket.on(
 
@@ -461,6 +461,8 @@ io.to(data.to).emit(
 {
 
 from:data.from,
+
+fromId:socket.id,
 
 message:data.message
 
