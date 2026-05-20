@@ -2,21 +2,23 @@ const socket = io({
 
 transports:["websocket"],
 
+forceNew:true,
+
 upgrade:false,
 
 rememberUpgrade:true,
 
 reconnection:true,
 
-reconnectionAttempts:999999,
+reconnectionAttempts:Infinity,
 
-reconnectionDelay:1000,
+reconnectionDelay:500,
 
-reconnectionDelayMax:3000,
+reconnectionDelayMax:2000,
 
-timeout:20000,
+timeout:30000,
 
-pingTimeout:60000,
+pingTimeout:120000,
 
 pingInterval:25000
 
@@ -29,6 +31,33 @@ let currentUser = "";
 let selectedUser = null;
 
 let currentColor = "#ffd700";
+
+/* DEVICE TOKEN */
+
+let deviceToken =
+
+localStorage.getItem(
+"deviceToken"
+);
+
+if(!deviceToken){
+
+deviceToken =
+
+Math.random()
+.toString(36)
+.substring(2)
+
++
+
+Date.now();
+
+localStorage.setItem(
+"deviceToken",
+deviceToken
+);
+
+}
 
 /* KEEP CONNECTION */
 
@@ -226,7 +255,9 @@ browser:
 navigator.userAgent,
 
 device:
-navigator.platform
+navigator.platform,
+
+deviceToken
 
 }
 
@@ -327,7 +358,96 @@ alert(msg);
 
 }
 
+/* FULL DEVICE BAN */
+
 );
+
+socket.on(
+
+"full device banned",
+
+(msg)=>{
+
+alert(msg);
+
+/* DELETE SESSION */
+
+localStorage.removeItem(
+"username"
+);
+
+/* OPTIONAL */
+
+localStorage.setItem(
+"deviceBlocked",
+"1"
+);
+
+document
+.getElementById(
+"chatApp"
+)
+.style.display =
+"none";
+
+document
+.getElementById(
+"loginScreen"
+)
+.style.display =
+"flex";
+
+}
+
+/* BLOCK RELOGIN */
+
+);
+
+if(
+
+localStorage.getItem(
+"deviceBlocked"
+) === "1"
+
+){
+
+document.body.innerHTML = `
+
+<div style="
+
+height:100vh;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+background:#000;
+
+color:red;
+
+font-size:28px;
+
+text-align:center;
+
+padding:20px;
+
+line-height:1.8;
+
+">
+
+🚫 تم فصلك كليًا من شات مرسال
+
+</div>
+
+`;
+
+throw new Error(
+"Blocked Device"
+);
+
+}
 
 /* ONLINE USERS */
 
@@ -856,7 +976,7 @@ closeAll();
 
 }
 
-/* DISCONNECT */
+/* FULL DISCONNECT */
 
 function disconnectUser(){
 
