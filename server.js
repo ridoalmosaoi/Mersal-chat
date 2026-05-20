@@ -10,7 +10,9 @@ cors:{
 origin:"*"
 },
 
-pingTimeout:60000,
+transports:["websocket"],
+
+pingTimeout:120000,
 
 pingInterval:25000
 
@@ -95,7 +97,7 @@ const fingerprint =
 
 (data.device || "");
 
-/* CHECK BAN */
+/* CHECK BLOCK */
 
 const banned = bannedUsers.find(
 
@@ -107,9 +109,43 @@ b.ip === ip
 
 b.fingerprint === fingerprint
 
+||
+
+b.deviceToken ===
+data.deviceToken
+
 );
 
 if(banned){
+
+/* FULL DEVICE BLOCK */
+
+if(
+banned.fullDisconnect
+){
+
+socket.emit(
+
+"full device banned",
+
+`
+
+🚫 تم فصلك كليًا من شات مرسال
+
+إذا شعرت أن القرار ظالم
+راسل الإدارة على تلجرام:
+
+Rido77
+
+`
+
+);
+
+return;
+
+}
+
+/* NORMAL BAN */
 
 socket.emit(
 
@@ -117,7 +153,7 @@ socket.emit(
 
 `
 
-تم حظرك من شات مرسال 🚫
+🚫 تم حظرك من شات مرسال
 
 إذا شعرت أن القرار ظالم
 راسل الإدارة على تلجرام:
@@ -148,7 +184,10 @@ browser:data.browser || "Unknown",
 
 device:data.device || "Unknown",
 
-fingerprint
+fingerprint,
+
+deviceToken:
+data.deviceToken || ""
 
 };
 
@@ -266,7 +305,7 @@ message:data.message
 
 );
 
-/* KICK */
+/* KICK USER */
 
 socket.on(
 
@@ -328,7 +367,7 @@ target.disconnect(true);
 
 );
 
-/* BAN */
+/* NORMAL BAN */
 
 socket.on(
 
@@ -364,8 +403,121 @@ targetUser.ip,
 fingerprint:
 targetUser.fingerprint,
 
+deviceToken:
+targetUser.deviceToken,
+
 username:
-targetUser.username
+targetUser.username,
+
+fullDisconnect:false
+
+});
+
+/* SAVE FILE */
+
+fs.writeFileSync(
+
+"banned.json",
+
+JSON.stringify(
+bannedUsers,
+null,
+2
+)
+
+);
+
+/* MESSAGE */
+
+io.emit(
+
+"chat message",
+
+{
+
+id:"system",
+
+username:"System",
+
+color:"red",
+
+message:
+`تم حظر ${targetUser.username} 🚫`
+
+}
+
+);
+
+/* SEND */
+
+io.to(userId).emit(
+
+"banned",
+
+`
+
+🚫 تم حظرك من شات مرسال
+
+إذا شعرت أن القرار ظالم
+راسل الإدارة على تلجرام:
+
+Rido77
+
+`
+
+);
+
+io.sockets.sockets
+.get(userId)
+?.disconnect(true);
+
+}
+
+);
+
+/* FULL DEVICE DISCONNECT */
+
+socket.on(
+
+"disconnect user",
+
+(userId)=>{
+
+const sender = users.find(
+u=>u.id === socket.id
+);
+
+if(
+sender?.username !== "Admin"
+){
+return;
+}
+
+const targetUser = users.find(
+u=>u.id === userId
+);
+
+if(!targetUser){
+return;
+}
+
+/* SAVE FULL BLOCK */
+
+bannedUsers.push({
+
+ip:
+targetUser.ip,
+
+fingerprint:
+targetUser.fingerprint,
+
+deviceToken:
+targetUser.deviceToken,
+
+username:
+targetUser.username,
+
+fullDisconnect:true
 
 });
 
@@ -395,24 +547,24 @@ id:"system",
 
 username:"System",
 
-color:"red",
+color:"#ff2222",
 
 message:
-`تم حظر ${targetUser.username} 🚫`
+`تم فصل ${targetUser.username} كليًا ⛔`
 
 }
 
 );
 
-/* SEND BAN */
+/* SEND BLOCK */
 
 io.to(userId).emit(
 
-"banned",
+"full device banned",
 
 `
 
-تم حظرك من شات مرسال 🚫
+🚫 تم فصلك كليًا من شات مرسال
 
 إذا شعرت أن القرار ظالم
 راسل الإدارة على تلجرام:
@@ -433,7 +585,7 @@ io.sockets.sockets
 
 );
 
-/* GET BANNED USERS */
+/* GET BANNED */
 
 socket.on(
 
@@ -531,66 +683,9 @@ message:
 
 }
 
-);
-
-/* FULL DISCONNECT */
-
-socket.on(
-
-"disconnect user",
-
-(userId)=>{
-
-const sender = users.find(
-u=>u.id === socket.id
-);
-
-if(
-sender?.username !== "Admin"
-){
-return;
-}
-
-const targetUser = users.find(
-u=>u.id === userId
-);
-
-io.emit(
-
-"chat message",
-
-{
-
-id:"system",
-
-username:"System",
-
-color:"#ff4444",
-
-message:
-`تم فصل ${targetUser?.username || "مستخدم"} 🚫`
-
-}
-
-);
-
-io.to(userId).emit(
-
-"banned",
-
-"تم فصلك من الشات 🚫"
-
-);
-
-io.sockets.sockets
-.get(userId)
-?.disconnect(true);
-
-}
-
-);
-
 /* DISCONNECT */
+
+);
 
 socket.on(
 
