@@ -2,9 +2,9 @@ const socket = io({
 
 transports:["websocket"],
 
-forceNew:true,
+forceNew:false,
 
-upgrade:false,
+upgrade:true,
 
 rememberUpgrade:true,
 
@@ -12,15 +12,17 @@ reconnection:true,
 
 reconnectionAttempts:Infinity,
 
-reconnectionDelay:500,
+reconnectionDelay:1000,
 
-reconnectionDelayMax:2000,
+reconnectionDelayMax:5000,
 
-timeout:30000,
+randomizationFactor:0,
 
-pingTimeout:120000,
+timeout:60000,
 
-pingInterval:25000
+pingTimeout:180000,
+
+pingInterval:30000
 
 });
 
@@ -96,6 +98,16 @@ socket.on(
 
 ()=>{
 
+const messages =
+
+document.getElementById(
+"messages"
+);
+
+if(!messages){
+return;
+}
+
 const div =
 
 document.createElement(
@@ -118,11 +130,10 @@ font-weight:bold;
 
 `;
 
-document
-.getElementById(
-"messages"
-)
-?.appendChild(div);
+messages.appendChild(div);
+
+messages.scrollTop =
+messages.scrollHeight;
 
 });
 
@@ -131,6 +142,16 @@ socket.on(
 "reconnect",
 
 ()=>{
+
+const messages =
+
+document.getElementById(
+"messages"
+);
+
+if(!messages){
+return;
+}
 
 const div =
 
@@ -154,11 +175,10 @@ font-weight:bold;
 
 `;
 
-document
-.getElementById(
-"messages"
-)
-?.appendChild(div);
+messages.appendChild(div);
+
+messages.scrollTop =
+messages.scrollHeight;
 
 });
 
@@ -167,6 +187,16 @@ socket.on(
 "reconnecting",
 
 ()=>{
+
+const messages =
+
+document.getElementById(
+"messages"
+);
+
+if(!messages){
+return;
+}
 
 const div =
 
@@ -190,11 +220,10 @@ font-weight:bold;
 
 `;
 
-document
-.getElementById(
-"messages"
-)
-?.appendChild(div);
+messages.appendChild(div);
+
+messages.scrollTop =
+messages.scrollHeight;
 
 });
 
@@ -358,9 +387,9 @@ alert(msg);
 
 }
 
-/* FULL DEVICE BLOCK */
-
 );
+
+/* FULL DEVICE BLOCK */
 
 socket.on(
 
@@ -393,9 +422,7 @@ document
 .style.display =
 "flex";
 
-}
-
-);
+});
 
 /* BLOCK DEVICE */
 
@@ -460,6 +487,10 @@ document
 "usersList"
 );
 
+if(!usersList){
+return;
+}
+
 usersList.innerHTML = "";
 
 users.forEach(user=>{
@@ -510,9 +541,7 @@ div
 
 });
 
-}
-
-);
+});
 
 /* SEND MESSAGE */
 
@@ -570,6 +599,10 @@ document
 .getElementById(
 "messages"
 );
+
+if(!messages){
+return;
+}
 
 const div =
 
@@ -635,9 +668,7 @@ div
 messages.scrollTop =
 messages.scrollHeight;
 
-}
-
-);
+});
 
 /* USERS */
 
@@ -868,9 +899,7 @@ div
 box.scrollTop =
 box.scrollHeight;
 
-}
-
-);
+});
 
 /* USER INFO */
 
@@ -1020,11 +1049,7 @@ renderBannedUsers(
 list
 );
 
-}
-
-);
-
-/* UPDATE BANNED */
+});
 
 socket.on(
 
@@ -1036,9 +1061,7 @@ renderBannedUsers(
 list
 );
 
-}
-
-);
+});
 
 /* RENDER BANNED */
 
@@ -1194,11 +1217,11 @@ closeAll();
 
 }
 
-}
-
-);
+});
 
 /* ENTER SEND */
+
+});
 
 document.addEventListener(
 
@@ -1232,6 +1255,4 @@ sendMessage();
 
 }
 
-}
-
-);
+});
