@@ -14,15 +14,13 @@ reconnectionDelay:1000,
 
 reconnectionDelayMax:4000,
 
-randomizationFactor:0.5,
-
 timeout:20000,
 
 autoConnect:true
 
 });
 
-/* ERROR DEBUG */
+/* ERROR */
 
 window.onerror = function(msg){
 
@@ -31,11 +29,9 @@ console.log(
 msg
 );
 
-alert(
-"ERROR: " + msg
-);
-
 };
+
+/* GLOBAL */
 
 const ADMIN_NAME = "Admin";
 
@@ -47,7 +43,7 @@ let currentColor = "#ffd700";
 
 let privateNotifications = 0;
 
-/* COLOR SELECT */
+/* COLOR */
 
 function selectColor(color){
 
@@ -96,7 +92,7 @@ deviceToken
 
 }
 
-/* KEEP SOCKET ACTIVE */
+/* KEEP ALIVE */
 
 setInterval(()=>{
 
@@ -135,7 +131,7 @@ socket.connect();
 
 });
 
-/* SOCKET STATUS */
+/* CONNECT */
 
 socket.on(
 
@@ -149,19 +145,6 @@ console.log(
 
 });
 
-socket.on(
-
-"connect_error",
-
-(err)=>{
-
-console.log(
-"Connect Error:",
-err.message
-);
-
-});
-
 /* DISCONNECT */
 
 socket.on(
@@ -171,7 +154,7 @@ socket.on(
 ()=>{
 
 addSystemMessage(
-"⚠️ انقطع الاتصال..."
+"⚠️ انقطع الاتصال"
 ,
 "red"
 );
@@ -190,20 +173,6 @@ addSystemMessage(
 "✅ عاد الاتصال"
 ,
 "lime"
-);
-
-});
-
-/* KEEP ALIVE */
-
-socket.on(
-
-"pong alive",
-
-()=>{
-
-console.log(
-"alive"
 );
 
 });
@@ -235,18 +204,6 @@ if(!username){
 alert(
 "اكتب الاسم"
 );
-
-return;
-
-}
-
-if(!socket.connected){
-
-alert(
-"السيرفر غير متصل 🚫"
-);
-
-socket.connect();
 
 return;
 
@@ -366,20 +323,6 @@ socket.on(
 
 alert(msg);
 
-document
-.getElementById(
-"chatApp"
-)
-.style.display =
-"none";
-
-document
-.getElementById(
-"loginScreen"
-)
-.style.display =
-"flex";
-
 });
 
 /* FULL BLOCK */
@@ -392,23 +335,9 @@ socket.on(
 
 alert(msg);
 
-document
-.getElementById(
-"chatApp"
-)
-.style.display =
-"none";
-
-document
-.getElementById(
-"loginScreen"
-)
-.style.display =
-"flex";
-
 });
 
-/* ONLINE USERS */
+/* USERS */
 
 socket.on(
 
@@ -418,8 +347,7 @@ socket.on(
 
 const usersList =
 
-document
-.getElementById(
+document.getElementById(
 "usersList"
 );
 
@@ -433,8 +361,7 @@ users.forEach(user=>{
 
 const div =
 
-document
-.createElement(
+document.createElement(
 "div"
 );
 
@@ -479,7 +406,7 @@ div
 
 });
 
-/* CHAT MESSAGE */
+/* RECEIVE CHAT */
 
 socket.on(
 
@@ -489,8 +416,7 @@ socket.on(
 
 const messages =
 
-document
-.getElementById(
+document.getElementById(
 "messages"
 );
 
@@ -503,13 +429,10 @@ data.message;
 
 /* RED REPLY */
 
-const regex =
-/<([^>]+)>/g;
-
 messageText =
 messageText.replace(
 
-regex,
+/<([^>]+)>/g,
 
 (match)=>{
 
@@ -532,8 +455,7 @@ ${match}
 
 const div =
 
-document
-.createElement(
+document.createElement(
 "div"
 );
 
@@ -546,15 +468,13 @@ div.innerHTML = `
 class="msg-name"
 style="
 color:${data.color};
-font-weight:bold;
 ">
 
 &lt;${data.username}&gt;
 
 </span>
 
-<span
-class="msg-text">
+<span class="msg-text">
 
 ${messageText}
 
@@ -563,12 +483,6 @@ ${messageText}
 `;
 
 div.onclick = ()=>{
-
-if(
-data.username === "System"
-){
-return;
-}
 
 selectedUser = {
 
@@ -597,7 +511,48 @@ messages.scrollHeight;
 
 });
 
-/* PRIVATE MESSAGE */
+/* SEND CHAT */
+
+function sendMessage(){
+
+const input =
+
+document.getElementById(
+"messageInput"
+);
+
+if(!input){
+return;
+}
+
+const message =
+input.value.trim();
+
+if(!message){
+return;
+}
+
+socket.emit(
+
+"chat message",
+
+{
+
+message:message,
+
+username:currentUser,
+
+color:currentColor
+
+}
+
+);
+
+input.value = "";
+
+}
+
+/* RECEIVE PRIVATE */
 
 socket.on(
 
@@ -687,8 +642,7 @@ document
 
 const div =
 
-document
-.createElement(
+document.createElement(
 "div"
 );
 
@@ -719,46 +673,6 @@ box.scrollTop =
 box.scrollHeight;
 
 });
-
-/* SEND MESSAGE */
-
-function sendMessage(){
-
-const input =
-
-document
-.getElementById(
-"messageInput"
-);
-
-if(!input){
-return;
-}
-
-const message =
-input.value.trim();
-
-if(!message){
-return;
-}
-
-socket.emit(
-
-"chat message",
-
-{
-
-message,
-username:currentUser,
-color:currentColor
-
-}
-
-);
-
-input.value = "";
-
-}
 
 /* SEND PRIVATE */
 
@@ -807,8 +721,7 @@ document
 
 const div =
 
-document
-.createElement(
+document.createElement(
 "div"
 );
 
@@ -933,7 +846,7 @@ isAdmin
 
 }
 
-/* PRIVATE */
+/* PRIVATE OPEN */
 
 function openPrivate(){
 
@@ -1055,12 +968,6 @@ closeAll();
 
 function openBannedPanel(){
 
-if(
-currentUser !== ADMIN_NAME
-){
-return;
-}
-
 socket.emit(
 "get banned users"
 );
@@ -1074,7 +981,7 @@ document
 
 }
 
-/* BANNED LIST */
+/* BANNED */
 
 socket.on(
 
@@ -1115,22 +1022,6 @@ return;
 
 box.innerHTML = "";
 
-if(list.length <= 0){
-
-box.innerHTML = `
-
-<div class="online-user">
-
-لا يوجد محظورين 😎
-
-</div>
-
-`;
-
-return;
-
-}
-
 list.forEach((ban,index)=>{
 
 const div =
@@ -1143,22 +1034,6 @@ div.className =
 "online-user";
 
 div.innerHTML = `
-
-${
-
-ban.fullDisconnect
-
-?
-
-"⛔ فصل كلي"
-
-:
-
-"🚫 حظر"
-
-}
-
-<br><br>
 
 👤 ${ban.username}
 
@@ -1174,11 +1049,10 @@ unbanUser(${index})
 "
 style="
 margin-top:10px;
-padding:10px 16px;
+padding:10px;
 border:none;
 border-radius:10px;
 background:lime;
-font-size:18px;
 cursor:pointer;
 ">
 
@@ -1269,7 +1143,7 @@ p.style.display =
 
 }
 
-/* CLOSE OUTSIDE */
+/* OUTSIDE CLOSE */
 
 document.addEventListener(
 
