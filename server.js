@@ -77,7 +77,7 @@ return;
 
 }
 
-/* IP */
+/* USER IP */
 
 const ip =
 
@@ -168,7 +168,7 @@ return;
 
 }
 
-/* USER */
+/* CREATE USER */
 
 const user = {
 
@@ -193,20 +193,20 @@ data.deviceToken || ""
 
 users.push(user);
 
-/* LOGIN */
+/* LOGIN SUCCESS */
 
 socket.emit(
 "login success"
 );
 
-/* USERS */
+/* USERS LIST */
 
 io.emit(
 "online users",
 users
 );
 
-/* ADMIN JOIN */
+/* ADMIN MESSAGE */
 
 if(
 data.username === "Admin"
@@ -279,7 +279,7 @@ device:user.device
 
 );
 
-/* PRIVATE */
+/* PRIVATE MESSAGE */
 
 socket.on(
 
@@ -427,7 +427,7 @@ null,
 
 );
 
-/* MESSAGE */
+/* SYSTEM MESSAGE */
 
 io.emit(
 
@@ -448,7 +448,7 @@ message:
 
 );
 
-/* SEND */
+/* SEND BAN */
 
 io.to(userId).emit(
 
@@ -466,6 +466,8 @@ Rido77
 `
 
 );
+
+/* DISCONNECT */
 
 io.sockets.sockets
 .get(userId)
@@ -708,7 +710,7 @@ users
 
 });
 
-/* START */
+/* START SERVER */
 
 const PORT =
 process.env.PORT || 3000;
