@@ -20,6 +20,16 @@ timeout:60000
 
 });
 
+/* ERROR DEBUG */
+
+window.onerror = function(msg){
+
+alert(
+"ERROR: " + msg
+);
+
+};
+
 const ADMIN_NAME = "Admin";
 
 let currentUser = "";
@@ -133,6 +143,8 @@ err.message
 
 });
 
+/* DISCONNECT */
+
 socket.on(
 
 "disconnect",
@@ -177,6 +189,8 @@ messages.scrollTop =
 messages.scrollHeight;
 
 });
+
+/* RECONNECT */
 
 socket.on(
 
@@ -1220,8 +1234,6 @@ closeAll();
 });
 
 /* ENTER SEND */
-
-});
 
 document.addEventListener(
 
