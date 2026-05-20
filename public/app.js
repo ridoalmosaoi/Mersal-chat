@@ -332,7 +332,7 @@ document
 
 );
 
-/* BANNED */
+/* NORMAL BAN */
 
 socket.on(
 
@@ -358,7 +358,7 @@ alert(msg);
 
 }
 
-/* FULL DEVICE BAN */
+/* FULL DEVICE BLOCK */
 
 );
 
@@ -370,13 +370,9 @@ socket.on(
 
 alert(msg);
 
-/* DELETE SESSION */
-
 localStorage.removeItem(
 "username"
 );
-
-/* OPTIONAL */
 
 localStorage.setItem(
 "deviceBlocked",
@@ -399,9 +395,9 @@ document
 
 }
 
-/* BLOCK RELOGIN */
-
 );
+
+/* BLOCK DEVICE */
 
 if(
 
@@ -963,7 +959,7 @@ closeAll();
 
 }
 
-/* BAN */
+/* NORMAL BAN */
 
 function banUser(){
 
@@ -1092,13 +1088,27 @@ div.className =
 
 div.innerHTML = `
 
-🚫 ${ban.username || "مستخدم"}
+${
+
+ban.fullDisconnect
+
+?
+
+"⛔ فصل كلي"
+
+:
+
+"🚫 حظر"
+
+}
 
 <br><br>
 
-IP:
+👤 ${ban.username || "مستخدم"}
 
-${ban.ip}
+<br><br>
+
+🌐 ${ban.ip}
 
 <br><br>
 
