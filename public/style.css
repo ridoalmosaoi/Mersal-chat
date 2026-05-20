@@ -10,13 +10,18 @@ font-family:sans-serif;
 
 }
 
+html,
 body{
+
+width:100%;
+
+height:100%;
+
+overflow:hidden;
 
 background:#0f0f0f;
 
 color:white;
-
-overflow:hidden;
 
 direction:rtl;
 
@@ -169,6 +174,8 @@ background:#111;
 
 overflow:hidden;
 
+position:relative;
+
 }
 
 /* TOP BAR */
@@ -191,6 +198,8 @@ border-bottom:
 1px solid #2a2a2a;
 
 flex-shrink:0;
+
+z-index:20;
 
 }
 
@@ -284,9 +293,9 @@ flex-direction:column;
 
 gap:10px;
 
-min-height:0;
+padding-bottom:110px;
 
-padding-bottom:120px;
+-webkit-overflow-scrolling:touch;
 
 }
 
@@ -338,11 +347,11 @@ font-size:18px;
 
 }
 
-/* INPUT FIX */
+/* INPUT */
 
 .chat-input{
 
-position:fixed;
+position:absolute;
 
 bottom:0;
 
@@ -421,7 +430,7 @@ width:100%;
 
 height:100%;
 
-background:rgba(0,0,0,0.6);
+background:rgba(0,0,0,0.65);
 
 display:none;
 
@@ -429,7 +438,7 @@ justify-content:center;
 
 align-items:center;
 
-z-index:999;
+z-index:99999;
 
 padding:15px;
 
@@ -441,9 +450,9 @@ width:100%;
 
 max-width:430px;
 
-max-height:85vh;
+height:85vh;
 
-overflow-y:auto;
+overflow:hidden;
 
 background:#1b1b1b;
 
@@ -483,7 +492,7 @@ line-height:1.6;
 
 #privateMessages{
 
-height:350px;
+flex:1;
 
 overflow-y:auto;
 
@@ -494,6 +503,10 @@ flex-direction:column;
 gap:10px;
 
 padding:10px 0;
+
+min-height:0;
+
+-webkit-overflow-scrolling:touch;
 
 }
 
