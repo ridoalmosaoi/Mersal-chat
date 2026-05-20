@@ -10,7 +10,7 @@ cors:{
 origin:"*"
 },
 
-transports:["websocket","polling"],
+transports:["polling","websocket"],
 
 pingTimeout:180000,
 
@@ -56,9 +56,27 @@ io.on("connection",(socket)=>{
 
 console.log("User Connected");
 
+/* KEEP ALIVE */
+
+socket.on(
+
+"ping alive",
+
+()=>{
+
+socket.emit(
+"pong alive"
+);
+
+});
+
 /* JOIN */
 
-socket.on("join",(data)=>{
+socket.on(
+
+"join",
+
+(data)=>{
 
 /* ADMIN PASSWORD */
 
@@ -77,7 +95,7 @@ return;
 
 }
 
-/* USER IP */
+/* IP */
 
 const ip =
 
@@ -199,14 +217,14 @@ socket.emit(
 "login success"
 );
 
-/* USERS LIST */
+/* USERS */
 
 io.emit(
 "online users",
 users
 );
 
-/* ADMIN MESSAGE */
+/* ADMIN JOIN */
 
 if(
 data.username === "Admin"
@@ -303,9 +321,9 @@ message:data.message
 
 }
 
-);
+/* KICK */
 
-/* KICK USER */
+);
 
 socket.on(
 
@@ -363,9 +381,7 @@ target.disconnect(true);
 
 }
 
-}
-
-);
+});
 
 /* NORMAL BAN */
 
@@ -467,15 +483,11 @@ Rido77
 
 );
 
-/* DISCONNECT */
-
 io.sockets.sockets
 .get(userId)
 ?.disconnect(true);
 
-}
-
-);
+});
 
 /* FULL DEVICE DISCONNECT */
 
@@ -583,9 +595,7 @@ io.sockets.sockets
 .get(userId)
 ?.disconnect(true);
 
-}
-
-);
+});
 
 /* GET BANNED */
 
@@ -613,9 +623,7 @@ bannedUsers
 
 );
 
-}
-
-);
+});
 
 /* UNBAN */
 
@@ -683,11 +691,9 @@ message:
 
 );
 
-}
+});
 
 /* DISCONNECT */
-
-);
 
 socket.on(
 
@@ -704,13 +710,11 @@ io.emit(
 users
 );
 
-}
-
-);
+});
 
 });
 
-/* START SERVER */
+/* START */
 
 const PORT =
 process.env.PORT || 3000;
