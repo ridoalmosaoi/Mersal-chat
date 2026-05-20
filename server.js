@@ -12,15 +12,45 @@ origin:"*"
 
 transports:["polling","websocket"],
 
-pingTimeout:180000,
+pingTimeout:60000,
 
-pingInterval:30000
+pingInterval:25000,
+
+connectTimeout:30000
 
 });
 
 const path = require("path");
 
 const fs = require("fs");
+
+/* CRASH PROTECTION */
+
+process.on(
+
+"uncaughtException",
+
+(err)=>{
+
+console.log(
+"ERROR:",
+err
+);
+
+});
+
+process.on(
+
+"unhandledRejection",
+
+(err)=>{
+
+console.log(
+"REJECTION:",
+err
+);
+
+});
 
 /* STATIC */
 
@@ -44,8 +74,58 @@ if(
 fs.existsSync("banned.json")
 ){
 
+try{
+
 bannedUsers = JSON.parse(
 fs.readFileSync("banned.json")
+);
+
+}catch{
+
+bannedUsers = [];
+
+}
+
+}
+
+/* SAVE BANS */
+
+function saveBans(){
+
+fs.writeFileSync(
+
+"banned.json",
+
+JSON.stringify(
+bannedUsers,
+null,
+2
+)
+
+);
+
+}
+
+/* SYSTEM MESSAGE */
+
+function systemMessage(text,color){
+
+io.emit(
+
+"chat message",
+
+{
+
+id:"system",
+
+username:"System",
+
+color,
+
+message:text
+
+}
+
 );
 
 }
@@ -54,7 +134,10 @@ fs.readFileSync("banned.json")
 
 io.on("connection",(socket)=>{
 
-console.log("User Connected");
+console.log(
+"User Connected:",
+socket.id
+);
 
 /* KEEP ALIVE */
 
@@ -78,12 +161,45 @@ socket.on(
 
 (data)=>{
 
-/* ADMIN PASSWORD */
+try{
+
+/* CLEAN DUPLICATES */
+
+users = users.filter(
+u=>u.id !== socket.id
+);
+
+/* USERNAME */
+
+const username =
+(data.username || "")
+.trim();
+
+/* PASSWORD */
+
+const password =
+(data.password || "")
+.trim();
+
+/* VALIDATE */
+
+if(!username){
+
+socket.emit(
+"banned",
+"اسم غير صالح 🚫"
+);
+
+return;
+
+}
+
+/* ADMIN */
 
 if(
-data.username === "Admin"
+username === "Admin"
 &&
-data.password !== "123456"
+password !== "123456"
 ){
 
 socket.emit(
@@ -95,7 +211,32 @@ return;
 
 }
 
-/* IP */
+/* DUPLICATE USER */
+
+const sameUser = users.find(
+
+u=>
+
+u.username.toLowerCase()
+
+===
+
+username.toLowerCase()
+
+);
+
+if(sameUser){
+
+socket.emit(
+"banned",
+"الاسم مستخدم بالفعل 🚫"
+);
+
+return;
+
+}
+
+/* USER IP */
 
 const ip =
 
@@ -105,7 +246,11 @@ socket.handshake.headers[
 
 ||
 
-socket.handshake.address;
+socket.handshake.address
+
+||
+
+"Unknown";
 
 /* FINGERPRINT */
 
@@ -115,7 +260,7 @@ const fingerprint =
 
 (data.device || "");
 
-/* CHECK BLOCK */
+/* CHECK BAN */
 
 const banned = bannedUsers.find(
 
@@ -125,18 +270,17 @@ b.ip === ip
 
 ||
 
-b.fingerprint === fingerprint
+b.deviceToken ===
+data.deviceToken
 
 ||
 
-b.deviceToken ===
-data.deviceToken
+b.fingerprint ===
+fingerprint
 
 );
 
 if(banned){
-
-/* FULL DEVICE BLOCK */
 
 if(
 banned.fullDisconnect
@@ -150,11 +294,6 @@ socket.emit(
 
 🚫 تم فصلك كليًا من شات مرسال
 
-إذا شعرت أن القرار ظالم
-راسل الإدارة على تلجرام:
-
-Rido77
-
 `
 
 );
@@ -163,8 +302,6 @@ return;
 
 }
 
-/* NORMAL BAN */
-
 socket.emit(
 
 "banned",
@@ -172,11 +309,6 @@ socket.emit(
 `
 
 🚫 تم حظرك من شات مرسال
-
-إذا شعرت أن القرار ظالم
-راسل الإدارة على تلجرام:
-
-Rido77
 
 `
 
@@ -192,61 +324,63 @@ const user = {
 
 id:socket.id,
 
-username:data.username,
+username,
 
-color:data.color || "#ffd700",
+color:
+data.color || "#ffd700",
 
 ip,
 
-browser:data.browser || "Unknown",
+browser:
+data.browser || "Unknown",
 
-device:data.device || "Unknown",
-
-fingerprint,
+device:
+data.device || "Unknown",
 
 deviceToken:
-data.deviceToken || ""
+data.deviceToken || "",
+
+fingerprint
 
 };
 
 users.push(user);
 
-/* LOGIN SUCCESS */
+/* LOGIN */
 
 socket.emit(
 "login success"
 );
 
-/* USERS */
+/* USERS UPDATE */
 
 io.emit(
 "online users",
 users
 );
 
-/* ADMIN JOIN */
+/* ADMIN MESSAGE */
 
 if(
-data.username === "Admin"
+username === "Admin"
 ){
 
-io.emit(
-
-"chat message",
-
-{
-
-id:"system",
-
-username:"System",
-
-color:"gold",
-
-message:
-`تم توكيل ${data.username} مشرف 👑`
+systemMessage(
+`تم توكيل ${username} مشرف 👑`,
+"gold"
+);
 
 }
 
+console.log(
+`${username} Joined`
+);
+
+}catch(err){
+
+console.log(
+"JOIN ERROR:",
+err
 );
 
 }
@@ -261,11 +395,27 @@ socket.on(
 
 (data)=>{
 
+try{
+
 const user = users.find(
 u=>u.id === socket.id
 );
 
 if(!user){
+return;
+}
+
+const message =
+(data.message || "")
+trim();
+
+if(!message){
+return;
+}
+
+/* LIMIT MESSAGE */
+
+if(message.length > 500){
 return;
 }
 
@@ -281,7 +431,7 @@ username:user.username,
 
 color:user.color,
 
-message:data.message,
+message,
 
 ip:user.ip,
 
@@ -293,9 +443,16 @@ device:user.device
 
 );
 
+}catch(err){
+
+console.log(
+"MESSAGE ERROR:",
+err
+);
+
 }
 
-);
+});
 
 /* PRIVATE MESSAGE */
 
@@ -304,6 +461,12 @@ socket.on(
 "private message",
 
 (data)=>{
+
+try{
+
+if(!data.to){
+return;
+}
 
 io.to(data.to).emit(
 
@@ -319,11 +482,18 @@ message:data.message
 
 );
 
+}catch(err){
+
+console.log(
+"PRIVATE ERROR:",
+err
+);
+
 }
 
-/* KICK */
+});
 
-);
+/* KICK USER */
 
 socket.on(
 
@@ -345,41 +515,23 @@ const targetUser = users.find(
 u=>u.id === userId
 );
 
-const target =
-io.sockets.sockets.get(userId);
-
-if(target){
-
-io.emit(
-
-"chat message",
-
-{
-
-id:"system",
-
-username:"System",
-
-color:"orange",
-
-message:
-`تم طرد ${targetUser?.username || "مستخدم"} ⚠️`
-
+if(!targetUser){
+return;
 }
 
+systemMessage(
+`تم طرد ${targetUser.username} ⚠️`,
+"orange"
 );
 
 io.to(userId).emit(
-
 "banned",
-
 "تم طردك من الشات ⚠️"
-
 );
 
-target.disconnect(true);
-
-}
+io.sockets.sockets
+.get(userId)
+?.disconnect(true);
 
 });
 
@@ -429,59 +581,26 @@ fullDisconnect:false
 
 });
 
-/* SAVE FILE */
+saveBans();
 
-fs.writeFileSync(
+/* MESSAGE */
 
-"banned.json",
-
-JSON.stringify(
-bannedUsers,
-null,
-2
-)
-
+systemMessage(
+`تم حظر ${targetUser.username} 🚫`,
+"red"
 );
 
-/* SYSTEM MESSAGE */
-
-io.emit(
-
-"chat message",
-
-{
-
-id:"system",
-
-username:"System",
-
-color:"red",
-
-message:
-`تم حظر ${targetUser.username} 🚫`
-
-}
-
-);
-
-/* SEND BAN */
+/* SEND */
 
 io.to(userId).emit(
 
 "banned",
 
-`
-
-🚫 تم حظرك من شات مرسال
-
-إذا شعرت أن القرار ظالم
-راسل الإدارة على تلجرام:
-
-Rido77
-
-`
+"🚫 تم حظرك من الشات"
 
 );
+
+/* DISCONNECT */
 
 io.sockets.sockets
 .get(userId)
@@ -489,7 +608,7 @@ io.sockets.sockets
 
 });
 
-/* FULL DEVICE DISCONNECT */
+/* FULL DISCONNECT */
 
 socket.on(
 
@@ -515,7 +634,7 @@ if(!targetUser){
 return;
 }
 
-/* SAVE FULL BLOCK */
+/* SAVE FULL BAN */
 
 bannedUsers.push({
 
@@ -535,57 +654,22 @@ fullDisconnect:true
 
 });
 
-/* SAVE FILE */
+saveBans();
 
-fs.writeFileSync(
+/* MESSAGE */
 
-"banned.json",
-
-JSON.stringify(
-bannedUsers,
-null,
-2
-)
-
+systemMessage(
+`تم فصل ${targetUser.username} كليًا ⛔`,
+"#ff2222"
 );
 
-/* SYSTEM MESSAGE */
-
-io.emit(
-
-"chat message",
-
-{
-
-id:"system",
-
-username:"System",
-
-color:"#ff2222",
-
-message:
-`تم فصل ${targetUser.username} كليًا ⛔`
-
-}
-
-);
-
-/* SEND BLOCK */
+/* SEND */
 
 io.to(userId).emit(
 
 "full device banned",
 
-`
-
-🚫 تم فصلك كليًا من شات مرسال
-
-إذا شعرت أن القرار ظالم
-راسل الإدارة على تلجرام:
-
-Rido77
-
-`
+"🚫 تم فصلك كليًا"
 
 );
 
@@ -616,11 +700,8 @@ return;
 }
 
 socket.emit(
-
 "banned users list",
-
 bannedUsers
-
 );
 
 });
@@ -643,52 +724,29 @@ sender?.username !== "Admin"
 return;
 }
 
+if(
+index < 0
+||
+index >= bannedUsers.length
+){
+return;
+}
+
 bannedUsers.splice(
 index,
 1
 );
 
-/* SAVE */
-
-fs.writeFileSync(
-
-"banned.json",
-
-JSON.stringify(
-bannedUsers,
-null,
-2
-)
-
-);
-
-/* UPDATE */
+saveBans();
 
 io.emit(
-
 "banned users updated",
-
 bannedUsers
-
 );
 
-io.emit(
-
-"chat message",
-
-{
-
-id:"system",
-
-username:"System",
-
-color:"lime",
-
-message:
-"تم فك حظر مستخدم ✅"
-
-}
-
+systemMessage(
+"تم فك حظر مستخدم ✅",
+"lime"
 );
 
 });
@@ -701,6 +759,10 @@ socket.on(
 
 ()=>{
 
+const disconnectedUser = users.find(
+u=>u.id === socket.id
+);
+
 users = users.filter(
 u=>u.id !== socket.id
 );
@@ -709,6 +771,14 @@ io.emit(
 "online users",
 users
 );
+
+if(disconnectedUser){
+
+console.log(
+`${disconnectedUser.username} Left`
+);
+
+}
 
 });
 
@@ -721,6 +791,8 @@ process.env.PORT || 3000;
 
 http.listen(PORT,()=>{
 
-console.log("Server Running 🚀");
+console.log(
+"Server Running 🚀"
+);
 
 });
