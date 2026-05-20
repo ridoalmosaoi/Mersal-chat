@@ -53,6 +53,42 @@ type="password"
 id="loginPassword"
 placeholder="كلمة المرور">
 
+<!-- COLOR PICKER -->
+
+<div class="color-picker">
+
+<div
+class="color-btn"
+style="background:#ffd700"
+onclick="selectColor('#ffd700')">
+</div>
+
+<div
+class="color-btn"
+style="background:#ff4444"
+onclick="selectColor('#ff4444')">
+</div>
+
+<div
+class="color-btn"
+style="background:#00d0ff"
+onclick="selectColor('#00d0ff')">
+</div>
+
+<div
+class="color-btn"
+style="background:#00cc66"
+onclick="selectColor('#00cc66')">
+</div>
+
+<div
+class="color-btn"
+style="background:#cc66ff"
+onclick="selectColor('#cc66ff')">
+</div>
+
+</div>
+
 <button
 onclick="login()">
 
@@ -77,6 +113,8 @@ style="display:none;">
 
 <div class="top-icons">
 
+<!-- USERS -->
+
 <span
 class="top-icon"
 onclick="toggleUsers()">
@@ -85,7 +123,32 @@ onclick="toggleUsers()">
 
 </span>
 
+<!-- PRIVATE ICON -->
+
+<div
+class="private-notify-box"
+onclick="openPrivateList()">
+
+<span class="top-icon">
+
+💬
+
+</span>
+
+<span
+id="privateNotify"
+class="notify-badge"
+style="display:none;">
+
+0
+
+</span>
+
 </div>
+
+</div>
+
+<!-- ROOM -->
 
 <div class="room-name">
 
@@ -95,7 +158,7 @@ onclick="toggleUsers()">
 
 <div class="top-icons">
 
-<!-- ADMIN -->
+<!-- BANNED -->
 
 <span
 id="bannedPanelBtn"
@@ -106,6 +169,8 @@ style="display:none;">
 🚫
 
 </span>
+
+<!-- SETTINGS -->
 
 <span
 class="top-icon"
@@ -255,7 +320,7 @@ color:#ff4444;
 
 </div>
 
-<!-- PRIVATE -->
+<!-- PRIVATE CHAT -->
 
 <div
 id="privateBox"
@@ -296,6 +361,30 @@ placeholder="رسالة خاصة">
 
 </div>
 
+<!-- PRIVATE LIST -->
+
+<div
+id="privateListPopup"
+class="popup-bg">
+
+<div class="popup-box">
+
+<div
+class="online-user"
+style="
+color:#00d0b4;
+">
+
+💬 المحادثات الخاصة
+
+</div>
+
+<div id="privateList"></div>
+
+</div>
+
+</div>
+
 <!-- USER INFO -->
 
 <div
@@ -323,7 +412,7 @@ id="userInfoContent">
 
 </div>
 
-<!-- BANNED USERS -->
+<!-- BANNED -->
 
 <div
 id="bannedPopup"
