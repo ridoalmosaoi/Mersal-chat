@@ -31,6 +31,10 @@ console.log(
 msg
 );
 
+alert(
+"ERROR: " + msg
+);
+
 };
 
 const ADMIN_NAME = "Admin";
@@ -40,6 +44,8 @@ let currentUser = "";
 let selectedUser = null;
 
 let currentColor = "#ffd700";
+
+let privateNotifications = 0;
 
 /* COLOR SELECT */
 
@@ -104,7 +110,7 @@ socket.emit(
 
 },15000);
 
-/* RETURN RECONNECT */
+/* RECONNECT */
 
 document.addEventListener(
 
@@ -156,6 +162,8 @@ err.message
 
 });
 
+/* DISCONNECT */
+
 socket.on(
 
 "disconnect",
@@ -170,6 +178,8 @@ addSystemMessage(
 
 });
 
+/* RECONNECT */
+
 socket.on(
 
 "reconnect",
@@ -183,6 +193,8 @@ addSystemMessage(
 );
 
 });
+
+/* KEEP ALIVE */
 
 socket.on(
 
@@ -285,13 +297,19 @@ localStorage.getItem(
 "username"
 );
 
-if(savedUser){
+const input =
 
-document
-.getElementById(
+document.getElementById(
 "loginUsername"
-)
-.value =
+);
+
+if(
+savedUser
+&&
+input
+){
+
+input.value =
 savedUser;
 
 }
@@ -483,7 +501,7 @@ return;
 let messageText =
 data.message;
 
-/* RED NAME */
+/* RED REPLY */
 
 const regex =
 /<([^>]+)>/g;
@@ -587,6 +605,72 @@ socket.on(
 
 (data)=>{
 
+privateNotifications++;
+
+const badge =
+
+document.getElementById(
+"privateNotify"
+);
+
+if(badge){
+
+badge.style.display =
+"flex";
+
+badge.innerText =
+privateNotifications;
+
+}
+
+const privateList =
+
+document.getElementById(
+"privateList"
+);
+
+if(privateList){
+
+const item =
+
+document.createElement(
+"div"
+);
+
+item.className =
+"online-user";
+
+item.innerHTML = `
+
+💬 ${data.from}
+
+`;
+
+item.onclick = ()=>{
+
+document
+.getElementById(
+"privateTitle"
+)
+.innerHTML =
+
+`💬 ${data.from}`;
+
+document
+.getElementById(
+"privateBox"
+)
+.style.display =
+"flex";
+
+};
+
+privateList.prepend(
+item
+);
+
+}
+
 document
 .getElementById(
 "privateBox"
@@ -647,6 +731,10 @@ document
 "messageInput"
 );
 
+if(!input){
+return;
+}
+
 const message =
 input.value.trim();
 
@@ -682,6 +770,10 @@ document
 .getElementById(
 "privateInput"
 );
+
+if(!input){
+return;
+}
 
 const message =
 input.value.trim();
@@ -763,6 +855,34 @@ document
 
 }
 
+/* PRIVATE LIST */
+
+function openPrivateList(){
+
+document
+.getElementById(
+"privateListPopup"
+)
+.style.display =
+"flex";
+
+const badge =
+
+document.getElementById(
+"privateNotify"
+);
+
+if(badge){
+
+badge.style.display =
+"none";
+
+}
+
+privateNotifications = 0;
+
+}
+
 /* USER MENU */
 
 function openUserMenu(){
@@ -813,7 +933,7 @@ isAdmin
 
 }
 
-/* PRIVATE BOX */
+/* PRIVATE */
 
 function openPrivate(){
 
@@ -1087,7 +1207,7 @@ index
 
 }
 
-/* SYSTEM MESSAGE */
+/* SYSTEM */
 
 function addSystemMessage(text,color){
 
@@ -1123,7 +1243,9 @@ ${text}
 
 `;
 
-messages.appendChild(div);
+messages.appendChild(
+div
+);
 
 messages.scrollTop =
 messages.scrollHeight;
@@ -1169,7 +1291,7 @@ closeAll();
 
 });
 
-/* ENTER SEND */
+/* ENTER */
 
 document.addEventListener(
 
