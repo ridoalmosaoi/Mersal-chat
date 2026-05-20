@@ -325,18 +325,6 @@ alert(msg);
 
 });
 
-/* FULL BLOCK */
-
-socket.on(
-
-"full device banned",
-
-(msg)=>{
-
-alert(msg);
-
-});
-
 /* USERS */
 
 socket.on(
@@ -426,8 +414,6 @@ return;
 
 let messageText =
 data.message;
-
-/* RED REPLY */
 
 messageText =
 messageText.replace(
@@ -601,7 +587,20 @@ item.innerHTML = `
 
 `;
 
+item.dataset.username =
+data.from;
+
 item.onclick = ()=>{
+
+selectedUser = {
+
+id:data.fromId,
+
+username:data.from
+
+};
+
+closeAll();
 
 document
 .getElementById(
@@ -609,7 +608,7 @@ document
 )
 .innerHTML =
 
-`💬 ${data.from}`;
+`💬 مرسال - ${data.from}`;
 
 document
 .getElementById(
@@ -626,19 +625,19 @@ item
 
 }
 
-document
-.getElementById(
-"privateBox"
-)
-.style.display =
-"flex";
-
 const box =
 
 document
 .getElementById(
 "privateMessages"
 );
+
+document
+.getElementById(
+"privateBox"
+)
+.style.display =
+"flex";
 
 const div =
 
@@ -677,6 +676,10 @@ box.scrollHeight;
 /* SEND PRIVATE */
 
 function sendPrivate(){
+
+if(!selectedUser){
+return;
+}
 
 const input =
 
