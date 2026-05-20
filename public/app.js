@@ -12,11 +12,13 @@ reconnectionAttempts:Infinity,
 
 reconnectionDelay:1000,
 
-reconnectionDelayMax:5000,
+reconnectionDelayMax:4000,
 
-randomizationFactor:0,
+randomizationFactor:0.5,
 
-timeout:60000
+timeout:20000,
+
+autoConnect:true
 
 });
 
@@ -24,8 +26,9 @@ timeout:60000
 
 window.onerror = function(msg){
 
-alert(
-"ERROR: " + msg
+console.log(
+"ERROR:",
+msg
 );
 
 };
@@ -65,32 +68,7 @@ deviceToken
 
 }
 
-/* KEEP CONNECTION */
-
-document.addEventListener(
-
-"visibilitychange",
-
-()=>{
-
-if(
-
-document.visibilityState ===
-"visible"
-
-){
-
-if(!socket.connected){
-
-socket.connect();
-
-}
-
-}
-
-});
-
-/* KEEP ALIVE */
+/* KEEP SOCKET ACTIVE */
 
 setInterval(()=>{
 
@@ -104,19 +82,32 @@ socket.emit(
 
 },15000);
 
-socket.on(
+/* RECONNECT WHEN RETURN */
 
-"pong alive",
+document.addEventListener(
+
+"visibilitychange",
 
 ()=>{
 
-console.log(
-"alive"
-);
+if(
+
+document.visibilityState ===
+"visible"
+
+&&
+
+!socket.connected
+
+){
+
+socket.connect();
+
+}
 
 });
 
-/* CONNECTION */
+/* SOCKET STATUS */
 
 socket.on(
 
@@ -143,54 +134,19 @@ err.message
 
 });
 
-/* DISCONNECT */
-
 socket.on(
 
 "disconnect",
 
 ()=>{
 
-const messages =
-
-document.getElementById(
-"messages"
+addSystemMessage(
+"⚠️ انقطع الاتصال..."
+,
+"red"
 );
-
-if(!messages){
-return;
-}
-
-const div =
-
-document.createElement(
-"div"
-);
-
-div.className =
-"msg-line";
-
-div.innerHTML = `
-
-<span style="
-color:red;
-font-weight:bold;
-">
-
-⚠️ انقطع الاتصال...
-
-</span>
-
-`;
-
-messages.appendChild(div);
-
-messages.scrollTop =
-messages.scrollHeight;
 
 });
-
-/* RECONNECT */
 
 socket.on(
 
@@ -198,42 +154,23 @@ socket.on(
 
 ()=>{
 
-const messages =
-
-document.getElementById(
-"messages"
+addSystemMessage(
+"✅ عاد الاتصال"
+,
+"lime"
 );
 
-if(!messages){
-return;
-}
+});
 
-const div =
+socket.on(
 
-document.createElement(
-"div"
+"pong alive",
+
+()=>{
+
+console.log(
+"alive"
 );
-
-div.className =
-"msg-line";
-
-div.innerHTML = `
-
-<span style="
-color:lime;
-font-weight:bold;
-">
-
-✅ عاد الاتصال
-
-</span>
-
-`;
-
-messages.appendChild(div);
-
-messages.scrollTop =
-messages.scrollHeight;
 
 });
 
@@ -387,6 +324,8 @@ socket.on(
 
 (msg)=>{
 
+alert(msg);
+
 document
 .getElementById(
 "chatApp"
@@ -401,11 +340,9 @@ document
 .style.display =
 "flex";
 
-alert(msg);
-
 });
 
-/* FULL BLOCK */
+/* FULL DEVICE BLOCK */
 
 socket.on(
 
@@ -415,15 +352,6 @@ socket.on(
 
 alert(msg);
 
-localStorage.removeItem(
-"username"
-);
-
-localStorage.setItem(
-"deviceBlocked",
-"1"
-);
-
 document
 .getElementById(
 "chatApp"
@@ -439,54 +367,6 @@ document
 "flex";
 
 });
-
-/* DEVICE BLOCK */
-
-if(
-
-localStorage.getItem(
-"deviceBlocked"
-) === "1"
-
-){
-
-document.body.innerHTML = `
-
-<div style="
-
-height:100vh;
-
-display:flex;
-
-justify-content:center;
-
-align-items:center;
-
-background:#000;
-
-color:red;
-
-font-size:28px;
-
-text-align:center;
-
-padding:20px;
-
-line-height:1.8;
-
-">
-
-🚫 تم فصلك كليًا من شات مرسال
-
-</div>
-
-`;
-
-throw new Error(
-"Blocked Device"
-);
-
-}
 
 /* ONLINE USERS */
 
@@ -559,47 +439,7 @@ div
 
 });
 
-/* SEND MESSAGE */
-
-function sendMessage(){
-
-const input =
-
-document
-.getElementById(
-"messageInput"
-);
-
-const message =
-input.value.trim();
-
-if(!message){
-return;
-}
-
-socket.emit(
-
-"chat message",
-
-{
-
-username:
-currentUser,
-
-color:
-currentColor,
-
-message
-
-}
-
-);
-
-input.value = "";
-
-}
-
-/* RECEIVE MESSAGE */
+/* CHAT MESSAGE */
 
 socket.on(
 
@@ -684,92 +524,13 @@ messages.scrollHeight;
 
 });
 
-/* USERS */
+/* PRIVATE MESSAGE */
 
-function toggleUsers(){
+socket.on(
 
-document
-.getElementById(
-"usersPopup"
-)
-.style.display =
-"flex";
+"private message",
 
-}
-
-/* USER MENU */
-
-function openUserMenu(){
-
-document
-.getElementById(
-"userMenu"
-)
-.style.display =
-"flex";
-
-const isAdmin =
-
-currentUser ===
-ADMIN_NAME;
-
-document
-.getElementById(
-"adminOptions"
-)
-.style.display =
-
-isAdmin
-
-?
-
-"block"
-
-:
-
-"none";
-
-document
-.getElementById(
-"userInfoBtn"
-)
-.style.display =
-
-isAdmin
-
-?
-
-"block"
-
-:
-
-"none";
-
-}
-
-/* PRIVATE */
-
-function openPrivate(){
-
-if(!selectedUser){
-return;
-}
-
-closeAll();
-
-document
-.getElementById(
-"privateTitle"
-)
-.innerHTML =
-
-`💬 مرسال - ${selectedUser.username}`;
-
-document
-.getElementById(
-"privateMessages"
-)
-.innerHTML = "";
+(data)=>{
 
 document
 .getElementById(
@@ -777,6 +538,82 @@ document
 )
 .style.display =
 "flex";
+
+const box =
+
+document
+.getElementById(
+"privateMessages"
+);
+
+const div =
+
+document
+.createElement(
+"div"
+);
+
+div.className =
+"private-message";
+
+div.innerHTML = `
+
+<b style="
+color:#00d0b4;
+">
+
+${data.from}
+
+</b>
+
+<br>
+
+${data.message}
+
+`;
+
+box.appendChild(
+div
+);
+
+box.scrollTop =
+box.scrollHeight;
+
+});
+
+/* SEND MESSAGE */
+
+function sendMessage(){
+
+const input =
+
+document
+.getElementById(
+"messageInput"
+);
+
+const message =
+input.value.trim();
+
+if(!message){
+return;
+}
+
+socket.emit(
+
+"chat message",
+
+{
+
+message,
+username:currentUser,
+color:currentColor
+
+}
+
+);
+
+input.value = "";
 
 }
 
@@ -858,13 +695,92 @@ input.value = "";
 
 }
 
-/* RECEIVE PRIVATE */
+/* USERS POPUP */
 
-socket.on(
+function toggleUsers(){
 
-"private message",
+document
+.getElementById(
+"usersPopup"
+)
+.style.display =
+"flex";
 
-(data)=>{
+}
+
+/* USER MENU */
+
+function openUserMenu(){
+
+document
+.getElementById(
+"userMenu"
+)
+.style.display =
+"flex";
+
+const isAdmin =
+
+currentUser ===
+ADMIN_NAME;
+
+document
+.getElementById(
+"adminOptions"
+)
+.style.display =
+
+isAdmin
+
+?
+
+"block"
+
+:
+
+"none";
+
+document
+.getElementById(
+"userInfoBtn"
+)
+.style.display =
+
+isAdmin
+
+?
+
+"block"
+
+:
+
+"none";
+
+}
+
+/* PRIVATE BOX */
+
+function openPrivate(){
+
+if(!selectedUser){
+return;
+}
+
+closeAll();
+
+document
+.getElementById(
+"privateTitle"
+)
+.innerHTML =
+
+`💬 مرسال - ${selectedUser.username}`;
+
+document
+.getElementById(
+"privateMessages"
+)
+.innerHTML = "";
 
 document
 .getElementById(
@@ -873,70 +789,11 @@ document
 .style.display =
 "flex";
 
-const box =
-
-document
-.getElementById(
-"privateMessages"
-);
-
-const div =
-
-document
-.createElement(
-"div"
-);
-
-div.className =
-"private-message";
-
-div.innerHTML = `
-
-<b style="
-color:#00d0b4;
-">
-
-${data.from}
-
-</b>
-
-<br>
-
-${data.message}
-
-`;
-
-box.appendChild(
-div
-);
-
-box.scrollTop =
-box.scrollHeight;
-
-});
+}
 
 /* USER INFO */
 
 function showUserInfo(){
-
-let shortBrowser =
-"Unknown";
-
-if(
-selectedUser.browser
-?.includes("iPhone")
-){
-shortBrowser =
-"iPhone";
-}
-
-if(
-selectedUser.browser
-?.includes("Android")
-){
-shortBrowser =
-"Android";
-}
 
 document
 .getElementById(
@@ -958,11 +815,6 @@ ${selectedUser.username}
 
 IP:
 ${selectedUser.ip || "Unknown"}
-
-<br><br>
-
-Browser:
-${shortBrowser}
 
 <br><br>
 
@@ -989,7 +841,7 @@ closeAll();
 
 }
 
-/* KICK */
+/* ADMIN ACTIONS */
 
 function kickUser(){
 
@@ -1002,8 +854,6 @@ closeAll();
 
 }
 
-/* BAN */
-
 function banUser(){
 
 socket.emit(
@@ -1014,8 +864,6 @@ selectedUser.id
 closeAll();
 
 }
-
-/* FULL DISCONNECT */
 
 function disconnectUser(){
 
@@ -1028,7 +876,7 @@ closeAll();
 
 }
 
-/* OPEN BANNED PANEL */
+/* BANNED PANEL */
 
 function openBannedPanel(){
 
@@ -1051,7 +899,7 @@ document
 
 }
 
-/* RECEIVE BANNED */
+/* BANNED LIST */
 
 socket.on(
 
@@ -1077,8 +925,6 @@ list
 
 });
 
-/* RENDER BANNED */
-
 function renderBannedUsers(list){
 
 const box =
@@ -1098,8 +944,7 @@ if(list.length <= 0){
 
 box.innerHTML = `
 
-<div
-class="online-user">
+<div class="online-user">
 
 لا يوجد محظورين 😎
 
@@ -1115,8 +960,7 @@ list.forEach((ban,index)=>{
 
 const div =
 
-document
-.createElement(
+document.createElement(
 "div"
 );
 
@@ -1141,7 +985,7 @@ ban.fullDisconnect
 
 <br><br>
 
-👤 ${ban.username || "مستخدم"}
+👤 ${ban.username}
 
 <br><br>
 
@@ -1181,16 +1025,53 @@ div
 
 function unbanUser(index){
 
-if(
-currentUser !== ADMIN_NAME
-){
-return;
-}
-
 socket.emit(
 "unban user",
 index
 );
+
+}
+
+/* SYSTEM MESSAGE */
+
+function addSystemMessage(text,color){
+
+const messages =
+
+document.getElementById(
+"messages"
+);
+
+if(!messages){
+return;
+}
+
+const div =
+
+document.createElement(
+"div"
+);
+
+div.className =
+"msg-line";
+
+div.innerHTML = `
+
+<span style="
+color:${color};
+font-weight:bold;
+">
+
+${text}
+
+</span>
+
+`;
+
+messages.appendChild(div);
+
+messages.scrollTop =
+messages.scrollHeight;
 
 }
 
