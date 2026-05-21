@@ -45,14 +45,19 @@ class="admin-box">
 
 <h2>
 
-🔐 دخول الإدارة
+🔐 تسجيل دخول الإدارة
 
 </h2>
 
 <input
+type="text"
+id="adminName"
+placeholder="اسم الأدمن">
+
+<input
 type="password"
-id="adminToken"
-placeholder="توكن الإدارة">
+id="adminPassword"
+placeholder="كلمة السر">
 
 <button
 onclick="loginAdmin()">
@@ -69,6 +74,24 @@ onclick="loginAdmin()">
 id="adminPanel"
 style="display:none;">
 
+<!-- SERVER INFO -->
+
+<div class="admin-box">
+
+<h2>
+
+📊 معلومات السيرفر
+
+</h2>
+
+<div id="serverInfo">
+
+🟢 جاري التحميل...
+
+</div>
+
+</div>
+
 <!-- ONLINE USERS -->
 
 <div class="admin-box">
@@ -79,7 +102,15 @@ style="display:none;">
 
 </h2>
 
-<div id="onlineUsers"></div>
+<div id="onlineUsers">
+
+<div class="user-card">
+
+جاري التحميل...
+
+</div>
+
+</div>
 
 </div>
 
@@ -93,7 +124,15 @@ style="display:none;">
 
 </h2>
 
-<div id="bannedUsers"></div>
+<div id="bannedUsers">
+
+<div class="user-card">
+
+لا يوجد محظورين
+
+</div>
+
+</div>
 
 </div>
 
@@ -107,17 +146,38 @@ style="display:none;">
 
 </h2>
 
-<div id="adminsList"></div>
+<div id="adminsList">
+
+<div class="user-card">
+
+جاري التحميل...
+
+</div>
+
+</div>
+
+<hr>
+
+<h2>
+
+➕ إضافة أدمن
+
+</h2>
 
 <input
 type="text"
 id="newAdminName"
 placeholder="اسم الأدمن">
 
+<input
+type="password"
+id="newAdminPassword"
+placeholder="كلمة سر الأدمن">
+
 <button
 onclick="addAdmin()">
 
-➕ إضافة أدمن
+إضافة أدمن
 
 </button>
 
@@ -129,7 +189,7 @@ onclick="addAdmin()">
 
 <h2>
 
-⚙️ إعدادات السيرفر
+⚙️ التحكم بالسيرفر
 
 </h2>
 
@@ -167,19 +227,23 @@ onclick="maintenanceMode()">
 
 </div>
 
-<!-- SERVER INFO -->
+<!-- LOGS -->
 
 <div class="admin-box">
 
 <h2>
 
-📊 معلومات السيرفر
+📜 السجل
 
 </h2>
 
-<div id="serverInfo">
+<div id="logsBox">
 
-🟢 السيرفر يعمل
+<div class="user-card">
+
+لا يوجد سجلات
+
+</div>
 
 </div>
 
