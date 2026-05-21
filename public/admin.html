@@ -21,15 +21,137 @@ initial-scale=1.0
 
 <link
 rel="stylesheet"
-href="admin.css">
+href="admin.css?v=9">
+
+<style>
+
+body{
+
+background:#111;
+
+color:white;
+
+font-family:sans-serif;
+
+margin:0;
+
+padding:15px;
+
+}
+
+.admin-container{
+
+max-width:1000px;
+
+margin:auto;
+
+}
+
+.admin-box{
+
+background:#1c1c1c;
+
+padding:20px;
+
+border-radius:20px;
+
+margin-bottom:20px;
+
+}
+
+h1{
+
+text-align:center;
+
+color:#ffd700;
+
+margin-bottom:25px;
+
+}
+
+h2{
+
+margin-bottom:15px;
+
+color:#00d0ff;
+
+}
+
+input{
+
+width:100%;
+
+padding:14px;
+
+border:none;
+
+border-radius:12px;
+
+background:#2a2a2a;
+
+color:white;
+
+margin-bottom:12px;
+
+font-size:16px;
+
+}
+
+button{
+
+padding:12px 16px;
+
+border:none;
+
+border-radius:12px;
+
+background:#ffd700;
+
+color:black;
+
+font-size:15px;
+
+cursor:pointer;
+
+margin-top:10px;
+
+margin-left:5px;
+
+}
+
+.user-card{
+
+background:#2a2a2a;
+
+padding:14px;
+
+border-radius:14px;
+
+margin-top:10px;
+
+line-height:1.8;
+
+word-break:break-word;
+
+}
+
+.settings-buttons{
+
+display:flex;
+
+flex-wrap:wrap;
+
+gap:10px;
+
+}
+
+</style>
 
 </head>
 
 <body>
 
 <div class="admin-container">
-
-<!-- TITLE -->
 
 <h1>
 
@@ -74,7 +196,7 @@ onclick="loginAdmin()">
 id="adminPanel"
 style="display:none;">
 
-<!-- SERVER INFO -->
+<!-- SERVER -->
 
 <div class="admin-box">
 
@@ -92,7 +214,7 @@ style="display:none;">
 
 </div>
 
-<!-- ONLINE USERS -->
+<!-- ONLINE -->
 
 <div class="admin-box">
 
@@ -102,19 +224,11 @@ style="display:none;">
 
 </h2>
 
-<div id="onlineUsers">
-
-<div class="user-card">
-
-جاري التحميل...
+<div id="onlineUsers"></div>
 
 </div>
 
-</div>
-
-</div>
-
-<!-- BANNED USERS -->
+<!-- BANNED -->
 
 <div class="admin-box">
 
@@ -124,15 +238,7 @@ style="display:none;">
 
 </h2>
 
-<div id="bannedUsers">
-
-<div class="user-card">
-
-لا يوجد محظورين
-
-</div>
-
-</div>
+<div id="bannedUsers"></div>
 
 </div>
 
@@ -146,23 +252,9 @@ style="display:none;">
 
 </h2>
 
-<div id="adminsList">
-
-<div class="user-card">
-
-جاري التحميل...
-
-</div>
-
-</div>
+<div id="adminsList"></div>
 
 <hr>
-
-<h2>
-
-➕ إضافة أدمن
-
-</h2>
 
 <input
 type="text"
@@ -177,7 +269,7 @@ placeholder="كلمة سر الأدمن">
 <button
 onclick="addAdmin()">
 
-إضافة أدمن
+➕ إضافة أدمن
 
 </button>
 
@@ -195,31 +287,27 @@ onclick="addAdmin()">
 
 <div class="settings-buttons">
 
-<button
-onclick="toggleChatLock()">
+<button onclick="toggleChatLock()">
 
-🔒 قفل/فتح العام
-
-</button>
-
-<button
-onclick="togglePrivateLock()">
-
-💬 تعطيل/تفعيل الخاص
+🔒 قفل العام
 
 </button>
 
-<button
-onclick="clearChat()">
+<button onclick="togglePrivateLock()">
+
+💬 تعطيل الخاص
+
+</button>
+
+<button onclick="clearChat()">
 
 🧹 تنظيف الشات
 
 </button>
 
-<button
-onclick="maintenanceMode()">
+<button onclick="maintenanceMode()">
 
-🛠️ وضع صيانة
+🛠️ صيانة
 
 </button>
 
@@ -237,11 +325,7 @@ onclick="maintenanceMode()">
 
 </h2>
 
-<div id="logsBox">
-
-<div class="user-card">
-
-لا يوجد سجلات
+<div id="logsBox"></div>
 
 </div>
 
@@ -249,17 +333,13 @@ onclick="maintenanceMode()">
 
 </div>
 
-</div>
+<!-- SOCKET FIX -->
 
-</div>
-
-<!-- SOCKET -->
-
-<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <!-- ADMIN JS -->
 
-<script src="admin.js"></script>
+<script src="admin.js?v=99"></script>
 
 </body>
 
