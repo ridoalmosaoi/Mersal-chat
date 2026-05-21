@@ -100,14 +100,8 @@ console.log(
 );
 
 console.log(
-"ADMINS:",
+"🔥 ADMINS:",
 admins
-);
-
-}else{
-
-console.log(
-"❌ admins.json NOT FOUND"
 );
 
 }
@@ -183,7 +177,7 @@ message
 
 }
 
-/* CHECK ADMIN */
+/* ADMIN CHECK */
 
 function isAdmin(socket){
 
@@ -218,6 +212,48 @@ if(!username){
 return;
 }
 
+/* PROTECTED NAMES */
+
+const protectedAdmin = admins.find(
+
+a=>
+
+a.name.toLowerCase()
+
+===
+
+username.toLowerCase()
+
+);
+
+if(protectedAdmin){
+
+if(
+
+data.adminPassword
+
+!==
+
+protectedAdmin.password
+
+){
+
+socket.emit(
+
+"banned",
+
+"🚫 كلمة سر الإدارة خطأ"
+
+);
+
+return;
+
+}
+
+}
+
+/* IP */
+
 const ip =
 
 socket.handshake.headers[
@@ -231,6 +267,8 @@ socket.handshake.address
 ||
 
 "Unknown";
+
+/* FINGERPRINT */
 
 const fingerprint =
 
@@ -307,20 +345,50 @@ data.device || "",
 deviceToken:
 data.deviceToken || "",
 
-fingerprint
+fingerprint,
+
+rank:
+
+protectedAdmin
+
+?
+
+protectedAdmin.name
+
+:
+
+"User"
 
 };
 
+/* SAVE USER */
+
 users.push(user);
+
+/* IF ADMIN */
+
+if(protectedAdmin){
+
+socket.isAdmin = true;
+
+socket.adminData = protectedAdmin;
+
+}
+
+/* SUCCESS */
 
 socket.emit(
 "login success"
 );
 
+/* UPDATE USERS */
+
 io.emit(
 "online users",
 users
 );
+
+/* SYSTEM */
 
 systemMessage(
 `${username} دخل الشات`,
@@ -380,7 +448,9 @@ username:user.username,
 
 color:user.color,
 
-message
+message,
+
+rank:user.rank
 
 }
 
@@ -449,24 +519,9 @@ socket.on(
 try{
 
 console.log(
-"🔥 ADMIN LOGIN DATA:",
+"🔥 ADMIN LOGIN:",
 data
 );
-
-console.log(
-"🔥 CURRENT ADMINS:",
-admins
-);
-
-if(!data){
-
-socket.emit(
-"admin login failed"
-);
-
-return;
-
-}
 
 const admin = admins.find(
 
@@ -482,10 +537,6 @@ a.password === data.password
 
 if(!admin){
 
-console.log(
-"❌ ADMIN FAILED"
-);
-
 socket.emit(
 "admin login failed"
 );
@@ -493,10 +544,6 @@ socket.emit(
 return;
 
 }
-
-console.log(
-"✅ ADMIN SUCCESS"
-);
 
 socket.isAdmin = true;
 
@@ -964,11 +1011,6 @@ http.listen(PORT,()=>{
 
 console.log(
 "🚀 Server Running"
-);
-
-console.log(
-"🔥 ADMINS:",
-admins
 );
 
 });
