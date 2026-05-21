@@ -68,6 +68,10 @@ let users = [];
 
 let bannedUsers = [];
 
+/* ADMINS */
+
+let admins = [];
+
 /* SETTINGS */
 
 let chatLocked = false;
@@ -98,6 +102,30 @@ bannedUsers = [];
 
 }
 
+/* LOAD ADMINS */
+
+if(
+fs.existsSync("admins.json")
+){
+
+try{
+
+admins = JSON.parse(
+
+fs.readFileSync(
+"admins.json"
+)
+
+);
+
+}catch{
+
+admins = [];
+
+}
+
+}
+
 /* SAVE BANS */
 
 function saveBans(){
@@ -108,6 +136,24 @@ fs.writeFileSync(
 
 JSON.stringify(
 bannedUsers,
+null,
+2
+)
+
+);
+
+}
+
+/* SAVE ADMINS */
+
+function saveAdmins(){
+
+fs.writeFileSync(
+
+"admins.json",
+
+JSON.stringify(
+admins,
 null,
 2
 )
@@ -137,6 +183,14 @@ message:text
 }
 
 );
+
+}
+
+/* ADMIN CHECK */
+
+function isAdmin(socket){
+
+return socket.isAdmin === true;
 
 }
 
@@ -181,36 +235,11 @@ const username =
 (data.username || "")
 .trim();
 
-const password =
-(data.password || "")
-.trim();
-
 if(!username){
 
 socket.emit(
 "banned",
 "اسم غير صالح 🚫"
-);
-
-return;
-
-}
-
-/* ADMIN */
-
-if(
-
-username === "Admin"
-
-&&
-
-password !== "123456"
-
-){
-
-socket.emit(
-"banned",
-"كلمة سر الإدارة خطأ 🚫"
 );
 
 return;
@@ -491,6 +520,184 @@ err
 
 });
 
+/* ADMIN LOGIN */
+
+socket.on(
+
+"admin panel login",
+
+(data)=>{
+
+const admin = admins.find(
+
+a=>
+
+a.name === data.name
+
+&&
+
+a.password === data.password
+
+);
+
+if(!admin){
+
+socket.emit(
+"admin login failed"
+);
+
+return;
+
+}
+
+socket.isAdmin = true;
+
+socket.adminData = admin;
+
+socket.emit(
+"admin login success"
+);
+
+socket.emit(
+"admin online users",
+users
+);
+
+socket.emit(
+"admin banned users",
+bannedUsers
+);
+
+socket.emit(
+
+"admins list",
+
+admins
+
+);
+
+socket.emit(
+
+"server stats",
+
+{
+
+onlineUsers:
+users.length,
+
+bannedUsers:
+bannedUsers.length,
+
+admins:
+admins.length
+
+}
+
+);
+
+});
+
+/* ADD ADMIN */
+
+socket.on(
+
+"add admin",
+
+(data)=>{
+
+if(!isAdmin(socket)){
+return;
+}
+
+if(
+
+!socket.adminData
+.permissions
+.disconnect
+
+){
+return;
+}
+
+const exists = admins.find(
+
+a=>
+
+a.name.toLowerCase()
+
+===
+
+data.name.toLowerCase()
+
+);
+
+if(exists){
+return;
+}
+
+admins.push({
+
+name:data.name,
+
+password:data.password,
+
+permissions:{
+
+kick:true,
+
+ban:true,
+
+disconnect:true,
+
+unban:true,
+
+clear:true,
+
+maintenance:true,
+
+chatLock:true,
+
+privateLock:true
+
+}
+
+});
+
+saveAdmins();
+
+io.emit(
+"admins list",
+admins
+);
+
+});
+
+/* REMOVE ADMIN */
+
+socket.on(
+
+"remove admin",
+
+(index)=>{
+
+if(!isAdmin(socket)){
+return;
+}
+
+admins.splice(
+index,
+1
+);
+
+saveAdmins();
+
+io.emit(
+"admins list",
+admins
+);
+
+});
+
 /* KICK */
 
 socket.on(
@@ -499,13 +706,7 @@ socket.on(
 
 (userId)=>{
 
-const sender = users.find(
-u=>u.id === socket.id
-);
-
-if(
-sender?.username !== "Admin"
-){
+if(!isAdmin(socket)){
 return;
 }
 
@@ -541,13 +742,7 @@ socket.on(
 
 (userId)=>{
 
-const sender = users.find(
-u=>u.id === socket.id
-);
-
-if(
-sender?.username !== "Admin"
-){
+if(!isAdmin(socket)){
 return;
 }
 
@@ -573,7 +768,10 @@ target.deviceToken,
 username:
 target.username,
 
-fullDisconnect:false
+fullDisconnect:false,
+
+time:
+Date.now()
 
 });
 
@@ -603,13 +801,7 @@ socket.on(
 
 (userId)=>{
 
-const sender = users.find(
-u=>u.id === socket.id
-);
-
-if(
-sender?.username !== "Admin"
-){
+if(!isAdmin(socket)){
 return;
 }
 
@@ -635,7 +827,10 @@ target.deviceToken,
 username:
 target.username,
 
-fullDisconnect:true
+fullDisconnect:true,
+
+time:
+Date.now()
 
 });
 
@@ -668,13 +863,7 @@ socket.on(
 
 (index)=>{
 
-const sender = users.find(
-u=>u.id === socket.id
-);
-
-if(
-sender?.username !== "Admin"
-){
+if(!isAdmin(socket)){
 return;
 }
 
@@ -694,49 +883,13 @@ index,
 saveBans();
 
 io.emit(
-"banned users updated",
+"admin banned users",
 bannedUsers
 );
 
 systemMessage(
 "✅ تم فك الحظر",
 "lime"
-);
-
-});
-
-/* ADMIN PANEL LOGIN */
-
-socket.on(
-
-"admin panel login",
-
-()=>{
-
-socket.emit(
-"admin online users",
-users
-);
-
-socket.emit(
-"admin banned users",
-bannedUsers
-);
-
-socket.emit(
-
-"server stats",
-
-{
-
-onlineUsers:
-users.length,
-
-bannedUsers:
-bannedUsers.length
-
-}
-
 );
 
 });
@@ -748,6 +901,10 @@ socket.on(
 "clear chat",
 
 ()=>{
+
+if(!isAdmin(socket)){
+return;
+}
 
 io.emit(
 "clear messages"
@@ -767,6 +924,10 @@ socket.on(
 "toggle chat lock",
 
 ()=>{
+
+if(!isAdmin(socket)){
+return;
+}
 
 chatLocked = !chatLocked;
 
@@ -798,6 +959,10 @@ socket.on(
 
 ()=>{
 
+if(!isAdmin(socket)){
+return;
+}
+
 privateLocked = !privateLocked;
 
 systemMessage(
@@ -827,6 +992,10 @@ socket.on(
 "maintenance mode",
 
 ()=>{
+
+if(!isAdmin(socket)){
+return;
+}
 
 systemMessage(
 "🛠️ السيرفر تحت الصيانة",
