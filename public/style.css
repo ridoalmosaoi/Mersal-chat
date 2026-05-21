@@ -460,6 +460,38 @@ gap:12px;
 
 }
 
+/* CLOSE BUTTON */
+
+.popup-close{
+
+font-size:24px;
+
+color:#ff4444;
+
+cursor:pointer;
+
+align-self:flex-start;
+
+padding:4px 10px;
+
+border-radius:10px;
+
+background:#262626;
+
+margin-bottom:5px;
+
+transition:0.2s;
+
+}
+
+.popup-close:hover{
+
+transform:scale(1.1);
+
+background:#333;
+
+}
+
 /* PRIVATE FIX */
 
 #privateBox .popup-box{
@@ -495,6 +527,14 @@ cursor:pointer;
 word-break:break-word;
 
 line-height:1.6;
+
+transition:0.2s;
+
+}
+
+.online-user:hover{
+
+background:#303030;
 
 }
 
@@ -623,6 +663,12 @@ font-size:24px;
 .login-box{
 
 padding:25px;
+
+}
+
+.popup-box{
+
+height:88dvh;
 
 }
 
