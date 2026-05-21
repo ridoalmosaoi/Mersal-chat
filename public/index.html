@@ -53,7 +53,7 @@ type="password"
 id="loginPassword"
 placeholder="كلمة المرور">
 
-<!-- COLOR PICKER -->
+<!-- COLORS -->
 
 <div class="color-picker">
 
@@ -107,13 +107,11 @@ id="chatApp"
 class="chat-app"
 style="display:none;">
 
-<!-- TOP BAR -->
+<!-- TOP -->
 
 <div class="top-bar">
 
 <div class="top-icons">
-
-<!-- USERS -->
 
 <span
 class="top-icon"
@@ -122,8 +120,6 @@ onclick="toggleUsers()">
 👥
 
 </span>
-
-<!-- PRIVATE ICON -->
 
 <div
 class="private-notify-box"
@@ -148,8 +144,6 @@ style="display:none;">
 
 </div>
 
-<!-- ROOM -->
-
 <div class="room-name">
 
 #العراق
@@ -157,8 +151,6 @@ style="display:none;">
 </div>
 
 <div class="top-icons">
-
-<!-- BANNED -->
 
 <span
 id="bannedPanelBtn"
@@ -170,15 +162,8 @@ style="display:none;">
 
 </span>
 
-<!-- SETTINGS -->
-
 <span
-class="top-icon"
-onclick="
-alert(
-'مرسال 😎'
-)
-">
+class="top-icon">
 
 ⚙️
 
@@ -222,7 +207,7 @@ placeholder="اكتب هنا...">
 
 </div>
 
-<!-- USERS POPUP -->
+<!-- USERS -->
 
 <div
 id="usersPopup"
@@ -231,10 +216,16 @@ class="popup-bg">
 <div class="popup-box">
 
 <div
+class="popup-close"
+onclick="closeAll()">
+
+✖
+
+</div>
+
+<div
 class="online-user"
-style="
-color:gold;
-">
+style="color:gold;">
 
 ⭐ المتواجدين
 
@@ -253,6 +244,14 @@ id="userMenu"
 class="popup-bg">
 
 <div class="popup-box">
+
+<div
+class="popup-close"
+onclick="closeAll()">
+
+✖
+
+</div>
 
 <div
 class="online-user"
@@ -284,9 +283,7 @@ onclick="showUserInfo()">
 <div
 class="online-user"
 onclick="kickUser()"
-style="
-color:orange;
-">
+style="color:orange;">
 
 ⚠️ طرد
 
@@ -295,9 +292,7 @@ color:orange;
 <div
 class="online-user"
 onclick="banUser()"
-style="
-color:red;
-">
+style="color:red;">
 
 🚫 حظر
 
@@ -306,9 +301,7 @@ color:red;
 <div
 class="online-user"
 onclick="disconnectUser()"
-style="
-color:#ff4444;
-">
+style="color:#ff4444;">
 
 ⛔ فصل كلي
 
@@ -320,13 +313,21 @@ color:#ff4444;
 
 </div>
 
-<!-- PRIVATE CHAT -->
+<!-- PRIVATE -->
 
 <div
 id="privateBox"
 class="popup-bg">
 
 <div class="popup-box">
+
+<div
+class="popup-close"
+onclick="closeAll()">
+
+✖
+
+</div>
 
 <div
 id="privateTitle"
@@ -370,6 +371,14 @@ class="popup-bg">
 <div class="popup-box">
 
 <div
+class="popup-close"
+onclick="closeAll()">
+
+✖
+
+</div>
+
+<div
 class="online-user"
 style="
 color:#00d0b4;
@@ -394,6 +403,14 @@ class="popup-bg">
 <div class="popup-box">
 
 <div
+class="popup-close"
+onclick="closeAll()">
+
+✖
+
+</div>
+
+<div
 class="online-user"
 style="
 color:gold;
@@ -403,10 +420,7 @@ color:gold;
 
 </div>
 
-<div
-id="userInfoContent">
-
-</div>
+<div id="userInfoContent"></div>
 
 </div>
 
@@ -419,6 +433,14 @@ id="bannedPopup"
 class="popup-bg">
 
 <div class="popup-box">
+
+<div
+class="popup-close"
+onclick="closeAll()">
+
+✖
+
+</div>
 
 <div
 class="online-user"
