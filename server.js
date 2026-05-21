@@ -100,7 +100,14 @@ console.log(
 );
 
 console.log(
+"ADMINS:",
 admins
+);
+
+}else{
+
+console.log(
+"❌ admins.json NOT FOUND"
 );
 
 }
@@ -176,7 +183,7 @@ message
 
 }
 
-/* ADMIN CHECK */
+/* CHECK ADMIN */
 
 function isAdmin(socket){
 
@@ -193,7 +200,7 @@ console.log(
 socket.id
 );
 
-/* USER JOIN */
+/* JOIN */
 
 socket.on(
 
@@ -306,20 +313,14 @@ fingerprint
 
 users.push(user);
 
-/* SUCCESS */
-
 socket.emit(
 "login success"
 );
-
-/* UPDATE USERS */
 
 io.emit(
 "online users",
 users
 );
-
-/* SYSTEM */
 
 systemMessage(
 `${username} دخل الشات`,
@@ -448,9 +449,24 @@ socket.on(
 try{
 
 console.log(
-"🔥 ADMIN LOGIN:",
+"🔥 ADMIN LOGIN DATA:",
 data
 );
+
+console.log(
+"🔥 CURRENT ADMINS:",
+admins
+);
+
+if(!data){
+
+socket.emit(
+"admin login failed"
+);
+
+return;
+
+}
 
 const admin = admins.find(
 
@@ -948,6 +964,11 @@ http.listen(PORT,()=>{
 
 console.log(
 "🚀 Server Running"
+);
+
+console.log(
+"🔥 ADMINS:",
+admins
 );
 
 });
