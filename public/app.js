@@ -1,75 +1,77 @@
 const socket = io({
 
-transports:["polling","websocket"],
-
-upgrade:true,
-
-rememberUpgrade:true,
+transports:[
+"websocket",
+"polling"
+],
 
 reconnection:true,
 
-reconnectionAttempts:Infinity,
+reconnectionAttempts:999999,
 
 reconnectionDelay:1000,
 
-reconnectionDelayMax:4000,
-
-timeout:20000,
-
-autoConnect:true
+timeout:20000
 
 });
 
-/* ERROR */
+/* USER */
 
-window.onerror = function(msg){
-
-console.log(
-"ERROR:",
-msg
-);
-
-};
-
-/* GLOBAL */
-
-const ADMIN_NAME = "Admin";
-
-let currentUser = "";
-
-let selectedUser = null;
+let currentUser = null;
 
 let currentColor = "#ffd700";
 
 let privateNotifications = 0;
 
-/* COLOR */
+let openedPrivateUser = null;
 
-function selectColor(color){
+let onlineUsersData = [];
 
-currentColor = color;
+/* ELEMENTS */
 
-document
-.querySelectorAll(
-".color-btn"
-)
-.forEach(btn=>{
+const loginPage =
+document.getElementById(
+"loginPage"
+);
 
-btn.style.border =
-"3px solid white";
+const chatPage =
+document.getElementById(
+"chatPage"
+);
 
-});
+const usernameInput =
+document.getElementById(
+"username"
+);
 
-event.target.style.border =
-"3px solid red";
+const adminPasswordInput =
+document.getElementById(
+"adminPassword"
+);
 
-}
+const messageInput =
+document.getElementById(
+"messageInput"
+);
+
+const messages =
+document.getElementById(
+"messages"
+);
+
+const usersList =
+document.getElementById(
+"usersList"
+);
+
+const privateBadge =
+document.getElementById(
+"privateBadge"
+);
 
 /* DEVICE TOKEN */
 
-let deviceToken =
-
-localStorage.getItem(
+let deviceToken = localStorage.getItem(
 "deviceToken"
 );
 
@@ -92,112 +94,60 @@ deviceToken
 
 }
 
-/* KEEP ALIVE */
+/* PROTECTED NAMES */
 
-setInterval(()=>{
+const protectedNames = [
 
-if(socket.connected){
+"Admin",
 
-socket.emit(
-"ping alive"
-);
+"Owner",
 
-}
+"Moderator"
 
-},15000);
+];
 
-/* RECONNECT */
+/* SHOW ADMIN PASSWORD */
 
-document.addEventListener(
+usernameInput.addEventListener(
 
-"visibilitychange",
+"input",
 
 ()=>{
+
+const value =
+usernameInput.value.trim();
 
 if(
 
-document.visibilityState ===
-"visible"
-
-&&
-
-!socket.connected
+protectedNames.includes(
+value
+)
 
 ){
 
-socket.connect();
+adminPasswordInput.style.display =
+"block";
+
+}else{
+
+adminPasswordInput.style.display =
+"none";
+
+adminPasswordInput.value = "";
 
 }
 
 });
 
-/* CONNECT */
+/* JOIN */
 
-socket.on(
-
-"connect",
-
-()=>{
-
-console.log(
-"Connected ✅"
-);
-
-});
-
-/* DISCONNECT */
-
-socket.on(
-
-"disconnect",
-
-()=>{
-
-addSystemMessage(
-"⚠️ انقطع الاتصال"
-,
-"red"
-);
-
-});
-
-/* RECONNECT */
-
-socket.on(
-
-"reconnect",
-
-()=>{
-
-addSystemMessage(
-"✅ عاد الاتصال"
-,
-"lime"
-);
-
-});
-
-/* LOGIN */
-
-function login(){
+function joinChat(){
 
 const username =
+usernameInput.value.trim();
 
-document
-.getElementById(
-"loginUsername"
-)
-.value
-.trim();
-
-const password =
-
-document
-.getElementById(
-"loginPassword"
-)
-.value
-.trim();
+const adminPassword =
+adminPasswordInput.value.trim();
 
 if(!username){
 
@@ -209,13 +159,7 @@ return;
 
 }
 
-currentUser =
-username;
-
-localStorage.setItem(
-"username",
-username
-);
+currentUser = username;
 
 socket.emit(
 
@@ -225,53 +169,23 @@ socket.emit(
 
 username,
 
-password,
+adminPassword,
 
-color:
-currentColor,
+color:currentColor,
+
+deviceToken,
 
 browser:
 navigator.userAgent,
 
 device:
-navigator.platform,
-
-deviceToken
+navigator.platform
 
 }
 
 );
 
 }
-
-/* AUTO LOGIN */
-
-window.onload = ()=>{
-
-const savedUser =
-
-localStorage.getItem(
-"username"
-);
-
-const input =
-
-document.getElementById(
-"loginUsername"
-);
-
-if(
-savedUser
-&&
-input
-){
-
-input.value =
-savedUser;
-
-}
-
-};
 
 /* LOGIN SUCCESS */
 
@@ -281,35 +195,11 @@ socket.on(
 
 ()=>{
 
-document
-.getElementById(
-"loginScreen"
-)
-.style.display =
+loginPage.style.display =
 "none";
 
-document
-.getElementById(
-"chatApp"
-)
-.style.display =
+chatPage.style.display =
 "flex";
-
-if(
-
-currentUser ===
-ADMIN_NAME
-
-){
-
-document
-.getElementById(
-"bannedPanelBtn"
-)
-.style.display =
-"block";
-
-}
 
 });
 
@@ -319,202 +209,34 @@ socket.on(
 
 "banned",
 
-(msg)=>{
+(message)=>{
 
-alert(msg);
+alert(message);
 
 });
 
-/* USERS */
+/* FULL BAN */
 
 socket.on(
 
-"online users",
+"full device banned",
 
-(users)=>{
+(message)=>{
 
-const usersList =
+alert(message);
 
-document.getElementById(
-"usersList"
-);
-
-if(!usersList){
-return;
-}
-
-usersList.innerHTML = "";
-
-users.forEach(user=>{
-
-const div =
-
-document.createElement(
-"div"
-);
-
-div.className =
-"online-user";
-
-div.innerHTML = `
-
-${
-
-user.username ===
-ADMIN_NAME
-
-?
-
-"⭐"
-
-:
-
-"👤"
-
-}
-
-${user.username}
-
-`;
-
-div.onclick = ()=>{
-
-selectedUser =
-user;
-
-openUserMenu();
-
-};
-
-usersList.appendChild(
-div
-);
+localStorage.clear();
 
 });
 
-});
-
-/* RECEIVE CHAT */
-
-socket.on(
-
-"chat message",
-
-(data)=>{
-
-const messages =
-
-document.getElementById(
-"messages"
-);
-
-if(!messages){
-return;
-}
-
-let messageText =
-data.message;
-
-messageText =
-messageText.replace(
-
-/<([^>]+)>/g,
-
-(match)=>{
-
-return `
-
-<span style="
-color:red;
-font-weight:bold;
-">
-
-${match}
-
-</span>
-
-`;
-
-}
-
-);
-
-const div =
-
-document.createElement(
-"div"
-);
-
-div.className =
-"msg-line";
-
-div.innerHTML = `
-
-<span
-class="msg-name"
-style="
-color:${data.color};
-">
-
-&lt;${data.username}&gt;
-
-</span>
-
-<span class="msg-text">
-
-${messageText}
-
-</span>
-
-`;
-
-div.onclick = ()=>{
-
-selectedUser = {
-
-id:data.id,
-
-username:data.username,
-
-ip:data.ip,
-
-browser:data.browser,
-
-device:data.device
-
-};
-
-openUserMenu();
-
-};
-
-messages.appendChild(
-div
-);
-
-messages.scrollTop =
-messages.scrollHeight;
-
-});
-
-/* SEND CHAT */
+/* SEND MESSAGE */
 
 function sendMessage(){
 
-const input =
+const text =
+messageInput.value.trim();
 
-document.getElementById(
-"messageInput"
-);
-
-if(!input){
-return;
-}
-
-const message =
-input.value.trim();
-
-if(!message){
+if(!text){
 return;
 }
 
@@ -524,14 +246,271 @@ socket.emit(
 
 {
 
-message:message,
-
-username:currentUser,
-
-color:currentColor
+message:text
 
 }
 
+);
+
+messageInput.value = "";
+
+}
+
+/* ENTER */
+
+messageInput.addEventListener(
+
+"keypress",
+
+(e)=>{
+
+if(e.key === "Enter"){
+
+sendMessage();
+
+}
+
+});
+
+/* CHAT MESSAGE */
+
+socket.on(
+
+"chat message",
+
+(data)=>{
+
+const div =
+document.createElement("div");
+
+div.className =
+"message";
+
+/* RANK */
+
+let rankHtml = "";
+
+if(data.rank === "Admin"){
+
+rankHtml =
+`<span class="rank admin-rank">👑</span>`;
+
+}
+
+if(data.rank === "Owner"){
+
+rankHtml =
+`<span class="rank owner-rank">⭐</span>`;
+
+}
+
+if(data.rank === "Moderator"){
+
+rankHtml =
+`<span class="rank mod-rank">🛡️</span>`;
+
+}
+
+/* DUPLICATE NAME */
+
+let duplicateColor = "";
+
+const duplicates =
+
+document.querySelectorAll(
+`.user-${data.username}`
+);
+
+if(duplicates.length > 0){
+
+duplicateColor =
+"red";
+
+}
+
+/* MESSAGE HTML */
+
+div.innerHTML = `
+
+<div class="
+message-user
+user-${data.username}
+">
+
+${rankHtml}
+
+<span style="
+color:${duplicateColor || data.color};
+font-weight:bold;
+">
+
+${data.username}
+
+</span>
+
+</div>
+
+<div class="message-text">
+
+${data.message}
+
+</div>
+
+`;
+
+messages.appendChild(div);
+
+messages.scrollTop =
+messages.scrollHeight;
+
+});
+
+/* ONLINE USERS */
+
+socket.on(
+
+"online users",
+
+(users)=>{
+
+onlineUsersData = users;
+
+usersList.innerHTML = "";
+
+users.forEach(user=>{
+
+const div =
+document.createElement("div");
+
+div.className =
+"user-item";
+
+/* BADGE */
+
+let badge = "";
+
+if(user.rank === "Admin"){
+
+badge = "👑";
+
+}
+
+if(user.rank === "Owner"){
+
+badge = "⭐";
+
+}
+
+if(user.rank === "Moderator"){
+
+badge = "🛡️";
+
+}
+
+/* USER HTML */
+
+div.innerHTML = `
+
+<div class="user-row">
+
+<span onclick="
+openPrivateChat(
+'${user.id}',
+'${user.username}'
+)
+">
+
+${badge}
+${user.username}
+
+</span>
+
+</div>
+
+`;
+
+usersList.appendChild(div);
+
+});
+
+});
+
+/* OPEN PRIVATE */
+
+function openPrivateChat(id,username){
+
+openedPrivateUser = id;
+
+document
+.getElementById(
+"privateChatBox"
+)
+.style.display =
+"flex";
+
+document
+.getElementById(
+"privateChatTitle"
+)
+.innerText =
+`📩 ${username}`;
+
+privateNotifications = 0;
+
+updatePrivateBadge();
+
+}
+
+/* CLOSE PRIVATE */
+
+function closePrivateChat(){
+
+document
+.getElementById(
+"privateChatBox"
+)
+.style.display =
+"none";
+
+}
+
+/* SEND PRIVATE */
+
+function sendPrivateMessage(){
+
+const input =
+
+document.getElementById(
+"privateMessageInput"
+);
+
+const text =
+input.value.trim();
+
+if(!text){
+return;
+}
+
+socket.emit(
+
+"private message",
+
+{
+
+to:openedPrivateUser,
+
+from:currentUser,
+
+message:text
+
+}
+
+);
+
+addPrivateMessage(
+currentUser,
+text,
+true
 );
 
 input.value = "";
@@ -546,660 +525,226 @@ socket.on(
 
 (data)=>{
 
-privateNotifications++;
-
-const badge =
-
-document.getElementById(
-"privateNotify"
+addPrivateMessage(
+data.from,
+data.message,
+false
 );
 
-if(badge){
+privateNotifications++;
 
-badge.style.display =
+updatePrivateBadge();
+
+});
+
+/* ADD PRIVATE */
+
+function addPrivateMessage(from,msg,mine){
+
+const box =
+document.getElementById(
+"privateMessages"
+);
+
+const div =
+document.createElement("div");
+
+div.className =
+
+mine
+
+?
+
+"private-me"
+
+:
+
+"private-other";
+
+div.innerHTML = `
+
+<b>${from}</b>
+
+<br>
+
+${msg}
+
+`;
+
+box.appendChild(div);
+
+box.scrollTop =
+box.scrollHeight;
+
+}
+
+/* PRIVATE BADGE */
+
+function updatePrivateBadge(){
+
+if(!privateBadge){
+return;
+}
+
+if(privateNotifications <= 0){
+
+privateBadge.style.display =
+"none";
+
+return;
+
+}
+
+privateBadge.style.display =
 "flex";
 
-badge.innerText =
+privateBadge.innerText =
 privateNotifications;
 
 }
 
-const privateList =
-
-document.getElementById(
-"privateList"
-);
-
-if(privateList){
-
-const item =
-
-document.createElement(
-"div"
-);
-
-item.className =
-"online-user";
-
-item.innerHTML = `
-
-💬 ${data.from}
-
-`;
-
-item.dataset.username =
-data.from;
-
-item.onclick = ()=>{
-
-selectedUser = {
-
-id:data.fromId,
-
-username:data.from
-
-};
-
-closeAll();
-
-document
-.getElementById(
-"privateTitle"
-)
-.innerHTML =
-
-`💬 مرسال - ${data.from}`;
-
-document
-.getElementById(
-"privateBox"
-)
-.style.display =
-"flex";
-
-};
-
-privateList.prepend(
-item
-);
-
-}
-
-const box =
-
-document
-.getElementById(
-"privateMessages"
-);
-
-document
-.getElementById(
-"privateBox"
-)
-.style.display =
-"flex";
-
-const div =
-
-document.createElement(
-"div"
-);
-
-div.className =
-"private-message";
-
-div.innerHTML = `
-
-<b style="
-color:#00d0b4;
-">
-
-${data.from}
-
-</b>
-
-<br>
-
-${data.message}
-
-`;
-
-box.appendChild(
-div
-);
-
-box.scrollTop =
-box.scrollHeight;
-
-});
-
-/* SEND PRIVATE */
-
-function sendPrivate(){
-
-if(!selectedUser){
-return;
-}
-
-const input =
-
-document
-.getElementById(
-"privateInput"
-);
-
-if(!input){
-return;
-}
-
-const message =
-input.value.trim();
-
-if(!message){
-return;
-}
-
-socket.emit(
-
-"private message",
-
-{
-
-to:selectedUser.id,
-
-from:currentUser,
-
-message
-
-}
-
-);
-
-const box =
-
-document
-.getElementById(
-"privateMessages"
-);
-
-const div =
-
-document.createElement(
-"div"
-);
-
-div.className =
-"private-message";
-
-div.innerHTML = `
-
-<b style="
-color:#ffd700;
-">
-
-أنت
-
-</b>
-
-<br>
-
-${message}
-
-`;
-
-box.appendChild(
-div
-);
-
-box.scrollTop =
-box.scrollHeight;
-
-input.value = "";
-
-}
-
-/* USERS */
-
-function toggleUsers(){
-
-document
-.getElementById(
-"usersPopup"
-)
-.style.display =
-"flex";
-
-}
-
-/* PRIVATE LIST */
-
-function openPrivateList(){
-
-document
-.getElementById(
-"privateListPopup"
-)
-.style.display =
-"flex";
-
-const badge =
-
-document.getElementById(
-"privateNotify"
-);
-
-if(badge){
-
-badge.style.display =
-"none";
-
-}
-
-privateNotifications = 0;
-
-}
-
-/* USER MENU */
-
-function openUserMenu(){
-
-document
-.getElementById(
-"userMenu"
-)
-.style.display =
-"flex";
-
-const isAdmin =
-
-currentUser ===
-ADMIN_NAME;
-
-document
-.getElementById(
-"adminOptions"
-)
-.style.display =
-
-isAdmin
-
-?
-
-"block"
-
-:
-
-"none";
-
-document
-.getElementById(
-"userInfoBtn"
-)
-.style.display =
-
-isAdmin
-
-?
-
-"block"
-
-:
-
-"none";
-
-}
-
-/* PRIVATE OPEN */
-
-function openPrivate(){
-
-if(!selectedUser){
-return;
-}
-
-closeAll();
-
-document
-.getElementById(
-"privateTitle"
-)
-.innerHTML =
-
-`💬 مرسال - ${selectedUser.username}`;
-
-document
-.getElementById(
-"privateMessages"
-)
-.innerHTML = "";
-
-document
-.getElementById(
-"privateBox"
-)
-.style.display =
-"flex";
-
-}
-
-/* USER INFO */
-
-function showUserInfo(){
-
-document
-.getElementById(
-"userInfoPopup"
-)
-.style.display =
-"flex";
-
-document
-.getElementById(
-"userInfoContent"
-)
-.innerHTML = `
-
-الاسم:
-${selectedUser.username}
-
-<br><br>
-
-IP:
-${selectedUser.ip || "Unknown"}
-
-<br><br>
-
-Device:
-${selectedUser.device || "Unknown"}
-
-`;
-
-}
-
-/* REPLY */
-
-function replyUser(){
-
-document
-.getElementById(
-"messageInput"
-)
-.value +=
-
-`<${selectedUser.username}> `;
-
-closeAll();
-
-}
-
-/* ADMIN */
-
-function kickUser(){
-
-socket.emit(
-"kick user",
-selectedUser.id
-);
-
-closeAll();
-
-}
-
-function banUser(){
-
-socket.emit(
-"ban user",
-selectedUser.id
-);
-
-closeAll();
-
-}
-
-function disconnectUser(){
-
-socket.emit(
-"disconnect user",
-selectedUser.id
-);
-
-closeAll();
-
-}
-
-/* BANNED PANEL */
-
-function openBannedPanel(){
-
-socket.emit(
-"get banned users"
-);
-
-document
-.getElementById(
-"bannedPopup"
-)
-.style.display =
-"flex";
-
-}
-
-/* BANNED */
+/* CLEAR CHAT */
 
 socket.on(
 
-"banned users list",
+"clear messages",
 
-(list)=>{
+()=>{
 
-renderBannedUsers(
-list
+messages.innerHTML = "";
+
+});
+
+/* COLOR SELECT */
+
+function selectColor(color){
+
+currentColor = color;
+
+document
+.querySelectorAll(".color-option")
+.forEach(el=>{
+
+el.classList.remove(
+"active-color"
 );
 
 });
+
+document
+.querySelector(
+`[data-color="${color}"]`
+)
+?.classList.add(
+"active-color"
+);
+
+}
+
+/* MENU */
+
+function openMenu(id){
+
+document
+.getElementById(id)
+.style.display =
+"flex";
+
+}
+
+function closeMenu(id){
+
+document
+.getElementById(id)
+.style.display =
+"none";
+
+}
+
+/* CONNECTION */
 
 socket.on(
 
-"banned users updated",
+"connect",
 
-(list)=>{
+()=>{
 
-renderBannedUsers(
-list
+console.log(
+"✅ Connected"
 );
 
 });
 
-function renderBannedUsers(list){
+/* RECONNECT */
 
-const box =
+socket.on(
 
-document
-.getElementById(
-"bannedList"
-);
+"reconnect",
 
-if(!box){
-return;
-}
+()=>{
 
-box.innerHTML = "";
-
-list.forEach((ban,index)=>{
-
-const div =
-
-document.createElement(
-"div"
-);
-
-div.className =
-"online-user";
-
-div.innerHTML = `
-
-👤 ${ban.username}
-
-<br><br>
-
-🌐 ${ban.ip}
-
-<br><br>
-
-<button
-onclick="
-unbanUser(${index})
-"
-style="
-margin-top:10px;
-padding:10px;
-border:none;
-border-radius:10px;
-background:lime;
-cursor:pointer;
-">
-
-فك الحظر
-
-</button>
-
-`;
-
-box.appendChild(
-div
+console.log(
+"♻️ Reconnected"
 );
 
 });
 
-}
+/* DISCONNECT */
 
-/* UNBAN */
+socket.on(
 
-function unbanUser(index){
+"disconnect",
+
+()=>{
+
+console.log(
+"❌ Disconnected"
+);
+
+});
+
+/* KEEP ALIVE */
+
+setInterval(()=>{
 
 socket.emit(
-"unban user",
-index
+"ping alive"
 );
 
-}
+},20000);
 
-/* SYSTEM */
+/* PONG */
 
-function addSystemMessage(text,color){
+socket.on(
 
-const messages =
+"pong alive",
 
-document.getElementById(
-"messages"
+()=>{
+
+console.log(
+"🏓 pong"
 );
 
-if(!messages){
-return;
-}
+});
 
-const div =
+/* MOBILE FIX */
 
-document.createElement(
-"div"
-);
+window.addEventListener(
 
-div.className =
-"msg-line";
+"resize",
 
-div.innerHTML = `
-
-<span style="
-color:${color};
-font-weight:bold;
-">
-
-${text}
-
-</span>
-
-`;
-
-messages.appendChild(
-div
-);
+()=>{
 
 messages.scrollTop =
 messages.scrollHeight;
 
-}
-
-/* CLOSE */
-
-function closeAll(){
-
-document
-.querySelectorAll(
-".popup-bg"
-)
-.forEach(p=>{
-
-p.style.display =
-"none";
-
 });
 
-}
+/* SCROLL FIX */
 
-/* OUTSIDE CLOSE */
+setInterval(()=>{
 
-document.addEventListener(
+messages.scrollTop =
+messages.scrollHeight;
 
-"click",
-
-(e)=>{
-
-if(
-
-e.target.classList.contains(
-"popup-bg"
-)
-
-){
-
-closeAll();
-
-}
-
-});
-
-/* ENTER */
-
-document.addEventListener(
-
-"keydown",
-
-(e)=>{
-
-if(
-e.key === "Enter"
-){
-
-if(
-
-document
-.getElementById(
-"privateBox"
-)
-.style.display === "flex"
-
-){
-
-sendPrivate();
-
-}
-
-else{
-
-sendMessage();
-
-}
-
-}
-
-});
+},1000);
