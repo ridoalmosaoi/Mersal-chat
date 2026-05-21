@@ -10,7 +10,11 @@ cors:{
 origin:"*"
 },
 
-transports:["polling","websocket"]
+transports:["polling","websocket"],
+
+pingTimeout:60000,
+
+pingInterval:25000
 
 });
 
@@ -42,49 +46,73 @@ let privateLocked = false;
 
 /* LOAD BANNED */
 
+try{
+
 if(
 fs.existsSync("banned.json")
 ){
 
-try{
-
 bannedUsers = JSON.parse(
 
 fs.readFileSync(
-"banned.json"
+"banned.json",
+"utf8"
 )
 
 );
 
-}catch{
+console.log(
+"✅ banned.json loaded"
+);
+
+}
+
+}catch(err){
+
+console.log(
+"❌ banned.json error",
+err
+);
 
 bannedUsers = [];
 
 }
 
-}
-
 /* LOAD ADMINS */
+
+try{
 
 if(
 fs.existsSync("admins.json")
 ){
 
-try{
-
 admins = JSON.parse(
 
 fs.readFileSync(
-"admins.json"
+"admins.json",
+"utf8"
 )
 
 );
 
-}catch{
+console.log(
+"✅ admins.json loaded"
+);
 
-admins = [];
+console.log(
+admins
+);
 
 }
+
+}catch(err){
+
+console.log(
+"❌ admins.json error",
+err
+);
+
+admins = [];
 
 }
 
@@ -148,7 +176,7 @@ message
 
 }
 
-/* CHECK ADMIN */
+/* ADMIN CHECK */
 
 function isAdmin(socket){
 
@@ -165,7 +193,7 @@ console.log(
 socket.id
 );
 
-/* JOIN */
+/* USER JOIN */
 
 socket.on(
 
@@ -278,13 +306,13 @@ fingerprint
 
 users.push(user);
 
-/* LOGIN */
+/* SUCCESS */
 
 socket.emit(
 "login success"
 );
 
-/* USERS */
+/* UPDATE USERS */
 
 io.emit(
 "online users",
@@ -300,7 +328,10 @@ systemMessage(
 
 }catch(err){
 
-console.log(err);
+console.log(
+"JOIN ERROR:",
+err
+);
 
 }
 
@@ -313,6 +344,8 @@ socket.on(
 "chat message",
 
 (data)=>{
+
+try{
 
 if(chatLocked){
 return;
@@ -352,6 +385,15 @@ message
 
 );
 
+}catch(err){
+
+console.log(
+"MESSAGE ERROR:",
+err
+);
+
+}
+
 });
 
 /* PRIVATE */
@@ -361,6 +403,8 @@ socket.on(
 "private message",
 
 (data)=>{
+
+try{
 
 if(privateLocked){
 return;
@@ -382,6 +426,15 @@ message:data.message
 
 );
 
+}catch(err){
+
+console.log(
+"PRIVATE ERROR:",
+err
+);
+
+}
+
 });
 
 /* ADMIN LOGIN */
@@ -392,8 +445,10 @@ socket.on(
 
 (data)=>{
 
+try{
+
 console.log(
-"ADMIN LOGIN:",
+"🔥 ADMIN LOGIN:",
 data
 );
 
@@ -411,6 +466,10 @@ a.password === data.password
 
 if(!admin){
 
+console.log(
+"❌ ADMIN FAILED"
+);
+
 socket.emit(
 "admin login failed"
 );
@@ -418,6 +477,10 @@ socket.emit(
 return;
 
 }
+
+console.log(
+"✅ ADMIN SUCCESS"
+);
 
 socket.isAdmin = true;
 
@@ -460,6 +523,15 @@ admins.length
 }
 
 );
+
+}catch(err){
+
+console.log(
+"ADMIN LOGIN ERROR:",
+err
+);
+
+}
 
 });
 
@@ -875,7 +947,7 @@ process.env.PORT || 3000;
 http.listen(PORT,()=>{
 
 console.log(
-"Server Running 🚀"
+"🚀 Server Running"
 );
 
 });
