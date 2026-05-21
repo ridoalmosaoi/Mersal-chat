@@ -1,0 +1,16 @@
+[
+  {
+    "name":"Admin",
+    "password":"123456",
+    "permissions":{
+      "kick":true,
+      "ban":true,
+      "disconnect":true,
+      "unban":true,
+      "clear":true,
+      "maintenance":true,
+      "chatLock":true,
+      "privateLock":true
+    }
+  }
+]
