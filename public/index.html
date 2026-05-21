@@ -11,88 +11,104 @@ name="viewport"
 content="
 width=device-width,
 initial-scale=1.0,
-maximum-scale=1.0,
-user-scalable=no
+maximum-scale=1.0
 ">
 
 <title>
 
-مرسال
+Mersal Chat
 
 </title>
 
 <link
 rel="stylesheet"
-href="style.css">
+href="style.css?v=300"
+>
 
 </head>
 
 <body>
 
-<!-- LOGIN -->
+<!-- LOGIN PAGE -->
 
 <div
-id="loginScreen"
-class="login-screen">
+id="loginPage"
+class="login-page"
+>
 
 <div class="login-box">
 
-<h2>
+<h1 class="logo">
 
-مرسال
+🔥 Mersal Chat
 
-</h2>
+</h1>
 
 <input
 type="text"
-id="loginUsername"
-placeholder="الاسم">
+id="username"
+placeholder="اكتب اسمك"
+maxlength="20"
+autocomplete="off"
+>
+
+<!-- ADMIN PASSWORD -->
 
 <input
 type="password"
-id="loginPassword"
-placeholder="كلمة المرور">
+id="adminPassword"
+placeholder="كلمة سر الإدارة"
+style="display:none;"
+autocomplete="off"
+>
 
 <!-- COLORS -->
 
-<div class="color-picker">
+<div class="colors-box">
 
 <div
-class="color-btn"
-style="background:#ffd700"
-onclick="selectColor('#ffd700')">
-</div>
+class="color-option active-color"
+style="background:#ffd700;"
+data-color="#ffd700"
+onclick="selectColor('#ffd700')"
+></div>
 
 <div
-class="color-btn"
-style="background:#ff4444"
-onclick="selectColor('#ff4444')">
-</div>
+class="color-option"
+style="background:#00d0ff;"
+data-color="#00d0ff"
+onclick="selectColor('#00d0ff')"
+></div>
 
 <div
-class="color-btn"
-style="background:#00d0ff"
-onclick="selectColor('#00d0ff')">
-</div>
+class="color-option"
+style="background:#ff3b3b;"
+data-color="#ff3b3b"
+onclick="selectColor('#ff3b3b')"
+></div>
 
 <div
-class="color-btn"
-style="background:#00cc66"
-onclick="selectColor('#00cc66')">
-</div>
+class="color-option"
+style="background:#00ff88;"
+data-color="#00ff88"
+onclick="selectColor('#00ff88')"
+></div>
 
 <div
-class="color-btn"
-style="background:#cc66ff"
-onclick="selectColor('#cc66ff')">
-</div>
+class="color-option"
+style="background:#ff00ff;"
+data-color="#ff00ff"
+onclick="selectColor('#ff00ff')"
+></div>
 
 </div>
 
 <button
-onclick="login()">
+class="join-btn"
+onclick="joinChat()"
+>
 
-دخول
+دخول الشات
 
 </button>
 
@@ -100,74 +116,85 @@ onclick="login()">
 
 </div>
 
-<!-- CHAT -->
+<!-- CHAT PAGE -->
 
 <div
-id="chatApp"
-class="chat-app"
-style="display:none;">
+id="chatPage"
+class="chat-page"
+style="display:none;"
+>
 
-<!-- TOP -->
+<!-- TOP BAR -->
 
 <div class="top-bar">
 
-<div class="top-icons">
+<div class="top-left">
 
-<span
-class="top-icon"
-onclick="toggleUsers()">
+<button
+class="top-btn"
+onclick="openMenu('usersMenu')"
+>
 
 👥
 
-</span>
+</button>
 
-<div
-class="private-notify-box"
-onclick="openPrivateList()">
-
-<span class="top-icon">
+<button
+class="top-btn"
+onclick="openMenu('privateChatBox')"
+>
 
 💬
 
-</span>
-
 <span
-id="privateNotify"
-class="notify-badge"
-style="display:none;">
+id="privateBadge"
+class="private-badge"
+style="display:none;"
+>
 
 0
 
 </span>
 
+</button>
+
+</div>
+
+<div class="top-title">
+
+🔥 Mersal Chat
+
 </div>
 
 </div>
 
-<div class="room-name">
+<!-- USERS MENU -->
 
-#العراق
+<div
+id="usersMenu"
+class="side-menu"
+style="display:none;"
+>
+
+<div class="menu-header">
+
+👥 المتصلين
+
+<button
+class="close-btn"
+onclick="closeMenu('usersMenu')"
+>
+
+✖
+
+</button>
 
 </div>
 
-<div class="top-icons">
-
-<span
-id="bannedPanelBtn"
-class="top-icon"
-onclick="openBannedPanel()"
-style="display:none;">
-
-🚫
-
-</span>
-
-<span
-class="top-icon">
-
-⚙️
-
-</span>
+<div
+id="usersList"
+class="users-list"
+>
 
 </div>
 
@@ -177,282 +204,87 @@ class="top-icon">
 
 <div
 id="messages"
-class="messages">
-
-<div class="notice-box">
-
-❤️ أهلاً بكم في شات مرسال
+class="messages"
+>
 
 </div>
 
-</div>
+<!-- MESSAGE BOX -->
 
-<!-- INPUT -->
-
-<div class="chat-input">
-
-<button
-onclick="sendMessage()">
-
-➤
-
-</button>
+<div class="message-box">
 
 <input
 type="text"
 id="messageInput"
-placeholder="اكتب هنا...">
-
-</div>
-
-</div>
-
-<!-- USERS -->
-
-<div
-id="usersPopup"
-class="popup-bg">
-
-<div class="popup-box">
-
-<div
-class="popup-close"
-onclick="closeAll()">
-
-✖
-
-</div>
-
-<div
-class="online-user"
-style="color:gold;">
-
-⭐ المتواجدين
-
-</div>
-
-<div id="usersList"></div>
-
-</div>
-
-</div>
-
-<!-- USER MENU -->
-
-<div
-id="userMenu"
-class="popup-bg">
-
-<div class="popup-box">
-
-<div
-class="popup-close"
-onclick="closeAll()">
-
-✖
-
-</div>
-
-<div
-class="online-user"
-onclick="replyUser()">
-
-📋 نسخ الاسم للرد
-
-</div>
-
-<div
-class="online-user"
-onclick="openPrivate()">
-
-💬 مرسال خاص
-
-</div>
-
-<div
-id="userInfoBtn"
-class="online-user"
-onclick="showUserInfo()">
-
-ℹ️ معلومات المستخدم
-
-</div>
-
-<div id="adminOptions">
-
-<div
-class="online-user"
-onclick="kickUser()"
-style="color:orange;">
-
-⚠️ طرد
-
-</div>
-
-<div
-class="online-user"
-onclick="banUser()"
-style="color:red;">
-
-🚫 حظر
-
-</div>
-
-<div
-class="online-user"
-onclick="disconnectUser()"
-style="color:#ff4444;">
-
-⛔ فصل كلي
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-<!-- PRIVATE -->
-
-<div
-id="privateBox"
-class="popup-bg">
-
-<div class="popup-box">
-
-<div
-class="popup-close"
-onclick="closeAll()">
-
-✖
-
-</div>
-
-<div
-id="privateTitle"
-class="online-user"
-style="
-color:#00d0b4;
-">
-
-💬 مرسال خاص
-
-</div>
-
-<div id="privateMessages"></div>
-
-<div class="chat-input">
+placeholder="اكتب رسالتك..."
+autocomplete="off"
+>
 
 <button
-onclick="sendPrivate()">
+class="send-btn"
+onclick="sendMessage()"
+>
 
-➤
+إرسال
 
 </button>
 
+</div>
+
+</div>
+
+<!-- PRIVATE CHAT -->
+
+<div
+id="privateChatBox"
+class="private-chat"
+style="display:none;"
+>
+
+<div class="private-header">
+
+<div
+id="privateChatTitle"
+>
+
+📩 الخاص
+
+</div>
+
+<button
+class="close-btn"
+onclick="closePrivateChat()"
+>
+
+✖
+
+</button>
+
+</div>
+
+<div
+id="privateMessages"
+class="private-messages"
+>
+
+</div>
+
+<div class="private-input-box">
+
 <input
 type="text"
-id="privateInput"
-placeholder="رسالة خاصة">
+id="privateMessageInput"
+placeholder="اكتب رسالة خاصة..."
+autocomplete="off"
+>
 
-</div>
+<button
+onclick="sendPrivateMessage()"
+>
 
-</div>
+إرسال
 
-</div>
-
-<!-- PRIVATE LIST -->
-
-<div
-id="privateListPopup"
-class="popup-bg">
-
-<div class="popup-box">
-
-<div
-class="popup-close"
-onclick="closeAll()">
-
-✖
-
-</div>
-
-<div
-class="online-user"
-style="
-color:#00d0b4;
-">
-
-💬 المحادثات الخاصة
-
-</div>
-
-<div id="privateList"></div>
-
-</div>
-
-</div>
-
-<!-- USER INFO -->
-
-<div
-id="userInfoPopup"
-class="popup-bg">
-
-<div class="popup-box">
-
-<div
-class="popup-close"
-onclick="closeAll()">
-
-✖
-
-</div>
-
-<div
-class="online-user"
-style="
-color:gold;
-">
-
-ℹ️ معلومات المستخدم
-
-</div>
-
-<div id="userInfoContent"></div>
-
-</div>
-
-</div>
-
-<!-- BANNED -->
-
-<div
-id="bannedPopup"
-class="popup-bg">
-
-<div class="popup-box">
-
-<div
-class="popup-close"
-onclick="closeAll()">
-
-✖
-
-</div>
-
-<div
-class="online-user"
-style="
-color:red;
-">
-
-🚫 المحظورين
-
-</div>
-
-<div id="bannedList"></div>
+</button>
 
 </div>
 
@@ -460,11 +292,13 @@ color:red;
 
 <!-- SOCKET -->
 
-<script src="/socket.io/socket.io.js"></script>
+<script src="
+https://cdn.socket.io/4.7.5/socket.io.min.js
+"></script>
 
 <!-- APP -->
 
-<script src="app.js"></script>
+<script src="app.js?v=300"></script>
 
 </body>
 
