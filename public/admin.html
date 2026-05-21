@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="
+width=device-width,
+initial-scale=1.0
+">
+
+<title>
+
+لوحة إدارة مرسال
+
+</title>
+
+<link
+rel="stylesheet"
+href="admin.css">
+
+</head>
+
+<body>
+
+<div class="admin-container">
+
+<!-- TITLE -->
+
+<h1>
+
+👑 لوحة إدارة مرسال
+
+</h1>
+
+<!-- LOGIN -->
+
+<div
+id="adminLogin"
+class="admin-box">
+
+<h2>
+
+🔐 دخول الإدارة
+
+</h2>
+
+<input
+type="password"
+id="adminToken"
+placeholder="توكن الإدارة">
+
+<button
+onclick="loginAdmin()">
+
+دخول
+
+</button>
+
+</div>
+
+<!-- PANEL -->
+
+<div
+id="adminPanel"
+style="display:none;">
+
+<!-- ONLINE USERS -->
+
+<div class="admin-box">
+
+<h2>
+
+👥 المتصلين
+
+</h2>
+
+<div id="onlineUsers"></div>
+
+</div>
+
+<!-- BANNED USERS -->
+
+<div class="admin-box">
+
+<h2>
+
+🚫 المحظورين
+
+</h2>
+
+<div id="bannedUsers"></div>
+
+</div>
+
+<!-- ADMINS -->
+
+<div class="admin-box">
+
+<h2>
+
+👮 الأدمنية
+
+</h2>
+
+<div id="adminsList"></div>
+
+<input
+type="text"
+id="newAdminName"
+placeholder="اسم الأدمن">
+
+<button
+onclick="addAdmin()">
+
+➕ إضافة أدمن
+
+</button>
+
+</div>
+
+<!-- SETTINGS -->
+
+<div class="admin-box">
+
+<h2>
+
+⚙️ إعدادات السيرفر
+
+</h2>
+
+<div class="settings-buttons">
+
+<button
+onclick="toggleChatLock()">
+
+🔒 قفل/فتح العام
+
+</button>
+
+<button
+onclick="togglePrivateLock()">
+
+💬 تعطيل/تفعيل الخاص
+
+</button>
+
+<button
+onclick="clearChat()">
+
+🧹 تنظيف الشات
+
+</button>
+
+<button
+onclick="maintenanceMode()">
+
+🛠️ وضع صيانة
+
+</button>
+
+</div>
+
+</div>
+
+<!-- SERVER INFO -->
+
+<div class="admin-box">
+
+<h2>
+
+📊 معلومات السيرفر
+
+</h2>
+
+<div id="serverInfo">
+
+🟢 السيرفر يعمل
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- SOCKET -->
+
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- ADMIN JS -->
+
+<script src="admin.js"></script>
+
+</body>
+
+</html>
