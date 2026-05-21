@@ -24,6 +24,14 @@ const path = require("path");
 
 const fs = require("fs");
 
+/* STATIC */
+
+app.use(
+express.static(
+path.join(__dirname,"public")
+)
+);
+
 /* CRASH PROTECTION */
 
 process.on(
@@ -52,14 +60,6 @@ err
 
 });
 
-/* STATIC */
-
-app.use(
-express.static(
-path.join(__dirname,"public")
-)
-);
-
 /* USERS */
 
 let users = [];
@@ -68,7 +68,13 @@ let users = [];
 
 let bannedUsers = [];
 
-/* LOAD BANNED */
+/* SETTINGS */
+
+let chatLocked = false;
+
+let privateLocked = false;
+
+/* LOAD BANS */
 
 if(
 fs.existsSync("banned.json")
@@ -92,7 +98,7 @@ bannedUsers = [];
 
 }
 
-/* SAVE BANNED */
+/* SAVE BANS */
 
 function saveBans(){
 
@@ -360,10 +366,6 @@ systemMessage(
 "#ffd700"
 );
 
-console.log(
-`${username} joined`
-);
-
 }catch(err){
 
 console.log(
@@ -375,7 +377,7 @@ err
 
 });
 
-/* CHAT MESSAGE */
+/* CHAT */
 
 socket.on(
 
@@ -384,6 +386,10 @@ socket.on(
 (data)=>{
 
 try{
+
+if(chatLocked){
+return;
+}
 
 const user = users.find(
 u=>u.id === socket.id
@@ -440,7 +446,7 @@ err
 
 });
 
-/* PRIVATE MESSAGE */
+/* PRIVATE */
 
 socket.on(
 
@@ -449,6 +455,10 @@ socket.on(
 (data)=>{
 
 try{
+
+if(privateLocked){
+return;
+}
 
 if(!data.to){
 return;
@@ -508,7 +518,7 @@ return;
 }
 
 systemMessage(
-`تم طرد ${target.username}`,
+`⚠️ تم طرد ${target.username}`,
 "orange"
 );
 
@@ -570,7 +580,7 @@ fullDisconnect:false
 saveBans();
 
 systemMessage(
-`تم حظر ${target.username}`,
+`🚫 تم حظر ${target.username}`,
 "red"
 );
 
@@ -632,8 +642,8 @@ fullDisconnect:true
 saveBans();
 
 systemMessage(
-`تم فصل ${target.username} كليًا`,
-"#ff2222"
+`⛔ تم فصل ${target.username} كليًا`,
+"#ff0000"
 );
 
 io.to(userId).emit(
@@ -647,31 +657,6 @@ io.to(userId).emit(
 io.sockets.sockets
 .get(userId)
 ?.disconnect(true);
-
-});
-
-/* GET BANNED */
-
-socket.on(
-
-"get banned users",
-
-()=>{
-
-const sender = users.find(
-u=>u.id === socket.id
-);
-
-if(
-sender?.username !== "Admin"
-){
-return;
-}
-
-socket.emit(
-"banned users list",
-bannedUsers
-);
 
 });
 
@@ -714,8 +699,138 @@ bannedUsers
 );
 
 systemMessage(
-"تم فك حظر مستخدم ✅",
+"✅ تم فك الحظر",
 "lime"
+);
+
+});
+
+/* ADMIN PANEL LOGIN */
+
+socket.on(
+
+"admin panel login",
+
+()=>{
+
+socket.emit(
+"admin online users",
+users
+);
+
+socket.emit(
+"admin banned users",
+bannedUsers
+);
+
+socket.emit(
+
+"server stats",
+
+{
+
+onlineUsers:
+users.length,
+
+bannedUsers:
+bannedUsers.length
+
+}
+
+);
+
+});
+
+/* CLEAR CHAT */
+
+socket.on(
+
+"clear chat",
+
+()=>{
+
+io.emit(
+"clear messages"
+);
+
+systemMessage(
+"🧹 تم تنظيف الشات",
+"#ffd700"
+);
+
+});
+
+/* CHAT LOCK */
+
+socket.on(
+
+"toggle chat lock",
+
+()=>{
+
+chatLocked = !chatLocked;
+
+systemMessage(
+
+chatLocked
+
+?
+
+"🔒 تم قفل العام"
+
+:
+
+"🔓 تم فتح العام"
+
+,
+
+"orange"
+
+);
+
+});
+
+/* PRIVATE LOCK */
+
+socket.on(
+
+"toggle private lock",
+
+()=>{
+
+privateLocked = !privateLocked;
+
+systemMessage(
+
+privateLocked
+
+?
+
+"💬 تم تعطيل الخاص"
+
+:
+
+"💬 تم تفعيل الخاص"
+
+,
+
+"#00d0ff"
+
+);
+
+});
+
+/* MAINTENANCE */
+
+socket.on(
+
+"maintenance mode",
+
+()=>{
+
+systemMessage(
+"🛠️ السيرفر تحت الصيانة",
+"red"
 );
 
 });
@@ -746,10 +861,6 @@ if(disconnectedUser){
 systemMessage(
 `${disconnectedUser.username} خرج`,
 "#666"
-);
-
-console.log(
-`${disconnectedUser.username} left`
 );
 
 }
