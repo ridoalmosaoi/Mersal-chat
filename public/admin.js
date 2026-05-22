@@ -1,5 +1,9 @@
 const socket=io();
 
+/* GLOBAL */
+
+window.adminPermissions={};
+
 /* ELEMENTS */
 
 const loginPage=
@@ -84,7 +88,11 @@ socket.on(
 
 "admin login success",
 
-()=>{
+data=>{
+
+window.adminPermissions=
+
+data.permissions||{};
 
 loginPage.style.display=
 "none";
@@ -112,7 +120,34 @@ alert(
 
 });
 
-/* ONLINE USERS */
+/* STATS */
+
+socket.on(
+
+"server stats",
+
+data=>{
+
+statsBox.innerHTML=`
+
+👥 المتصلين:
+${data.onlineUsers}
+
+<br><br>
+
+🚫 المحظورين:
+${data.bannedUsers}
+
+<br><br>
+
+👮 الإدارة:
+${data.admins}
+
+`;
+
+});
+
+/* USERS */
 
 socket.on(
 
@@ -125,6 +160,7 @@ onlineUsers.innerHTML="";
 users.forEach(user=>{
 
 const div=
+
 document.createElement(
 "div"
 );
@@ -132,17 +168,18 @@ document.createElement(
 div.className=
 "user-card";
 
-div.innerHTML=`
+let buttons="";
 
-<div>
+/* USER INFO */
 
-👤 ${user.username}
+if(
 
-</div>
+window.adminPermissions
+.viewUserInfo
 
-<div class=
-"user-actions"
->
+){
+
+buttons+=`
 
 <button
 class=
@@ -155,6 +192,21 @@ onclick=
 
 </button>
 
+`;
+
+}
+
+/* KICK */
+
+if(
+
+window.adminPermissions
+.kick
+
+){
+
+buttons+=`
+
 <button
 class=
 "action-btn kick-btn"
@@ -166,6 +218,21 @@ onclick=
 
 </button>
 
+`;
+
+}
+
+/* BAN */
+
+if(
+
+window.adminPermissions
+.ban
+
+){
+
+buttons+=`
+
 <button
 class=
 "action-btn ban-btn"
@@ -176,6 +243,25 @@ onclick=
 🚫 حظر
 
 </button>
+
+`;
+
+}
+
+div.innerHTML=`
+
+<div>
+
+👤 ${user.username}
+
+</div>
+
+<div
+class=
+"user-actions"
+>
+
+${buttons}
 
 </div>
 
@@ -210,13 +296,17 @@ alert(
 
 `👤 ${user.username}
 
-📱 ${user.device}
+📱 الجهاز:
+${user.device}
 
-🌐 ${user.ip}
+🌐 IP:
+${user.ip}
 
-🎨 ${user.color}
+🎨 اللون:
+${user.color}
 
-🆔 ${user.id}`
+🆔 ID:
+${user.id}`
 
 );
 
@@ -256,6 +346,22 @@ addLog(
 
 function addAdmin(){
 
+if(
+
+!window
+.adminPermissions
+.addAdmin
+
+){
+
+alert(
+"ليس لديك صلاحية"
+);
+
+return;
+
+}
+
 const name=
 
 document
@@ -280,6 +386,10 @@ if(
 !password
 ){
 
+alert(
+"أدخل البيانات"
+);
+
 return;
 
 }
@@ -287,24 +397,36 @@ return;
 const permissions={
 
 kick:
-document.getElementById(
+
+document
+.getElementById(
 "permKick"
-).checked,
+)
+.checked,
 
 ban:
-document.getElementById(
+
+document
+.getElementById(
 "permBan"
-).checked,
+)
+.checked,
 
 viewUserInfo:
-document.getElementById(
+
+document
+.getElementById(
 "permViewUser"
-).checked,
+)
+.checked,
 
 addAdmin:
-document.getElementById(
+
+document
+.getElementById(
 "permAddAdmin"
-).checked
+)
+.checked
 
 };
 
@@ -323,43 +445,19 @@ permissions
 );
 
 addLog(
+
 `👮 تمت إضافة ${name}`
+
 );
 
 }
 
-/* STATS */
-
-socket.on(
-
-"server stats",
-
-data=>{
-
-statsBox.innerHTML=`
-
-👥 المتصلين:
-${data.onlineUsers}
-
-<br>
-
-🚫 المحظورين:
-${data.bannedUsers}
-
-<br>
-
-👮 الإدارة:
-${data.admins}
-
-`;
-
-});
-
-/* LOG */
+/* LOGS */
 
 function addLog(text){
 
 const div=
+
 document.createElement(
 "div"
 );
@@ -374,6 +472,8 @@ div
 );
 
 }
+
+/* LIVE LOGS */
 
 socket.on(
 
