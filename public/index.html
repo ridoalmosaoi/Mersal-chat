@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1.0"
+>
+
+<title>Mersal Chat</title>
+
+<link
+rel="stylesheet"
+href="style.css"
+>
+
+</head>
+
+<body>
+
+<!-- LOGIN -->
+
+<div
+id="loginPage"
+class="login-page"
+>
+
+<div class="login-box">
+
+<h1 class="logo">
+
+🔥 Mersal Chat
+
+</h1>
+
+<input
+id="username"
+type="text"
+placeholder="اكتب اسمك"
+maxlength="20"
+autocomplete="off"
+>
+
+<input
+id="adminPassword"
+type="password"
+placeholder="كلمة سر الإدارة"
+style="display:none;"
+autocomplete="off"
+>
+
+<div
+class="colors-box"
+>
+
+<div
+class="color-option active-color"
+style="background:#ffd700"
+data-color="#ffd700"
+></div>
+
+<div
+class="color-option"
+style="background:#00d0ff"
+data-color="#00d0ff"
+></div>
+
+<div
+class="color-option"
+style="background:#ff3b3b"
+data-color="#ff3b3b"
+></div>
+
+<div
+class="color-option"
+style="background:#00ff88"
+data-color="#00ff88"
+></div>
+
+</div>
+
+<button
+class="join-btn"
+onclick="joinChat()"
+>
+
+دخول الشات
+
+</button>
+
+</div>
+
+</div>
+
+<!-- CHAT -->
+
+<div
+id="chatPage"
+class="chat-page"
+style="display:none"
+>
+
+<!-- TOP -->
+
+<div class="top-bar">
+
+<div class="top-left">
+
+<button
+class="top-btn"
+onclick="openUsers()"
+>
+
+👥
+
+</button>
+
+<button
+class="top-btn"
+onclick="openPrivateList()"
+>
+
+💬
+
+<span
+id="privateBadge"
+class="private-badge"
+style="display:none"
+>
+
+0
+
+</span>
+
+</button>
+
+<button
+class="top-btn"
+onclick="
+window.open(
+'/admin.html',
+'_blank'
+)
+"
+>
+
+👑
+
+</button>
+
+</div>
+
+<div class="top-title">
+
+🔥 Mersal Chat
+
+</div>
+
+</div>
+
+<!-- USERS -->
+
+<div
+id="usersMenu"
+class="side-menu"
+style="display:none"
+>
+
+<div class="menu-header">
+
+👥 المتصلين
+
+<button
+class="close-btn"
+onclick="
+closeUsers()
+"
+>
+
+✖
+
+</button>
+
+</div>
+
+<div
+id="usersList"
+class="users-list"
+>
+
+</div>
+
+</div>
+
+<!-- MESSAGES -->
+
+<div
+id="messages"
+class="messages"
+>
+
+</div>
+
+<!-- MESSAGE BOX -->
+
+<div class="message-box">
+
+<input
+id="messageInput"
+type="text"
+placeholder="اكتب رسالتك..."
+autocomplete="off"
+>
+
+<button
+class="send-btn"
+onclick="sendMessage()"
+>
+
+إرسال
+
+</button>
+
+</div>
+
+</div>
+
+<!-- PRIVATE CHAT -->
+
+<div
+id="privateChatBox"
+class="private-chat"
+style="display:none"
+>
+
+<div class="private-header">
+
+<div
+id="privateTitle"
+>
+
+📩 محادثة خاصة
+
+</div>
+
+<button
+class="close-btn"
+onclick="
+closePrivate()
+"
+>
+
+✖
+
+</button>
+
+</div>
+
+<div
+id="privateMessages"
+class="private-messages"
+>
+
+</div>
+
+<div
+class="private-input-box"
+>
+
+<input
+id="privateInput"
+type="text"
+placeholder="رسالة خاصة..."
+>
+
+<button
+onclick="
+sendPrivate()
+"
+>
+
+إرسال
+
+</button>
+
+</div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
