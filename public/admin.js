@@ -1,12 +1,37 @@
-const socket = io();
+const socket=io();
 
-let adminLogged = false;
+/* ELEMENTS */
+
+const loginPage=
+document.getElementById(
+"adminLogin"
+);
+
+const panel=
+document.getElementById(
+"adminPanel"
+);
+
+const onlineUsers=
+document.getElementById(
+"onlineUsers"
+);
+
+const logsBox=
+document.getElementById(
+"logsBox"
+);
+
+const statsBox=
+document.getElementById(
+"statsBox"
+);
 
 /* LOGIN */
 
 function loginAdmin(){
 
-const name =
+const name=
 
 document
 .getElementById(
@@ -15,19 +40,23 @@ document
 .value
 .trim();
 
-const password =
+const password=
 
 document
 .getElementById(
-"adminPassword"
+"adminPass"
 )
 .value
 .trim();
 
-if(!name || !password){
+if(
+!name
+||
+!password
+){
 
 alert(
-"املأ المعلومات"
+"أدخل البيانات"
 );
 
 return;
@@ -40,9 +69,8 @@ socket.emit(
 
 {
 
-name:name,
-
-password:password
+name,
+password
 
 }
 
@@ -58,29 +86,19 @@ socket.on(
 
 ()=>{
 
-adminLogged = true;
-
-document
-.getElementById(
-"adminLogin"
-)
-.style.display =
+loginPage.style.display=
 "none";
 
-document
-.getElementById(
-"adminPanel"
-)
-.style.display =
-"block";
+panel.style.display=
+"flex";
 
-alert(
+addLog(
 "✅ تم تسجيل الدخول"
 );
 
 });
 
-/* LOGIN FAILED */
+/* LOGIN FAIL */
 
 socket.on(
 
@@ -89,7 +107,7 @@ socket.on(
 ()=>{
 
 alert(
-"❌ معلومات خاطئة"
+"بيانات الإدارة غير صحيحة"
 );
 
 });
@@ -100,174 +118,111 @@ socket.on(
 
 "admin online users",
 
-(users)=>{
+users=>{
 
-const box =
-
-document.getElementById(
-"onlineUsers"
-);
-
-box.innerHTML = "";
+onlineUsers.innerHTML="";
 
 users.forEach(user=>{
 
-const div =
-document.createElement("div");
+const div=
+document.createElement(
+"div"
+);
 
-div.className =
+div.className=
 "user-card";
 
-div.innerHTML = `
+div.innerHTML=`
+
+<div>
 
 👤 ${user.username}
 
-<br><br>
+</div>
 
-<button onclick="
-kickUser('${user.id}')
-">
+<div class=
+"user-actions"
+>
+
+<button
+class=
+"action-btn info-btn"
+onclick=
+"viewUser('${user.id}')"
+>
+
+ℹ️ معلومات
+
+</button>
+
+<button
+class=
+"action-btn kick-btn"
+onclick=
+"kickUser('${user.id}')"
+>
 
 ⚠️ طرد
 
 </button>
 
-<button onclick="
-banUser('${user.id}')
-">
+<button
+class=
+"action-btn ban-btn"
+onclick=
+"banUser('${user.id}')"
+>
 
 🚫 حظر
 
 </button>
 
-<button onclick="
-disconnectUser('${user.id}')
-">
-
-⛔ فصل
-
-</button>
+</div>
 
 `;
 
-box.appendChild(div);
-
-});
-
-});
-
-/* BANNED */
-
-socket.on(
-
-"admin banned users",
-
-(list)=>{
-
-const box =
-
-document.getElementById(
-"bannedUsers"
+onlineUsers.appendChild(
+div
 );
 
-box.innerHTML = "";
-
-list.forEach((ban,index)=>{
-
-const div =
-document.createElement("div");
-
-div.className =
-"user-card";
-
-div.innerHTML = `
-
-🚫 ${ban.username}
-
-<br><br>
-
-<button onclick="
-unbanUser(${index})
-">
-
-✅ فك الحظر
-
-</button>
-
-`;
-
-box.appendChild(div);
-
 });
 
 });
 
-/* ADMINS */
+/* USER INFO */
 
-socket.on(
+function viewUser(id){
 
-"admins list",
-
-(admins)=>{
-
-const box =
-
-document.getElementById(
-"adminsList"
+socket.emit(
+"view user",
+id
 );
 
-box.innerHTML = "";
-
-admins.forEach((admin,index)=>{
-
-const div =
-document.createElement("div");
-
-div.className =
-"user-card";
-
-div.innerHTML = `
-
-👮 ${admin.name}
-
-`;
-
-box.appendChild(div);
-
-});
-
-});
-
-/* SERVER INFO */
+}
 
 socket.on(
 
-"server stats",
+"user info",
 
-(stats)=>{
+user=>{
 
-document.getElementById(
-"serverInfo"
-).innerHTML = `
+alert(
 
-👥 المتصلين:
-${stats.onlineUsers}
+`👤 ${user.username}
 
-<br><br>
+📱 ${user.device}
 
-🚫 المحظورين:
-${stats.bannedUsers}
+🌐 ${user.ip}
 
-<br><br>
+🎨 ${user.color}
 
-👮 الأدمنية:
-${stats.admins}
+🆔 ${user.id}`
 
-`;
+);
 
 });
 
-/* ACTIONS */
+/* KICK */
 
 function kickUser(id){
 
@@ -276,7 +231,13 @@ socket.emit(
 id
 );
 
+addLog(
+"⚠️ تم تنفيذ طرد"
+);
+
 }
+
+/* BAN */
 
 function banUser(id){
 
@@ -285,54 +246,8 @@ socket.emit(
 id
 );
 
-}
-
-function disconnectUser(id){
-
-socket.emit(
-"disconnect user",
-id
-);
-
-}
-
-function unbanUser(index){
-
-socket.emit(
-"unban user",
-index
-);
-
-}
-
-function clearChat(){
-
-socket.emit(
-"clear chat"
-);
-
-}
-
-function toggleChatLock(){
-
-socket.emit(
-"toggle chat lock"
-);
-
-}
-
-function togglePrivateLock(){
-
-socket.emit(
-"toggle private lock"
-);
-
-}
-
-function maintenanceMode(){
-
-socket.emit(
-"maintenance mode"
+addLog(
+"🚫 تم تنفيذ حظر"
 );
 
 }
@@ -341,7 +256,7 @@ socket.emit(
 
 function addAdmin(){
 
-const name =
+const name=
 
 document
 .getElementById(
@@ -350,7 +265,7 @@ document
 .value
 .trim();
 
-const password =
+const password=
 
 document
 .getElementById(
@@ -359,11 +274,39 @@ document
 .value
 .trim();
 
-if(!name || !password){
+if(
+!name
+||
+!password
+){
 
 return;
 
 }
+
+const permissions={
+
+kick:
+document.getElementById(
+"permKick"
+).checked,
+
+ban:
+document.getElementById(
+"permBan"
+).checked,
+
+viewUserInfo:
+document.getElementById(
+"permViewUser"
+).checked,
+
+addAdmin:
+document.getElementById(
+"permAddAdmin"
+).checked
+
+};
 
 socket.emit(
 
@@ -371,12 +314,75 @@ socket.emit(
 
 {
 
-name:name,
-
-password:password
+name,
+password,
+permissions
 
 }
 
 );
 
+addLog(
+`👮 تمت إضافة ${name}`
+);
+
 }
+
+/* STATS */
+
+socket.on(
+
+"server stats",
+
+data=>{
+
+statsBox.innerHTML=`
+
+👥 المتصلين:
+${data.onlineUsers}
+
+<br>
+
+🚫 المحظورين:
+${data.bannedUsers}
+
+<br>
+
+👮 الإدارة:
+${data.admins}
+
+`;
+
+});
+
+/* LOG */
+
+function addLog(text){
+
+const div=
+document.createElement(
+"div"
+);
+
+div.className=
+"log-item";
+
+div.innerText=text;
+
+logsBox.prepend(
+div
+);
+
+}
+
+socket.on(
+
+"new log",
+
+log=>{
+
+addLog(
+log.message
+);
+
+});
