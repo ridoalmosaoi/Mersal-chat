@@ -1,22 +1,5 @@
 [
   {
-    "name":"Admin",
-    "password":"123456",
-    "permissions":{
-      "kick":true,
-      "ban":true,
-      "disconnect":true,
-      "unban":true,
-      "clear":true,
-      "maintenance":true,
-      "chatLock":true,
-      "privateLock":true,
-      "addAdmin":true,
-      "removeAdmin":true
-    }
-  },
-
-  {
     "name":"Owner",
     "password":"999999",
     "permissions":{
@@ -24,29 +7,16 @@
       "ban":true,
       "disconnect":true,
       "unban":true,
+      "mute":true,
       "clear":true,
       "maintenance":true,
       "chatLock":true,
       "privateLock":true,
+      "deleteMessage":true,
       "addAdmin":true,
-      "removeAdmin":true
-    }
-  },
-
-  {
-    "name":"Moderator",
-    "password":"555555",
-    "permissions":{
-      "kick":true,
-      "ban":true,
-      "disconnect":false,
-      "unban":true,
-      "clear":true,
-      "maintenance":false,
-      "chatLock":false,
-      "privateLock":false,
-      "addAdmin":false,
-      "removeAdmin":false
+      "removeAdmin":true,
+      "viewIP":true,
+      "viewUserInfo":true
     }
   }
 ]
