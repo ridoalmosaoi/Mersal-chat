@@ -94,9 +94,9 @@ deviceToken
 
 }
 
-/* PROTECTED NAMES */
+/* ADMIN NAMES */
 
-const protectedNames = [
+let protectedNames = [
 
 "Admin",
 
@@ -105,6 +105,28 @@ const protectedNames = [
 "Moderator"
 
 ];
+
+/* LOAD ADMINS */
+
+fetch("/admins.json")
+
+.then(res=>res.json())
+
+.then(data=>{
+
+protectedNames = data.map(
+a=>a.name
+);
+
+})
+
+.catch(()=>{
+
+console.log(
+"admins.json not loaded"
+);
+
+});
 
 /* SHOW ADMIN PASSWORD */
 
@@ -115,15 +137,25 @@ usernameInput.addEventListener(
 ()=>{
 
 const value =
-usernameInput.value.trim();
+usernameInput.value
+.trim()
+.toLowerCase();
 
-if(
+const isProtected =
 
-protectedNames.includes(
+protectedNames.some(
+
+name=>
+
+name.toLowerCase()
+
+===
+
 value
-)
 
-){
+);
+
+if(isProtected){
 
 adminPasswordInput.style.display =
 "block";
@@ -203,7 +235,7 @@ chatPage.style.display =
 
 });
 
-/* BANNED */
+/* LOGIN FAILED */
 
 socket.on(
 
@@ -286,7 +318,27 @@ document.createElement("div");
 div.className =
 "message";
 
-/* RANK */
+/* MY MESSAGE */
+
+if(data.username === currentUser){
+
+div.classList.add(
+"my-message"
+);
+
+}
+
+/* SYSTEM */
+
+if(data.username === "System"){
+
+div.classList.add(
+"system-message"
+);
+
+}
+
+/* BADGES */
 
 let rankHtml = "";
 
@@ -311,36 +363,18 @@ rankHtml =
 
 }
 
-/* DUPLICATE NAME */
-
-let duplicateColor = "";
-
-const duplicates =
-
-document.querySelectorAll(
-`.user-${data.username}`
-);
-
-if(duplicates.length > 0){
-
-duplicateColor =
-"red";
-
-}
-
-/* MESSAGE HTML */
+/* HTML */
 
 div.innerHTML = `
 
 <div class="
 message-user
-user-${data.username}
 ">
 
 ${rankHtml}
 
 <span style="
-color:${duplicateColor || data.color};
+color:${data.color};
 font-weight:bold;
 ">
 
@@ -379,13 +413,19 @@ usersList.innerHTML = "";
 
 users.forEach(user=>{
 
+/* SKIP MYSELF */
+
+if(user.username === currentUser){
+return;
+}
+
 const div =
 document.createElement("div");
 
 div.className =
 "user-item";
 
-/* BADGE */
+/* BADGES */
 
 let badge = "";
 
@@ -407,7 +447,7 @@ badge = "🛡️";
 
 }
 
-/* USER HTML */
+/* USER */
 
 div.innerHTML = `
 
@@ -439,13 +479,19 @@ usersList.appendChild(div);
 
 function openPrivateChat(id,username){
 
+if(!id){
+return;
+}
+
 openedPrivateUser = id;
 
-document
-.getElementById(
+const box =
+
+document.getElementById(
 "privateChatBox"
-)
-.style.display =
+);
+
+box.style.display =
 "flex";
 
 document
@@ -489,6 +535,16 @@ input.value.trim();
 
 if(!text){
 return;
+}
+
+if(!openedPrivateUser){
+
+alert(
+"افتح محادثة خاصة"
+);
+
+return;
+
 }
 
 socket.emit(
@@ -615,7 +671,7 @@ messages.innerHTML = "";
 
 });
 
-/* COLOR SELECT */
+/* COLORS */
 
 function selectColor(color){
 
@@ -641,22 +697,36 @@ document
 
 }
 
-/* MENU */
+/* OPEN MENU */
 
 function openMenu(id){
 
-document
-.getElementById(id)
-.style.display =
+const el =
+
+document.getElementById(id);
+
+if(!el){
+return;
+}
+
+el.style.display =
 "flex";
 
 }
 
+/* CLOSE MENU */
+
 function closeMenu(id){
 
-document
-.getElementById(id)
-.style.display =
+const el =
+
+document.getElementById(id);
+
+if(!el){
+return;
+}
+
+el.style.display =
 "none";
 
 }
@@ -727,20 +797,7 @@ console.log(
 
 });
 
-/* MOBILE FIX */
-
-window.addEventListener(
-
-"resize",
-
-()=>{
-
-messages.scrollTop =
-messages.scrollHeight;
-
-});
-
-/* SCROLL FIX */
+/* AUTO SCROLL */
 
 setInterval(()=>{
 
