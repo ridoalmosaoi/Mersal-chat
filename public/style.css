@@ -229,6 +229,8 @@ height:100vh;
 
 overflow:hidden;
 
+position:relative;
+
 }
 
 /* TOP BAR */
@@ -276,6 +278,8 @@ display:flex;
 
 gap:10px;
 
+align-items:center;
+
 }
 
 /* TOP BUTTON */
@@ -295,6 +299,12 @@ color:white;
 font-size:20px;
 
 position:relative;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
 
 }
 
@@ -332,7 +342,7 @@ color:white;
 
 }
 
-/* CONNECTION STATUS */
+/* CONNECTION */
 
 .connection-status{
 
@@ -413,6 +423,8 @@ border:
 animation:
 fadeUp 0.2s ease;
 
+align-self:flex-start;
+
 }
 
 /* MY MESSAGE */
@@ -461,6 +473,8 @@ font-size:15px;
 
 font-weight:bold;
 
+direction:ltr;
+
 }
 
 /* MESSAGE TEXT */
@@ -470,6 +484,10 @@ font-weight:bold;
 line-height:1.7;
 
 font-size:15px;
+
+direction:rtl;
+
+text-align:right;
 
 }
 
@@ -582,6 +600,12 @@ background:red;
 color:white;
 
 font-size:18px;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
 
 }
 
@@ -824,14 +848,6 @@ color:gold;
 .mod-rank{
 
 color:#00d0ff;
-
-}
-
-/* DUPLICATE */
-
-.duplicate-name{
-
-color:red !important;
 
 }
 
