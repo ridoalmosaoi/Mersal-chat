@@ -1,16 +1,12 @@
-const socket = io();
+const socket=io();
 
-/* VARIABLES */
+/* GLOBAL */
 
 let currentUser=null;
-
 let currentColor="#ffd700";
-
 let currentPrivateUser=null;
-
-let privateCount=0;
-
 let protectedNames=[];
+let replyData=null;
 
 /* ELEMENTS */
 
@@ -48,20 +44,25 @@ document.getElementById(
 
 fetch("/admins.json")
 
-.then(res=>res.json())
+.then(r=>r.json())
 
 .then(data=>{
 
 protectedNames=
+
 data.map(
-a=>a.name.toLowerCase()
+
+a=>
+
+a.name.toLowerCase()
+
 );
 
 })
 
 .catch(()=>{});
 
-/* SHOW ADMIN PASSWORD */
+/* SHOW PASSWORD */
 
 username.addEventListener(
 
@@ -86,8 +87,7 @@ name
 adminPassword.style.display=
 "block";
 
-}
-else{
+}else{
 
 adminPassword.style.display=
 "none";
@@ -131,7 +131,6 @@ el.classList.add(
 );
 
 currentColor=
-
 el.dataset.color;
 
 };
@@ -204,7 +203,7 @@ alert(msg);
 
 });
 
-/* SEND MESSAGE */
+/* SEND */
 
 function sendMessage(){
 
@@ -219,9 +218,7 @@ const text=
 input.value.trim();
 
 if(!text){
-
 return;
-
 }
 
 socket.emit(
@@ -230,13 +227,18 @@ socket.emit(
 
 {
 
-message:text
+message:text,
+
+reply:
+replyData
 
 }
 
 );
 
 input.value="";
+
+cancelReply();
 
 }
 
@@ -264,7 +266,7 @@ sendMessage();
 
 );
 
-/* RECEIVE MESSAGE */
+/* RECEIVE */
 
 socket.on(
 
@@ -293,35 +295,49 @@ div.classList.add(
 
 }
 
-if(
+let replyHtml="";
 
-data.username==="System"
+if(data.reply){
 
-){
+replyHtml=`
 
-div.classList.add(
-"system-message"
-);
+<div style="
+background:#222;
+padding:8px;
+border-radius:10px;
+margin-bottom:8px;
+">
+
+↩️ ${data.reply.user}
+
+<br>
+
+${data.reply.text}
+
+</div>
+
+`;
 
 }
 
 div.innerHTML=`
 
-<div class=
-"message-user"
-
-style=
-"color:${data.color}"
-
+<div
+class="message-user"
+onclick='showUserPopup(${JSON.stringify(data)})'
+style="
+color:${data.color}
+"
 >
 
 ${data.username}
 
 </div>
 
-<div class=
-"message-text"
+${replyHtml}
 
+<div
+class="message-text"
 >
 
 ${data.message}
@@ -335,7 +351,6 @@ div
 );
 
 messages.scrollTop=
-
 messages.scrollHeight;
 
 });
@@ -361,23 +376,14 @@ document.createElement(
 div.className=
 "user-item";
 
-div.innerHTML=`
+div.innerHTML=
 
-<div class=
-"user-row"
->
-
-${user.username}
-
-</div>
-
-`;
+`👤 ${user.username}`;
 
 div.onclick=()=>{
 
-openPrivate(
-user.id,
-user.username
+showUserPopup(
+user
 );
 
 };
@@ -395,11 +401,9 @@ div
 function openUsers(){
 
 document
-
 .getElementById(
 "usersMenu"
 )
-
 .style.display=
 "flex";
 
@@ -408,11 +412,151 @@ document
 function closeUsers(){
 
 document
-
 .getElementById(
 "usersMenu"
 )
+.style.display=
+"none";
 
+}
+
+/* POPUP */
+
+function showUserPopup(user){
+
+const overlay=
+
+document.getElementById(
+"userPopupOverlay"
+);
+
+const title=
+
+document.getElementById(
+"popupUsername"
+);
+
+const buttons=
+
+document.getElementById(
+"popupButtons"
+);
+
+title.innerHTML=
+`👤 ${user.username}`;
+
+buttons.innerHTML=`
+
+<button
+onclick="
+copyName(
+'${user.username}'
+)
+">
+
+📋 نسخ الاسم
+
+</button>
+
+<button
+onclick="
+replyTo(
+'${user.username}',
+'${user.message||""}'
+)
+">
+
+↩️ الرد
+
+</button>
+
+<button
+onclick="
+openPrivate(
+'${user.id}',
+'${user.username}'
+)
+">
+
+💬 مرسال خاص
+
+</button>
+
+`;
+
+overlay.style.display=
+"flex";
+
+}
+
+/* CLOSE POPUP */
+
+function closeUserPopup(){
+
+document
+.getElementById(
+"userPopupOverlay"
+)
+.style.display=
+"none";
+
+}
+
+/* COPY */
+
+function copyName(name){
+
+navigator.clipboard.writeText(
+name
+);
+
+alert(
+"✅ تم نسخ الاسم"
+);
+
+}
+
+/* REPLY */
+
+function replyTo(
+user,
+text
+){
+
+replyData={
+
+user,
+text
+
+};
+
+document
+.getElementById(
+"replyBox"
+)
+.style.display=
+"flex";
+
+document
+.getElementById(
+"replyText"
+)
+.innerHTML=
+
+`↩️ ${user}: ${text}`;
+
+closeUserPopup();
+
+}
+
+function cancelReply(){
+
+replyData=null;
+
+document
+.getElementById(
+"replyBox"
+)
 .style.display=
 "none";
 
@@ -428,34 +572,30 @@ name
 currentPrivateUser=id;
 
 document
-
 .getElementById(
 "privateTitle"
 )
+.innerHTML=
 
-innerText=
-
-"📩 "+name;
+`💬 ${name}`;
 
 document
-
 .getElementById(
 "privateChatBox"
 )
-
 .style.display=
 "flex";
+
+closeUserPopup();
 
 }
 
 function closePrivate(){
 
 document
-
 .getElementById(
 "privateChatBox"
 )
-
 .style.display=
 "none";
 
@@ -463,16 +603,10 @@ document
 
 function openPrivateList(){
 
-if(
-
-!currentPrivateUser
-
-){
+if(!currentPrivateUser){
 
 alert(
-
 "اختر عضو من المتواجدين 👥"
-
 );
 
 return;
@@ -480,17 +614,13 @@ return;
 }
 
 document
-
 .getElementById(
 "privateChatBox"
 )
-
 .style.display=
 "flex";
 
 }
-
-/* SEND PRIVATE */
 
 function sendPrivate(){
 
@@ -509,9 +639,7 @@ if(
 ||
 !currentPrivateUser
 ){
-
 return;
-
 }
 
 socket.emit(
@@ -523,11 +651,11 @@ socket.emit(
 to:
 currentPrivateUser,
 
-message:
-text,
-
 from:
-currentUser
+currentUser,
+
+message:
+text
 
 }
 
