@@ -1,110 +1,48 @@
-const socket = io({
+const socket = io();
 
-transports:[
-"websocket",
-"polling"
-],
+/* VARIABLES */
 
-reconnection:true,
+let currentUser=null;
 
-reconnectionAttempts:999999,
+let currentColor="#ffd700";
 
-reconnectionDelay:1000,
+let currentPrivateUser=null;
 
-timeout:20000
+let privateCount=0;
 
-});
-
-/* USER */
-
-let currentUser = null;
-
-let currentColor = "#ffd700";
-
-let privateNotifications = 0;
-
-let openedPrivateUser = null;
-
-let onlineUsersData = [];
+let protectedNames=[];
 
 /* ELEMENTS */
 
-const loginPage =
+const loginPage=
 document.getElementById(
 "loginPage"
 );
 
-const chatPage =
+const chatPage=
 document.getElementById(
 "chatPage"
 );
 
-const usernameInput =
+const username=
 document.getElementById(
 "username"
 );
 
-const adminPasswordInput =
+const adminPassword=
 document.getElementById(
 "adminPassword"
 );
 
-const messageInput =
-document.getElementById(
-"messageInput"
-);
-
-const messages =
+const messages=
 document.getElementById(
 "messages"
 );
 
-const usersList =
+const usersList=
 document.getElementById(
 "usersList"
 );
-
-const privateBadge =
-document.getElementById(
-"privateBadge"
-);
-
-/* DEVICE TOKEN */
-
-let deviceToken = localStorage.getItem(
-"deviceToken"
-);
-
-if(!deviceToken){
-
-deviceToken =
-
-Math.random()
-.toString(36)
-.substring(2)
-
-+
-
-Date.now();
-
-localStorage.setItem(
-"deviceToken",
-deviceToken
-);
-
-}
-
-/* ADMIN NAMES */
-
-let protectedNames = [
-
-"Admin",
-
-"Owner",
-
-"Moderator"
-
-];
 
 /* LOAD ADMINS */
 
@@ -114,60 +52,89 @@ fetch("/admins.json")
 
 .then(data=>{
 
-protectedNames = data.map(
-a=>a.name
+protectedNames=
+data.map(
+a=>a.name.toLowerCase()
 );
 
 })
 
-.catch(()=>{
-
-console.log(
-"admins.json not loaded"
-);
-
-});
+.catch(()=>{});
 
 /* SHOW ADMIN PASSWORD */
 
-usernameInput.addEventListener(
+username.addEventListener(
 
 "input",
 
 ()=>{
 
-const value =
-usernameInput.value
+const name=
+
+username.value
 .trim()
 .toLowerCase();
 
-const isProtected =
+if(
 
-protectedNames.some(
+protectedNames.includes(
+name
+)
 
-name=>
+){
 
-name.toLowerCase()
+adminPassword.style.display=
+"block";
 
-===
+}
+else{
 
-value
+adminPassword.style.display=
+"none";
+
+adminPassword.value="";
+
+}
+
+}
 
 );
 
-if(isProtected){
+/* COLORS */
 
-adminPasswordInput.style.display =
-"block";
+document
 
-}else{
+.querySelectorAll(
+".color-option"
+)
 
-adminPasswordInput.style.display =
-"none";
+.forEach(el=>{
 
-adminPasswordInput.value = "";
+el.onclick=()=>{
 
-}
+document
+
+.querySelectorAll(
+".color-option"
+)
+
+.forEach(x=>{
+
+x.classList.remove(
+"active-color"
+);
+
+});
+
+el.classList.add(
+"active-color"
+);
+
+currentColor=
+
+el.dataset.color;
+
+};
 
 });
 
@@ -175,13 +142,11 @@ adminPasswordInput.value = "";
 
 function joinChat(){
 
-const username =
-usernameInput.value.trim();
+const name=
 
-const adminPassword =
-adminPasswordInput.value.trim();
+username.value.trim();
 
-if(!username){
+if(!name){
 
 alert(
 "اكتب الاسم"
@@ -191,7 +156,7 @@ return;
 
 }
 
-currentUser = username;
+currentUser=name;
 
 socket.emit(
 
@@ -199,19 +164,13 @@ socket.emit(
 
 {
 
-username,
+username:name,
 
-adminPassword,
+adminPassword:
+adminPassword.value,
 
-color:currentColor,
-
-deviceToken,
-
-browser:
-navigator.userAgent,
-
-device:
-navigator.platform
+color:
+currentColor
 
 }
 
@@ -219,7 +178,7 @@ navigator.platform
 
 }
 
-/* LOGIN SUCCESS */
+/* SUCCESS */
 
 socket.on(
 
@@ -227,37 +186,21 @@ socket.on(
 
 ()=>{
 
-loginPage.style.display =
+loginPage.style.display=
 "none";
 
-chatPage.style.display =
+chatPage.style.display=
 "flex";
 
 });
-
-/* LOGIN FAILED */
 
 socket.on(
 
 "banned",
 
-(message)=>{
+msg=>{
 
-alert(message);
-
-});
-
-/* FULL BAN */
-
-socket.on(
-
-"full device banned",
-
-(message)=>{
-
-alert(message);
-
-localStorage.clear();
+alert(msg);
 
 });
 
@@ -265,11 +208,20 @@ localStorage.clear();
 
 function sendMessage(){
 
-const text =
-messageInput.value.trim();
+const input=
+
+document.getElementById(
+"messageInput"
+);
+
+const text=
+
+input.value.trim();
 
 if(!text){
+
 return;
+
 }
 
 socket.emit(
@@ -284,43 +236,56 @@ message:text
 
 );
 
-messageInput.value = "";
+input.value="";
 
 }
 
-/* ENTER */
+document
 
-messageInput.addEventListener(
+.getElementById(
+"messageInput"
+)
+
+.addEventListener(
 
 "keypress",
 
-(e)=>{
+e=>{
 
-if(e.key === "Enter"){
+if(
+e.key==="Enter"
+){
 
 sendMessage();
 
 }
 
-});
+}
 
-/* CHAT MESSAGE */
+);
+
+/* RECEIVE MESSAGE */
 
 socket.on(
 
 "chat message",
 
-(data)=>{
+data=>{
 
-const div =
-document.createElement("div");
+const div=
 
-div.className =
+document.createElement(
+"div"
+);
+
+div.className=
 "message";
 
-/* MY MESSAGE */
+if(
 
-if(data.username === currentUser){
+data.username===currentUser
+
+){
 
 div.classList.add(
 "my-message"
@@ -328,9 +293,11 @@ div.classList.add(
 
 }
 
-/* SYSTEM */
+if(
 
-if(data.username === "System"){
+data.username==="System"
+
+){
 
 div.classList.add(
 "system-message"
@@ -338,53 +305,24 @@ div.classList.add(
 
 }
 
-/* BADGES */
+div.innerHTML=`
 
-let rankHtml = "";
+<div class=
+"message-user"
 
-if(data.rank === "Admin"){
+style=
+"color:${data.color}"
 
-rankHtml =
-`<span class="rank admin-rank">👑</span>`;
-
-}
-
-if(data.rank === "Owner"){
-
-rankHtml =
-`<span class="rank owner-rank">⭐</span>`;
-
-}
-
-if(data.rank === "Moderator"){
-
-rankHtml =
-`<span class="rank mod-rank">🛡️</span>`;
-
-}
-
-/* HTML */
-
-div.innerHTML = `
-
-<div class="
-message-user
-">
-
-${rankHtml}
-
-<span style="
-color:${data.color};
-font-weight:bold;
-">
+>
 
 ${data.username}
 
-</span>
-
 </div>
 
-<div class="message-text">
+<div class=
+"message-text"
+
+>
 
 ${data.message}
 
@@ -392,156 +330,185 @@ ${data.message}
 
 `;
 
-messages.appendChild(div);
+messages.appendChild(
+div
+);
 
-messages.scrollTop =
+messages.scrollTop=
+
 messages.scrollHeight;
 
 });
 
-/* ONLINE USERS */
+/* USERS */
 
 socket.on(
 
 "online users",
 
-(users)=>{
+users=>{
 
-onlineUsersData = users;
-
-usersList.innerHTML = "";
+usersList.innerHTML="";
 
 users.forEach(user=>{
 
-/* SKIP MYSELF */
+const div=
 
-if(user.username === currentUser){
-return;
-}
+document.createElement(
+"div"
+);
 
-const div =
-document.createElement("div");
-
-div.className =
+div.className=
 "user-item";
 
-/* BADGES */
+div.innerHTML=`
 
-let badge = "";
+<div class=
+"user-row"
+>
 
-if(user.rank === "Admin"){
-
-badge = "👑";
-
-}
-
-if(user.rank === "Owner"){
-
-badge = "⭐";
-
-}
-
-if(user.rank === "Moderator"){
-
-badge = "🛡️";
-
-}
-
-/* USER */
-
-div.innerHTML = `
-
-<div class="user-row">
-
-<span onclick="
-openPrivateChat(
-'${user.id}',
-'${user.username}'
-)
-">
-
-${badge}
 ${user.username}
-
-</span>
 
 </div>
 
 `;
 
-usersList.appendChild(div);
+div.onclick=()=>{
 
-});
-
-});
-
-/* OPEN PRIVATE */
-
-function openPrivateChat(id,username){
-
-if(!id){
-return;
-}
-
-openedPrivateUser = id;
-
-const box =
-
-document.getElementById(
-"privateChatBox"
+openPrivate(
+user.id,
+user.username
 );
 
-box.style.display =
-"flex";
+};
+
+usersList.appendChild(
+div
+);
+
+});
+
+});
+
+/* USERS MENU */
+
+function openUsers(){
 
 document
+
 .getElementById(
-"privateChatTitle"
+"usersMenu"
 )
-.innerText =
-`📩 ${username}`;
 
-privateNotifications = 0;
-
-updatePrivateBadge();
+.style.display=
+"flex";
 
 }
 
-/* CLOSE PRIVATE */
-
-function closePrivateChat(){
+function closeUsers(){
 
 document
+
+.getElementById(
+"usersMenu"
+)
+
+.style.display=
+"none";
+
+}
+
+/* PRIVATE */
+
+function openPrivate(
+id,
+name
+){
+
+currentPrivateUser=id;
+
+document
+
+.getElementById(
+"privateTitle"
+)
+
+innerText=
+
+"📩 "+name;
+
+document
+
 .getElementById(
 "privateChatBox"
 )
-.style.display =
+
+.style.display=
+"flex";
+
+}
+
+function closePrivate(){
+
+document
+
+.getElementById(
+"privateChatBox"
+)
+
+.style.display=
 "none";
+
+}
+
+function openPrivateList(){
+
+if(
+
+!currentPrivateUser
+
+){
+
+alert(
+
+"اختر عضو من المتواجدين 👥"
+
+);
+
+return;
+
+}
+
+document
+
+.getElementById(
+"privateChatBox"
+)
+
+.style.display=
+"flex";
 
 }
 
 /* SEND PRIVATE */
 
-function sendPrivateMessage(){
+function sendPrivate(){
 
-const input =
+const input=
 
 document.getElementById(
-"privateMessageInput"
+"privateInput"
 );
 
-const text =
+const text=
+
 input.value.trim();
 
-if(!text){
-return;
-}
-
-if(!openedPrivateUser){
-
-alert(
-"افتح محادثة خاصة"
-);
+if(
+!text
+||
+!currentPrivateUser
+){
 
 return;
 
@@ -553,255 +520,19 @@ socket.emit(
 
 {
 
-to:openedPrivateUser,
+to:
+currentPrivateUser,
 
-from:currentUser,
-
-message:text
-
-}
-
-);
-
-addPrivateMessage(
-currentUser,
+message:
 text,
-true
-);
 
-input.value = "";
-
-}
-
-/* RECEIVE PRIVATE */
-
-socket.on(
-
-"private message",
-
-(data)=>{
-
-addPrivateMessage(
-data.from,
-data.message,
-false
-);
-
-privateNotifications++;
-
-updatePrivateBadge();
-
-});
-
-/* ADD PRIVATE */
-
-function addPrivateMessage(from,msg,mine){
-
-const box =
-document.getElementById(
-"privateMessages"
-);
-
-const div =
-document.createElement("div");
-
-div.className =
-
-mine
-
-?
-
-"private-me"
-
-:
-
-"private-other";
-
-div.innerHTML = `
-
-<b>${from}</b>
-
-<br>
-
-${msg}
-
-`;
-
-box.appendChild(div);
-
-box.scrollTop =
-box.scrollHeight;
+from:
+currentUser
 
 }
 
-/* PRIVATE BADGE */
-
-function updatePrivateBadge(){
-
-if(!privateBadge){
-return;
-}
-
-if(privateNotifications <= 0){
-
-privateBadge.style.display =
-"none";
-
-return;
-
-}
-
-privateBadge.style.display =
-"flex";
-
-privateBadge.innerText =
-privateNotifications;
-
-}
-
-/* CLEAR CHAT */
-
-socket.on(
-
-"clear messages",
-
-()=>{
-
-messages.innerHTML = "";
-
-});
-
-/* COLORS */
-
-function selectColor(color){
-
-currentColor = color;
-
-document
-.querySelectorAll(".color-option")
-.forEach(el=>{
-
-el.classList.remove(
-"active-color"
 );
 
-});
-
-document
-.querySelector(
-`[data-color="${color}"]`
-)
-?.classList.add(
-"active-color"
-);
+input.value="";
 
 }
-
-/* OPEN MENU */
-
-function openMenu(id){
-
-const el =
-
-document.getElementById(id);
-
-if(!el){
-return;
-}
-
-el.style.display =
-"flex";
-
-}
-
-/* CLOSE MENU */
-
-function closeMenu(id){
-
-const el =
-
-document.getElementById(id);
-
-if(!el){
-return;
-}
-
-el.style.display =
-"none";
-
-}
-
-/* CONNECTION */
-
-socket.on(
-
-"connect",
-
-()=>{
-
-console.log(
-"✅ Connected"
-);
-
-});
-
-/* RECONNECT */
-
-socket.on(
-
-"reconnect",
-
-()=>{
-
-console.log(
-"♻️ Reconnected"
-);
-
-});
-
-/* DISCONNECT */
-
-socket.on(
-
-"disconnect",
-
-()=>{
-
-console.log(
-"❌ Disconnected"
-);
-
-});
-
-/* KEEP ALIVE */
-
-setInterval(()=>{
-
-socket.emit(
-"ping alive"
-);
-
-},20000);
-
-/* PONG */
-
-socket.on(
-
-"pong alive",
-
-()=>{
-
-console.log(
-"🏓 pong"
-);
-
-});
-
-/* AUTO SCROLL */
-
-setInterval(()=>{
-
-messages.scrollTop =
-messages.scrollHeight;
-
-},1000);
