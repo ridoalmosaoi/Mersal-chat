@@ -8,14 +8,20 @@
 
 <meta
 name="viewport"
-content="width=device-width,initial-scale=1.0"
->
+content="
+width=device-width,
+initial-scale=1.0
+">
 
-<title>Mersal Chat</title>
+<title>
+
+🔥 Mersal Chat
+
+</title>
 
 <link
 rel="stylesheet"
-href="style.css"
+href="style.css?v=2"
 >
 
 </head>
@@ -49,13 +55,13 @@ autocomplete="off"
 id="adminPassword"
 type="password"
 placeholder="كلمة سر الإدارة"
-style="display:none;"
+style="display:none"
 autocomplete="off"
 >
 
-<div
-class="colors-box"
->
+<!-- COLORS -->
+
+<div class="colors-box">
 
 <div
 class="color-option active-color"
@@ -71,14 +77,20 @@ data-color="#00d0ff"
 
 <div
 class="color-option"
+style="background:#00ff88"
+data-color="#00ff88"
+></div>
+
+<div
+class="color-option"
 style="background:#ff3b3b"
 data-color="#ff3b3b"
 ></div>
 
 <div
 class="color-option"
-style="background:#00ff88"
-data-color="#00ff88"
+style="background:#ff00ff"
+data-color="#ff00ff"
 ></div>
 
 </div>
@@ -88,7 +100,7 @@ class="join-btn"
 onclick="joinChat()"
 >
 
-دخول الشات
+دخول
 
 </button>
 
@@ -112,7 +124,9 @@ style="display:none"
 
 <button
 class="top-btn"
-onclick="openUsers()"
+onclick="
+openUsers()
+"
 >
 
 👥
@@ -121,7 +135,9 @@ onclick="openUsers()"
 
 <button
 class="top-btn"
-onclick="openPrivateList()"
+onclick="
+openPrivateList()
+"
 >
 
 💬
@@ -156,7 +172,7 @@ window.open(
 
 <div class="top-title">
 
-🔥 Mersal Chat
+🔥 Mersal
 
 </div>
 
@@ -172,7 +188,7 @@ style="display:none"
 
 <div class="menu-header">
 
-👥 المتصلين
+👥 المتواجدون
 
 <button
 class="close-btn"
@@ -205,7 +221,36 @@ class="messages"
 
 </div>
 
-<!-- MESSAGE BOX -->
+<!-- REPLY -->
+
+<div
+id="replyBox"
+style="
+display:none;
+padding:10px;
+background:#202020;
+"
+>
+
+<div
+id="replyText"
+>
+
+</div>
+
+<button
+onclick="
+cancelReply()
+"
+>
+
+✖
+
+</button>
+
+</div>
+
+<!-- INPUT -->
 
 <div class="message-box">
 
@@ -218,7 +263,9 @@ autocomplete="off"
 
 <button
 class="send-btn"
-onclick="sendMessage()"
+onclick="
+sendMessage()
+"
 >
 
 إرسال
@@ -229,7 +276,7 @@ onclick="sendMessage()"
 
 </div>
 
-<!-- PRIVATE CHAT -->
+<!-- PRIVATE -->
 
 <div
 id="privateChatBox"
@@ -243,7 +290,7 @@ style="display:none"
 id="privateTitle"
 >
 
-📩 محادثة خاصة
+💬 مرسال خاص
 
 </div>
 
@@ -273,8 +320,9 @@ class="private-input-box"
 
 <input
 id="privateInput"
-type="text"
-placeholder="رسالة خاصة..."
+placeholder="
+اكتب رسالة...
+"
 >
 
 <button
@@ -291,9 +339,63 @@ sendPrivate()
 
 </div>
 
+<!-- USER POPUP -->
+
+<div
+id="userPopupOverlay"
+style="display:none"
+class="popup-overlay"
+onclick="
+closeUserPopup()
+"
+>
+
+<div
+class="user-popup"
+onclick="
+event.stopPropagation()
+"
+>
+
+<div
+class="popup-header"
+>
+
+<div
+id="popupUsername"
+>
+
+👤 مستخدم
+
+</div>
+
+<button
+class="close-btn"
+onclick="
+closeUserPopup()
+"
+>
+
+✖
+
+</button>
+
+</div>
+
+<div
+id="popupButtons"
+class="popup-buttons"
+>
+
+</div>
+
+</div>
+
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 
 </body>
 
