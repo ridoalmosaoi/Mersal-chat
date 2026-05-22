@@ -49,7 +49,7 @@ background:
 linear-gradient(
 180deg,
 #111,
-#0a0a0a
+#090909
 );
 
 }
@@ -66,7 +66,7 @@ background:#1b1b1b;
 
 padding:30px;
 
-border-radius:28px;
+border-radius:30px;
 
 display:flex;
 
@@ -74,14 +74,14 @@ flex-direction:column;
 
 gap:15px;
 
-box-shadow:
-0 0 30px rgba(0,0,0,0.5);
-
 border:
 1px solid #2a2a2a;
 
+box-shadow:
+0 0 30px rgba(0,0,0,0.5);
+
 animation:
-fadeIn 0.3s ease;
+fadeIn 0.25s ease;
 
 }
 
@@ -98,7 +98,7 @@ color:#ffd700;
 margin-bottom:10px;
 
 text-shadow:
-0 0 15px rgba(255,215,0,0.4);
+0 0 15px rgba(255,215,0,0.3);
 
 }
 
@@ -132,11 +132,11 @@ font-size:16px;
 
 input::placeholder{
 
-color:#aaa;
+color:#999;
 
 }
 
-/* BUTTONS */
+/* BUTTON */
 
 button{
 
@@ -186,7 +186,7 @@ margin-top:5px;
 
 }
 
-/* COLOR OPTION */
+/* COLOR */
 
 .color-option{
 
@@ -204,7 +204,7 @@ transition:0.2s;
 
 }
 
-/* ACTIVE COLOR */
+/* ACTIVE */
 
 .active-color{
 
@@ -213,7 +213,7 @@ border-color:white;
 transform:scale(1.1);
 
 box-shadow:
-0 0 15px rgba(255,255,255,0.3);
+0 0 15px rgba(255,255,255,0.2);
 
 }
 
@@ -227,6 +227,8 @@ flex-direction:column;
 
 height:100vh;
 
+overflow:hidden;
+
 }
 
 /* TOP BAR */
@@ -234,6 +236,8 @@ height:100vh;
 .top-bar{
 
 height:65px;
+
+min-height:65px;
 
 background:#171717;
 
@@ -248,13 +252,15 @@ padding:0 15px;
 border-bottom:
 1px solid #2a2a2a;
 
+z-index:100;
+
 }
 
 /* TOP TITLE */
 
 .top-title{
 
-font-size:21px;
+font-size:20px;
 
 font-weight:bold;
 
@@ -282,7 +288,7 @@ height:45px;
 
 border-radius:14px;
 
-background:#2a2a2a;
+background:#252525;
 
 color:white;
 
@@ -298,9 +304,9 @@ position:relative;
 
 position:absolute;
 
-top:-6px;
+top:-5px;
 
-left:-6px;
+left:-5px;
 
 min-width:22px;
 
@@ -323,6 +329,47 @@ font-size:12px;
 font-weight:bold;
 
 color:white;
+
+}
+
+/* CONNECTION STATUS */
+
+.connection-status{
+
+position:fixed;
+
+top:75px;
+
+left:50%;
+
+transform:
+translateX(-50%);
+
+background:#ff3b3b;
+
+padding:8px 15px;
+
+border-radius:30px;
+
+font-size:13px;
+
+z-index:99999;
+
+display:none;
+
+}
+
+/* TYPING */
+
+.typing-box{
+
+padding:5px 15px;
+
+font-size:13px;
+
+color:#999;
+
+height:24px;
 
 }
 
@@ -350,7 +397,7 @@ scroll-behavior:smooth;
 
 .message{
 
-background:#1d1d1d;
+background:#1e1e1e;
 
 padding:12px;
 
@@ -360,11 +407,11 @@ max-width:88%;
 
 word-break:break-word;
 
-animation:
-fadeUp 0.2s ease;
-
 border:
 1px solid #2a2a2a;
+
+animation:
+fadeUp 0.2s ease;
 
 }
 
@@ -374,10 +421,27 @@ border:
 
 align-self:flex-end;
 
-background:#2a2412;
+background:#2d260e;
 
 border:
-1px solid #4a3f16;
+1px solid #574814;
+
+}
+
+/* SYSTEM MESSAGE */
+
+.system-message{
+
+align-self:center;
+
+background:#262626;
+
+border:
+1px dashed #444;
+
+text-align:center;
+
+font-size:14px;
 
 }
 
@@ -391,7 +455,7 @@ align-items:center;
 
 gap:6px;
 
-margin-bottom:5px;
+margin-bottom:6px;
 
 font-size:15px;
 
@@ -445,6 +509,8 @@ border-radius:15px;
 background:#ffd700;
 
 color:black;
+
+font-size:15px;
 
 }
 
@@ -537,15 +603,15 @@ padding:10px;
 
 background:#232323;
 
-padding:12px;
+padding:13px;
 
-border-radius:15px;
+border-radius:16px;
 
 margin-bottom:10px;
 
-transition:0.2s;
-
 cursor:pointer;
+
+transition:0.2s;
 
 border:
 1px solid transparent;
@@ -554,7 +620,7 @@ border:
 
 .user-item:hover{
 
-background:#2d2d2d;
+background:#2c2c2c;
 
 border-color:#3a3a3a;
 
@@ -674,7 +740,7 @@ word-break:break-word;
 
 }
 
-/* MY PRIVATE */
+/* PRIVATE ME */
 
 .private-me{
 
@@ -686,7 +752,7 @@ align-self:flex-end;
 
 }
 
-/* OTHER PRIVATE */
+/* PRIVATE OTHER */
 
 .private-other{
 
@@ -761,7 +827,7 @@ color:#00d0ff;
 
 }
 
-/* DUPLICATE NAME */
+/* DUPLICATE */
 
 .duplicate-name{
 
@@ -785,7 +851,7 @@ border-radius:20px;
 
 }
 
-/* ANIMATION */
+/* ANIMATIONS */
 
 @keyframes fadeIn{
 
@@ -867,7 +933,7 @@ max-width:95%;
 
 .top-title{
 
-font-size:18px;
+font-size:17px;
 
 }
 
@@ -904,62 +970,6 @@ env(safe-area-inset-bottom)
 );
 
 }
-
-}
-
-/* CONNECTION STATUS */
-
-.connection-status{
-
-position:fixed;
-
-bottom:80px;
-
-left:50%;
-
-transform:
-translateX(-50%);
-
-background:#222;
-
-padding:8px 14px;
-
-border-radius:20px;
-
-font-size:13px;
-
-z-index:999999;
-
-display:none;
-
-}
-
-/* TYPING */
-
-.typing-box{
-
-padding:5px 15px;
-
-font-size:13px;
-
-color:#aaa;
-
-}
-
-/* SYSTEM MESSAGE */
-
-.system-message{
-
-background:#262626;
-
-border:
-1px dashed #444;
-
-font-size:14px;
-
-align-self:center;
-
-text-align:center;
 
 }
 
