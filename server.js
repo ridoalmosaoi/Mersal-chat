@@ -1,28 +1,20 @@
 const express = require("express");
+const http = require("http");
+const socketIO = require("socket.io");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 
-const http = require("http").createServer(app);
+const server = http.createServer(app);
 
-const io = require("socket.io")(http,{
-
+const io = socketIO(server,{
 cors:{
 origin:"*"
-},
-
-transports:["polling","websocket"],
-
-pingTimeout:60000,
-
-pingInterval:25000
-
+}
 });
 
-const path = require("path");
-
-const fs = require("fs");
-
-/* STATIC */
+/* PUBLIC */
 
 app.use(
 express.static(
@@ -30,103 +22,96 @@ path.join(__dirname,"public")
 )
 );
 
-/* DATA */
+/* DATABASE */
 
 let users = [];
 
-let bannedUsers = [];
-
 let admins = [];
 
-/* SETTINGS */
+let bannedUsers = [];
 
-let chatLocked = false;
+let mutedUsers = [];
 
-let privateLocked = false;
+let logs = [];
 
-/* LOAD BANNED */
+/* LOAD JSON */
 
-try{
-
-if(
-fs.existsSync("banned.json")
-){
-
-bannedUsers = JSON.parse(
-
-fs.readFileSync(
-"banned.json",
-"utf8"
-)
-
-);
-
-console.log(
-"✅ banned.json loaded"
-);
-
-}
-
-}catch(err){
-
-console.log(
-"❌ banned.json error",
-err
-);
-
-bannedUsers = [];
-
-}
-
-/* LOAD ADMINS */
+function loadFile(fileName,defaultData=[]){
 
 try{
 
 if(
-fs.existsSync("admins.json")
+!fs.existsSync(fileName)
 ){
 
-admins = JSON.parse(
-
-fs.readFileSync(
-"admins.json",
-"utf8"
+fs.writeFileSync(
+fileName,
+JSON.stringify(
+defaultData,
+null,
+2
 )
-
 );
 
-console.log(
-"✅ admins.json loaded"
-);
-
-console.log(
-"🔥 ADMINS:",
-admins
-);
+return defaultData;
 
 }
 
-}catch(err){
+const data = fs.readFileSync(
+fileName,
+"utf8"
+);
+
+return JSON.parse(data);
+
+}
+catch(err){
 
 console.log(
-"❌ admins.json error",
+"LOAD ERROR:",
+fileName,
 err
 );
 
-admins = [];
+return defaultData;
 
 }
 
-/* SAVE BANNED */
+}
 
-function saveBanned(){
+admins =
+loadFile(
+"admins.json"
+);
+
+bannedUsers =
+loadFile(
+"banned.json"
+);
+
+mutedUsers =
+loadFile(
+"muted.json"
+);
+
+logs =
+loadFile(
+"logs.json"
+);
+
+/* SAVE JSON */
+
+function saveFile(
+fileName,
+data
+){
 
 fs.writeFileSync(
 
-"banned.json",
+fileName,
 
 JSON.stringify(
-bannedUsers,
+data,
 null,
 2
 )
@@ -135,868 +120,87 @@ null,
 
 }
 
-/* SAVE ADMINS */
+/* LOG SYSTEM */
 
-function saveAdmins(){
+function addLog(text){
 
-fs.writeFileSync(
+const log = {
 
-"admins.json",
+time:
+new Date()
+.toLocaleString(),
 
-JSON.stringify(
-admins,
-null,
-2
-)
+message:text
 
+};
+
+logs.unshift(log);
+
+saveFile(
+"logs.json",
+logs
 );
-
-}
-
-/* SYSTEM MESSAGE */
-
-function systemMessage(message,color){
 
 io.emit(
+"new log",
+log
+);
 
-"chat message",
-
-{
-
-id:"system",
-
-username:"System",
-
-color,
-
-message
-
-}
-
+console.log(
+text
 );
 
 }
 
 /* ADMIN CHECK */
 
-function isAdmin(socket){
+function hasPermission(
+socket,
+permission
+){
 
-return socket.isAdmin === true;
+if(
+!socket.adminData
+){
+return false;
+}
+
+return socket
+.adminData
+.permissions?.[
+permission
+] === true;
 
 }
 
-/* SOCKET */
+/* CONNECTION */
 
-io.on("connection",(socket)=>{
+io.on(
+"connection",
+(socket)=>{
 
 console.log(
 "Connected:",
 socket.id
 );
 
-/* JOIN */
-
 socket.on(
-
-"join",
-
-(data)=>{
-
-try{
-
-const username =
-(data.username || "")
-.trim();
-
-if(!username){
-return;
-}
-
-/* PROTECTED NAMES */
-
-const protectedAdmin = admins.find(
-
-a=>
-
-a.name.toLowerCase()
-
-===
-
-username.toLowerCase()
-
-);
-
-if(protectedAdmin){
-
-if(
-
-data.adminPassword
-
-!==
-
-protectedAdmin.password
-
-){
-
-socket.emit(
-
-"banned",
-
-"🚫 كلمة سر الإدارة خطأ"
-
-);
-
-return;
-
-}
-
-}
-
-/* IP */
-
-const ip =
-
-socket.handshake.headers[
-"x-forwarded-for"
-]
-
-||
-
-socket.handshake.address
-
-||
-
-"Unknown";
-
-/* FINGERPRINT */
-
-const fingerprint =
-
-(data.browser || "")
-
-+
-
-(data.device || "");
-
-/* CHECK BAN */
-
-const banned = bannedUsers.find(
-
-b=>
-
-b.ip === ip
-
-||
-
-b.fingerprint === fingerprint
-
-||
-
-b.deviceToken === data.deviceToken
-
-);
-
-if(banned){
-
-if(
-banned.fullDisconnect
-){
-
-socket.emit(
-
-"full device banned",
-
-"🚫 تم فصلك كليًا"
-
-);
-
-return;
-
-}
-
-socket.emit(
-"banned",
-"🚫 تم حظرك"
-);
-
-return;
-
-}
-
-/* USER */
-
-const user = {
-
-id:socket.id,
-
-username,
-
-color:
-data.color || "#ffd700",
-
-ip,
-
-browser:
-data.browser || "",
-
-device:
-data.device || "",
-
-deviceToken:
-data.deviceToken || "",
-
-fingerprint,
-
-rank:
-
-protectedAdmin
-
-?
-
-protectedAdmin.name
-
-:
-
-"User"
-
-};
-
-/* SAVE USER */
-
-users.push(user);
-
-/* IF ADMIN */
-
-if(protectedAdmin){
-
-socket.isAdmin = true;
-
-socket.adminData = protectedAdmin;
-
-}
-
-/* SUCCESS */
-
-socket.emit(
-"login success"
-);
-
-/* UPDATE USERS */
-
-io.emit(
-"online users",
-users
-);
-
-/* SYSTEM */
-
-systemMessage(
-`${username} دخل الشات`,
-"#ffd700"
-);
-
-}catch(err){
-
-console.log(
-"JOIN ERROR:",
-err
-);
-
-}
-
-});
-
-/* CHAT */
-
-socket.on(
-
-"chat message",
-
-(data)=>{
-
-try{
-
-if(chatLocked){
-return;
-}
-
-const user = users.find(
-u=>u.id === socket.id
-);
-
-if(!user){
-return;
-}
-
-const message =
-(data.message || "")
-.trim();
-
-if(!message){
-return;
-}
-
-io.emit(
-
-"chat message",
-
-{
-
-id:user.id,
-
-username:user.username,
-
-color:user.color,
-
-message,
-
-rank:user.rank
-
-}
-
-);
-
-}catch(err){
-
-console.log(
-"MESSAGE ERROR:",
-err
-);
-
-}
-
-});
-
-/* PRIVATE */
-
-socket.on(
-
-"private message",
-
-(data)=>{
-
-try{
-
-if(privateLocked){
-return;
-}
-
-io.to(data.to).emit(
-
-"private message",
-
-{
-
-from:data.from,
-
-fromId:socket.id,
-
-message:data.message
-
-}
-
-);
-
-}catch(err){
-
-console.log(
-"PRIVATE ERROR:",
-err
-);
-
-}
-
-});
-
-/* ADMIN LOGIN */
-
-socket.on(
-
-"admin panel login",
-
-(data)=>{
-
-try{
-
-console.log(
-"🔥 ADMIN LOGIN:",
-data
-);
-
-const admin = admins.find(
-
-a=>
-
-a.name === data.name
-
-&&
-
-a.password === data.password
-
-);
-
-if(!admin){
-
-socket.emit(
-"admin login failed"
-);
-
-return;
-
-}
-
-socket.isAdmin = true;
-
-socket.adminData = admin;
-
-socket.emit(
-"admin login success"
-);
-
-socket.emit(
-"admin online users",
-users
-);
-
-socket.emit(
-"admin banned users",
-bannedUsers
-);
-
-socket.emit(
-"admins list",
-admins
-);
-
-socket.emit(
-
-"server stats",
-
-{
-
-onlineUsers:
-users.length,
-
-bannedUsers:
-bannedUsers.length,
-
-admins:
-admins.length
-
-}
-
-);
-
-}catch(err){
-
-console.log(
-"ADMIN LOGIN ERROR:",
-err
-);
-
-}
-
-});
-
-/* ADD ADMIN */
-
-socket.on(
-
-"add admin",
-
-(data)=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-admins.push({
-
-name:data.name,
-
-password:data.password,
-
-permissions:{
-
-kick:true,
-
-ban:true,
-
-disconnect:true,
-
-unban:true,
-
-clear:true,
-
-maintenance:true,
-
-chatLock:true,
-
-privateLock:true,
-
-addAdmin:true,
-
-removeAdmin:true
-
-}
-
-});
-
-saveAdmins();
-
-io.emit(
-"admins list",
-admins
-);
-
-});
-
-/* REMOVE ADMIN */
-
-socket.on(
-
-"remove admin",
-
-(index)=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-admins.splice(
-index,
-1
-);
-
-saveAdmins();
-
-io.emit(
-"admins list",
-admins
-);
-
-});
-
-/* KICK */
-
-socket.on(
-
-"kick user",
-
-(userId)=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-const target = users.find(
-u=>u.id === userId
-);
-
-if(!target){
-return;
-}
-
-io.to(userId).emit(
-"banned",
-"⚠️ تم طردك"
-);
-
-io.sockets.sockets
-.get(userId)
-?.disconnect(true);
-
-systemMessage(
-`⚠️ تم طرد ${target.username}`,
-"orange"
-);
-
-});
-
-/* BAN */
-
-socket.on(
-
-"ban user",
-
-(userId)=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-const target = users.find(
-u=>u.id === userId
-);
-
-if(!target){
-return;
-}
-
-bannedUsers.push({
-
-username:
-target.username,
-
-ip:
-target.ip,
-
-fingerprint:
-target.fingerprint,
-
-deviceToken:
-target.deviceToken,
-
-fullDisconnect:false,
-
-time:Date.now()
-
-});
-
-saveBanned();
-
-io.to(userId).emit(
-"banned",
-"🚫 تم حظرك"
-);
-
-io.sockets.sockets
-.get(userId)
-?.disconnect(true);
-
-systemMessage(
-`🚫 تم حظر ${target.username}`,
-"red"
-);
-
-});
-
-/* FULL DISCONNECT */
-
-socket.on(
-
-"disconnect user",
-
-(userId)=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-const target = users.find(
-u=>u.id === userId
-);
-
-if(!target){
-return;
-}
-
-bannedUsers.push({
-
-username:
-target.username,
-
-ip:
-target.ip,
-
-fingerprint:
-target.fingerprint,
-
-deviceToken:
-target.deviceToken,
-
-fullDisconnect:true,
-
-time:Date.now()
-
-});
-
-saveBanned();
-
-io.to(userId).emit(
-
-"full device banned",
-
-"🚫 تم فصلك كليًا"
-
-);
-
-io.sockets.sockets
-.get(userId)
-?.disconnect(true);
-
-systemMessage(
-`⛔ تم فصل ${target.username}`,
-"#ff0000"
-);
-
-});
-
-/* UNBAN */
-
-socket.on(
-
-"unban user",
-
-(index)=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-bannedUsers.splice(
-index,
-1
-);
-
-saveBanned();
-
-io.emit(
-"admin banned users",
-bannedUsers
-);
-
-});
-
-/* CLEAR CHAT */
-
-socket.on(
-
-"clear chat",
-
-()=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-io.emit(
-"clear messages"
-);
-
-systemMessage(
-"🧹 تم تنظيف الشات",
-"#ffd700"
-);
-
-});
-
-/* CHAT LOCK */
-
-socket.on(
-
-"toggle chat lock",
-
-()=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-chatLocked = !chatLocked;
-
-systemMessage(
-
-chatLocked
-
-?
-
-"🔒 تم قفل العام"
-
-:
-
-"🔓 تم فتح العام"
-
-,
-
-"orange"
-
-);
-
-});
-
-/* PRIVATE LOCK */
-
-socket.on(
-
-"toggle private lock",
-
-()=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-privateLocked = !privateLocked;
-
-systemMessage(
-
-privateLocked
-
-?
-
-"💬 تم تعطيل الخاص"
-
-:
-
-"💬 تم تفعيل الخاص"
-
-,
-
-"#00d0ff"
-
-);
-
-});
-
-/* MAINTENANCE */
-
-socket.on(
-
-"maintenance mode",
-
-()=>{
-
-if(!isAdmin(socket)){
-return;
-}
-
-systemMessage(
-"🛠️ السيرفر تحت الصيانة",
-"red"
-);
-
-});
-
-/* DISCONNECT */
-
-socket.on(
-
 "disconnect",
-
 ()=>{
 
-const disconnectedUser = users.find(
-u=>u.id === socket.id
-);
+users =
+users.filter(
 
-users = users.filter(
-u=>u.id !== socket.id
+u=>
+
+u.id !== socket.id
+
 );
 
 io.emit(
 "online users",
 users
 );
-
-if(disconnectedUser){
-
-systemMessage(
-`${disconnectedUser.username} خرج`,
-"#666"
-);
-
-}
 
 });
 
@@ -1005,12 +209,20 @@ systemMessage(
 /* START */
 
 const PORT =
-process.env.PORT || 3000;
+process.env.PORT
+||
+3000;
 
-http.listen(PORT,()=>{
+server.listen(
+PORT,
+()=>{
 
 console.log(
-"🚀 Server Running"
+`🚀 Server Running ${PORT}`
+);
+
+addLog(
+"🚀 Server started"
 );
 
 });
