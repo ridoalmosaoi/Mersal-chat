@@ -8,11 +8,8 @@
 
 <meta
 name="viewport"
-content="
-width=device-width,
-initial-scale=1.0,
-maximum-scale=1.0
-">
+content="width=device-width,initial-scale=1.0"
+>
 
 <title>
 
@@ -22,7 +19,7 @@ maximum-scale=1.0
 
 <link
 rel="stylesheet"
-href="admin.css?v=1000"
+href="admin.css"
 >
 
 </head>
@@ -40,30 +37,28 @@ class="login-page"
 
 <h1 class="logo">
 
-👑 لوحة إدارة مرسال
+👑 لوحة الإدارة
 
 </h1>
 
 <input
-type="text"
 id="adminName"
+type="text"
 placeholder="اسم الإدارة"
-autocomplete="off"
 >
 
 <input
+id="adminPass"
 type="password"
-id="adminPassword"
 placeholder="كلمة السر"
-autocomplete="off"
 >
 
 <button
-class="login-btn"
 onclick="loginAdmin()"
+class="login-btn"
 >
 
-دخول الإدارة
+دخول
 
 </button>
 
@@ -75,11 +70,9 @@ onclick="loginAdmin()"
 
 <div
 id="adminPanel"
+style="display:none"
 class="admin-panel"
-style="display:none;"
 >
-
-<!-- TOP -->
 
 <div class="top-bar">
 
@@ -89,52 +82,12 @@ style="display:none;"
 
 </div>
 
-<div class="top-actions">
-
-<button
-class="top-btn red-btn"
-onclick="maintenanceMode()"
->
-
-🛠️
-
-</button>
-
-<button
-class="top-btn yellow-btn"
-onclick="clearChat()"
->
-
-🧹
-
-</button>
-
-<button
-class="top-btn blue-btn"
-onclick="togglePrivateLock()"
->
-
-💬
-
-</button>
-
-<button
-class="top-btn orange-btn"
-onclick="toggleChatLock()"
->
-
-🔒
-
-</button>
-
-</div>
-
 </div>
 
 <!-- STATS -->
 
 <div
-id="serverInfo"
+id="statsBox"
 class="stats-box"
 >
 
@@ -142,11 +95,26 @@ class="stats-box"
 
 </div>
 
-<!-- CONTENT -->
+<!-- ACTION LOGS -->
 
-<div class="admin-content">
+<div class="admin-box">
 
-<!-- ONLINE USERS -->
+<h2>
+
+📜 سجل التنفيذ
+
+</h2>
+
+<div
+id="logsBox"
+class="logs-box"
+>
+
+</div>
+
+</div>
+
+<!-- USERS -->
 
 <div class="admin-box">
 
@@ -165,54 +133,49 @@ class="users-container"
 
 </div>
 
-<!-- BANNED -->
+<!-- ADD ADMIN -->
 
 <div class="admin-box">
 
 <h2>
 
-🚫 المحظورين
+👮 إضافة أدمن
 
 </h2>
-
-<div
-id="bannedUsers"
-class="users-container"
->
-
-</div>
-
-</div>
-
-<!-- ADMINS -->
-
-<div class="admin-box">
-
-<h2>
-
-👮 الإدارة
-
-</h2>
-
-<div class="add-admin-box">
 
 <input
-type="text"
 id="newAdminName"
 placeholder="اسم الأدمن"
-autocomplete="off"
 >
 
 <input
-type="password"
 id="newAdminPassword"
 placeholder="كلمة السر"
-autocomplete="off"
 >
 
+<label>
+<input type="checkbox" id="permKick">
+طرد
+</label>
+
+<label>
+<input type="checkbox" id="permBan">
+حظر
+</label>
+
+<label>
+<input type="checkbox" id="permViewUser">
+معلومات المستخدم
+</label>
+
+<label>
+<input type="checkbox" id="permAddAdmin">
+إضافة أدمن
+</label>
+
 <button
-class="add-btn"
 onclick="addAdmin()"
+class="login-btn"
 >
 
 ➕ إضافة
@@ -221,55 +184,11 @@ onclick="addAdmin()"
 
 </div>
 
-<div
-id="adminsList"
-class="users-container"
->
-
 </div>
 
-</div>
+<script src="/socket.io/socket.io.js"></script>
 
-<!-- LOGS -->
-
-<div class="admin-box">
-
-<h2>
-
-📜 السجل
-
-</h2>
-
-<div
-id="logsBox"
-class="logs-box"
->
-
-<div class="log-item">
-
-لا يوجد سجلات
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-<!-- SOCKET -->
-
-<script src="
-https://cdn.socket.io/4.7.5/socket.io.min.js
-"></script>
-
-<!-- ADMIN JS -->
-
-<script src="
-admin.js?v=1000
-"></script>
+<script src="admin.js"></script>
 
 </body>
 
