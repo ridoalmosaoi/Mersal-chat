@@ -10,7 +10,8 @@
 name="viewport"
 content="
 width=device-width,
-initial-scale=1.0
+initial-scale=1.0,
+maximum-scale=1.0
 ">
 
 <title>
@@ -21,172 +22,52 @@ initial-scale=1.0
 
 <link
 rel="stylesheet"
-href="admin.css?v=9">
-
-<style>
-
-body{
-
-background:#111;
-
-color:white;
-
-font-family:sans-serif;
-
-margin:0;
-
-padding:15px;
-
-}
-
-.admin-container{
-
-max-width:1000px;
-
-margin:auto;
-
-}
-
-.admin-box{
-
-background:#1c1c1c;
-
-padding:20px;
-
-border-radius:20px;
-
-margin-bottom:20px;
-
-}
-
-h1{
-
-text-align:center;
-
-color:#ffd700;
-
-margin-bottom:25px;
-
-}
-
-h2{
-
-margin-bottom:15px;
-
-color:#00d0ff;
-
-}
-
-input{
-
-width:100%;
-
-padding:14px;
-
-border:none;
-
-border-radius:12px;
-
-background:#2a2a2a;
-
-color:white;
-
-margin-bottom:12px;
-
-font-size:16px;
-
-}
-
-button{
-
-padding:12px 16px;
-
-border:none;
-
-border-radius:12px;
-
-background:#ffd700;
-
-color:black;
-
-font-size:15px;
-
-cursor:pointer;
-
-margin-top:10px;
-
-margin-left:5px;
-
-}
-
-.user-card{
-
-background:#2a2a2a;
-
-padding:14px;
-
-border-radius:14px;
-
-margin-top:10px;
-
-line-height:1.8;
-
-word-break:break-word;
-
-}
-
-.settings-buttons{
-
-display:flex;
-
-flex-wrap:wrap;
-
-gap:10px;
-
-}
-
-</style>
+href="admin.css?v=1000"
+>
 
 </head>
 
 <body>
 
-<div class="admin-container">
+<!-- LOGIN -->
 
-<h1>
+<div
+id="adminLogin"
+class="login-page"
+>
+
+<div class="login-box">
+
+<h1 class="logo">
 
 👑 لوحة إدارة مرسال
 
 </h1>
 
-<!-- LOGIN -->
-
-<div
-id="adminLogin"
-class="admin-box">
-
-<h2>
-
-🔐 تسجيل دخول الإدارة
-
-</h2>
-
 <input
 type="text"
 id="adminName"
-placeholder="اسم الأدمن">
+placeholder="اسم الإدارة"
+autocomplete="off"
+>
 
 <input
 type="password"
 id="adminPassword"
-placeholder="كلمة السر">
+placeholder="كلمة السر"
+autocomplete="off"
+>
 
 <button
-onclick="loginAdmin()">
+class="login-btn"
+onclick="loginAdmin()"
+>
 
-دخول
+دخول الإدارة
 
 </button>
+
+</div>
 
 </div>
 
@@ -194,27 +75,78 @@ onclick="loginAdmin()">
 
 <div
 id="adminPanel"
-style="display:none;">
+class="admin-panel"
+style="display:none;"
+>
 
-<!-- SERVER -->
+<!-- TOP -->
 
-<div class="admin-box">
+<div class="top-bar">
 
-<h2>
+<div class="top-title">
 
-📊 معلومات السيرفر
+👑 Mersal Control
 
-</h2>
+</div>
 
-<div id="serverInfo">
+<div class="top-actions">
 
-🟢 جاري التحميل...
+<button
+class="top-btn red-btn"
+onclick="maintenanceMode()"
+>
+
+🛠️
+
+</button>
+
+<button
+class="top-btn yellow-btn"
+onclick="clearChat()"
+>
+
+🧹
+
+</button>
+
+<button
+class="top-btn blue-btn"
+onclick="togglePrivateLock()"
+>
+
+💬
+
+</button>
+
+<button
+class="top-btn orange-btn"
+onclick="toggleChatLock()"
+>
+
+🔒
+
+</button>
 
 </div>
 
 </div>
 
-<!-- ONLINE -->
+<!-- STATS -->
+
+<div
+id="serverInfo"
+class="stats-box"
+>
+
+📊 جاري التحميل...
+
+</div>
+
+<!-- CONTENT -->
+
+<div class="admin-content">
+
+<!-- ONLINE USERS -->
 
 <div class="admin-box">
 
@@ -224,7 +156,12 @@ style="display:none;">
 
 </h2>
 
-<div id="onlineUsers"></div>
+<div
+id="onlineUsers"
+class="users-container"
+>
+
+</div>
 
 </div>
 
@@ -238,7 +175,12 @@ style="display:none;">
 
 </h2>
 
-<div id="bannedUsers"></div>
+<div
+id="bannedUsers"
+class="users-container"
+>
+
+</div>
 
 </div>
 
@@ -248,68 +190,41 @@ style="display:none;">
 
 <h2>
 
-👮 الأدمنية
+👮 الإدارة
 
 </h2>
 
-<div id="adminsList"></div>
-
-<hr>
+<div class="add-admin-box">
 
 <input
 type="text"
 id="newAdminName"
-placeholder="اسم الأدمن">
+placeholder="اسم الأدمن"
+autocomplete="off"
+>
 
 <input
 type="password"
 id="newAdminPassword"
-placeholder="كلمة سر الأدمن">
+placeholder="كلمة السر"
+autocomplete="off"
+>
 
 <button
-onclick="addAdmin()">
+class="add-btn"
+onclick="addAdmin()"
+>
 
-➕ إضافة أدمن
+➕ إضافة
 
 </button>
 
 </div>
 
-<!-- SETTINGS -->
-
-<div class="admin-box">
-
-<h2>
-
-⚙️ التحكم بالسيرفر
-
-</h2>
-
-<div class="settings-buttons">
-
-<button onclick="toggleChatLock()">
-
-🔒 قفل العام
-
-</button>
-
-<button onclick="togglePrivateLock()">
-
-💬 تعطيل الخاص
-
-</button>
-
-<button onclick="clearChat()">
-
-🧹 تنظيف الشات
-
-</button>
-
-<button onclick="maintenanceMode()">
-
-🛠️ صيانة
-
-</button>
+<div
+id="adminsList"
+class="users-container"
+>
 
 </div>
 
@@ -325,7 +240,14 @@ onclick="addAdmin()">
 
 </h2>
 
-<div id="logsBox"></div>
+<div
+id="logsBox"
+class="logs-box"
+>
+
+<div class="log-item">
+
+لا يوجد سجلات
 
 </div>
 
@@ -333,13 +255,21 @@ onclick="addAdmin()">
 
 </div>
 
-<!-- SOCKET FIX -->
+</div>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</div>
+
+<!-- SOCKET -->
+
+<script src="
+https://cdn.socket.io/4.7.5/socket.io.min.js
+"></script>
 
 <!-- ADMIN JS -->
 
-<script src="admin.js?v=99"></script>
+<script src="
+admin.js?v=1000
+"></script>
 
 </body>
 
