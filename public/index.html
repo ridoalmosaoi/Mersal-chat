@@ -11,7 +11,8 @@ name="viewport"
 content="
 width=device-width,
 initial-scale=1.0,
-maximum-scale=1.0
+maximum-scale=1.0,
+user-scalable=no
 ">
 
 <title>
@@ -22,7 +23,7 @@ Mersal Chat
 
 <link
 rel="stylesheet"
-href="style.css?v=300"
+href="style.css?v=999"
 >
 
 </head>
@@ -43,6 +44,8 @@ class="login-page"
 🔥 Mersal Chat
 
 </h1>
+
+<!-- USERNAME -->
 
 <input
 type="text"
@@ -67,41 +70,66 @@ autocomplete="off"
 <div class="colors-box">
 
 <div
-class="color-option active-color"
-style="background:#ffd700;"
+class="
+color-option
+active-color
+"
+style="
+background:#ffd700;
+"
 data-color="#ffd700"
-onclick="selectColor('#ffd700')"
+onclick="
+selectColor('#ffd700')
+"
 ></div>
 
 <div
 class="color-option"
-style="background:#00d0ff;"
+style="
+background:#00d0ff;
+"
 data-color="#00d0ff"
-onclick="selectColor('#00d0ff')"
+onclick="
+selectColor('#00d0ff')
+"
 ></div>
 
 <div
 class="color-option"
-style="background:#ff3b3b;"
+style="
+background:#ff3b3b;
+"
 data-color="#ff3b3b"
-onclick="selectColor('#ff3b3b')"
+onclick="
+selectColor('#ff3b3b')
+"
 ></div>
 
 <div
 class="color-option"
-style="background:#00ff88;"
+style="
+background:#00ff88;
+"
 data-color="#00ff88"
-onclick="selectColor('#00ff88')"
+onclick="
+selectColor('#00ff88')
+"
 ></div>
 
 <div
 class="color-option"
-style="background:#ff00ff;"
+style="
+background:#ff00ff;
+"
 data-color="#ff00ff"
-onclick="selectColor('#ff00ff')"
+onclick="
+selectColor('#ff00ff')
+"
 ></div>
 
 </div>
+
+<!-- JOIN -->
 
 <button
 class="join-btn"
@@ -130,18 +158,26 @@ style="display:none;"
 
 <div class="top-left">
 
+<!-- USERS -->
+
 <button
 class="top-btn"
-onclick="openMenu('usersMenu')"
+onclick="
+openMenu('usersMenu')
+"
 >
 
 👥
 
 </button>
 
+<!-- PRIVATE -->
+
 <button
 class="top-btn"
-onclick="openMenu('privateChatBox')"
+onclick="
+openMenu('privateChatBox')
+"
 >
 
 💬
@@ -158,7 +194,25 @@ style="display:none;"
 
 </button>
 
+<!-- ADMIN -->
+
+<button
+class="top-btn"
+onclick="
+window.open(
+'/admin.html',
+'_blank'
+)
+"
+>
+
+👑
+
+</button>
+
 </div>
+
+<!-- TITLE -->
 
 <div class="top-title">
 
@@ -182,7 +236,9 @@ style="display:none;"
 
 <button
 class="close-btn"
-onclick="closeMenu('usersMenu')"
+onclick="
+closeMenu('usersMenu')
+"
 >
 
 ✖
@@ -197,6 +253,26 @@ class="users-list"
 >
 
 </div>
+
+</div>
+
+<!-- CONNECTION STATUS -->
+
+<div
+id="connectionStatus"
+class="connection-status"
+>
+
+⚠️ انقطع الاتصال
+
+</div>
+
+<!-- TYPING -->
+
+<div
+id="typingBox"
+class="typing-box"
+>
 
 </div>
 
@@ -241,19 +317,23 @@ class="private-chat"
 style="display:none;"
 >
 
+<!-- PRIVATE HEADER -->
+
 <div class="private-header">
 
 <div
 id="privateChatTitle"
 >
 
-📩 الخاص
+📩 المحادثة الخاصة
 
 </div>
 
 <button
 class="close-btn"
-onclick="closePrivateChat()"
+onclick="
+closePrivateChat()
+"
 >
 
 ✖
@@ -262,6 +342,8 @@ onclick="closePrivateChat()"
 
 </div>
 
+<!-- PRIVATE MESSAGES -->
+
 <div
 id="privateMessages"
 class="private-messages"
@@ -269,17 +351,23 @@ class="private-messages"
 
 </div>
 
+<!-- PRIVATE INPUT -->
+
 <div class="private-input-box">
 
 <input
 type="text"
 id="privateMessageInput"
-placeholder="اكتب رسالة خاصة..."
+placeholder="
+اكتب رسالة خاصة...
+"
 autocomplete="off"
 >
 
 <button
-onclick="sendPrivateMessage()"
+onclick="
+sendPrivateMessage()
+"
 >
 
 إرسال
@@ -290,7 +378,7 @@ onclick="sendPrivateMessage()"
 
 </div>
 
-<!-- SOCKET -->
+<!-- SOCKET IO -->
 
 <script src="
 https://cdn.socket.io/4.7.5/socket.io.min.js
@@ -298,7 +386,9 @@ https://cdn.socket.io/4.7.5/socket.io.min.js
 
 <!-- APP -->
 
-<script src="app.js?v=300"></script>
+<script src="
+app.js?v=999
+"></script>
 
 </body>
 
