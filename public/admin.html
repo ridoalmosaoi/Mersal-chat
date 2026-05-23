@@ -8,18 +8,16 @@
 
 <meta
 name="viewport"
-content="width=device-width,initial-scale=1.0"
+content="width=device-width,initial-scale=1"
 >
 
 <title>
-
-لوحة إدارة مرسال
-
+👑 لوحة إدارة مرسال
 </title>
 
 <link
 rel="stylesheet"
-href="admin.css"
+href="admin.css?v=1"
 >
 
 </head>
@@ -45,17 +43,19 @@ class="login-page"
 id="adminName"
 type="text"
 placeholder="اسم الإدارة"
+autocomplete="off"
 >
 
 <input
 id="adminPass"
 type="password"
 placeholder="كلمة السر"
+autocomplete="off"
 >
 
 <button
-onclick="loginAdmin()"
 class="login-btn"
+onclick="loginAdmin()"
 >
 
 دخول
@@ -70,9 +70,11 @@ class="login-btn"
 
 <div
 id="adminPanel"
-style="display:none"
 class="admin-panel"
+style="display:none"
 >
+
+<!-- TOP -->
 
 <div class="top-bar">
 
@@ -95,7 +97,7 @@ class="stats-box"
 
 </div>
 
-<!-- ACTION LOGS -->
+<!-- LOGS -->
 
 <div class="admin-box">
 
@@ -120,7 +122,7 @@ class="logs-box"
 
 <h2>
 
-👥 المتصلين
+👥 المتصلون
 
 </h2>
 
@@ -153,32 +155,84 @@ id="newAdminPassword"
 placeholder="كلمة السر"
 >
 
-<label>
-<input type="checkbox" id="permKick">
-طرد
-</label>
+<!-- PERMISSIONS -->
+
+<div class="permissions">
 
 <label>
-<input type="checkbox" id="permBan">
-حظر
-</label>
 
-<label>
-<input type="checkbox" id="permViewUser">
-معلومات المستخدم
-</label>
-
-<label>
-<input type="checkbox" id="permAddAdmin">
-إضافة أدمن
-</label>
-
-<button
-onclick="addAdmin()"
-class="login-btn"
+<input
+id="permKick"
+type="checkbox"
 >
 
-➕ إضافة
+⚠️ طرد
+
+</label>
+
+<label>
+
+<input
+id="permBan"
+type="checkbox"
+>
+
+🚫 حظر
+
+</label>
+
+<label>
+
+<input
+id="permMute"
+type="checkbox"
+>
+
+🔇 كتم
+
+</label>
+
+<label>
+
+<input
+id="permDisconnect"
+type="checkbox"
+>
+
+⛔ فصل جهاز
+
+</label>
+
+<label>
+
+<input
+id="permViewUser"
+type="checkbox"
+>
+
+ℹ️ معلومات مستخدم
+
+</label>
+
+<label>
+
+<input
+id="permAddAdmin"
+type="checkbox"
+>
+
+👮 إضافة أدمن
+
+</label>
+
+</div>
+
+<button
+class="login-btn"
+onclick="addAdmin()"
+>
+
+➕ إضافة الأدمن
 
 </button>
 
@@ -188,7 +242,7 @@ class="login-btn"
 
 <script src="/socket.io/socket.io.js"></script>
 
-<script src="admin.js"></script>
+<script src="admin.js?v=1"></script>
 
 </body>
 
