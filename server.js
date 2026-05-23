@@ -5,13 +5,10 @@ const fs=require("fs");
 const path=require("path");
 
 const app=express();
-
 const server=http.createServer(app);
 
 const io=socketIO(server,{
-cors:{
-origin:"*"
-}
+    cors:{origin:"*"}
 });
 
 app.use(
@@ -20,17 +17,21 @@ path.join(__dirname,"public")
 )
 );
 
-/* DATABASE */
+/* DATA */
 
 let users=[];
 
+let chatLocked=false;
+let privateLocked=false;
+let maintenanceMode=false;
+
 let admins=[];
-
 let bannedUsers=[];
-
+let mutedUsers=[];
+let deviceBannedUsers=[];
 let logs=[];
 
-/* LOAD FILE */
+/* FILE SYSTEM */
 
 function loadFile(file,def=[]){
 
@@ -52,12 +53,10 @@ return def;
 }
 
 return JSON.parse(
-
 fs.readFileSync(
 file,
 "utf8"
 )
-
 );
 
 }catch{
@@ -67,8 +66,6 @@ return def;
 }
 
 }
-
-/* SAVE FILE */
 
 function saveFile(
 file,
@@ -101,12 +98,22 @@ loadFile(
 "banned.json"
 );
 
+mutedUsers=
+loadFile(
+"muted.json"
+);
+
+deviceBannedUsers=
+loadFile(
+"deviceBanned.json"
+);
+
 logs=
 loadFile(
 "logs.json"
 );
 
-/* LOGS */
+/* LOG */
 
 function addLog(message){
 
@@ -143,31 +150,20 @@ message
 /* ADMINS API */
 
 app.get(
-
 "/admins.json",
-
 (req,res)=>{
 
 res.json(
 admins
 );
 
-}
+});
 
-);
-
-/* CONNECTION */
+/* SOCKET */
 
 io.on(
-
 "connection",
-
 socket=>{
-
-console.log(
-"Connected:",
-socket.id
-);
 
 /* JOIN */
 
@@ -178,8 +174,7 @@ socket.on(
 data=>{
 
 const username=
-data.username
-?.trim();
+data.username?.trim();
 
 if(
 !username
@@ -187,12 +182,70 @@ if(
 return;
 }
 
-/* CHECK BANNED */
+/* PREVENT DUPLICATE */
 
-const ip=
+const exists=
+
+users.find(
+
+u=>
+
+u.username
+.toLowerCase()
+
+===
+
+username
+.toLowerCase()
+
+);
+
+if(exists){
+
+socket.emit(
+"banned",
+"⚠️ الاسم مستخدم"
+);
+
+return;
+}
+
+const device=
+
+data.deviceToken
+||
 
 socket.handshake
-.address;
+.headers[
+"user-agent"
+];
+
+const ip=
+socket.handshake.address;
+
+/* DEVICE BAN */
+
+const deviceBlocked=
+
+deviceBannedUsers.find(
+
+d=>
+
+d.device===device
+
+);
+
+if(deviceBlocked){
+
+socket.emit(
+"banned",
+"⛔ الجهاز محظور"
+);
+
+return;
+}
+
+/* NORMAL BAN */
 
 const banned=
 
@@ -208,14 +261,13 @@ if(banned){
 
 socket.emit(
 "banned",
-"🚫 تم حظرك"
+"🚫 محظور"
 );
 
 return;
-
 }
 
-/* CHECK ADMIN */
+/* ADMIN CHECK */
 
 const admin=
 
@@ -249,7 +301,7 @@ socket.emit(
 
 "banned",
 
-"🚫 كلمة سر الإدارة خطأ"
+"🚫 كلمة السر خطأ"
 
 );
 
@@ -278,13 +330,7 @@ data.color
 
 ip,
 
-device:
-
-socket
-.handshake
-.headers[
-"user-agent"
-],
+device,
 
 isAdmin:
 !!admin
@@ -294,8 +340,6 @@ isAdmin:
 users.push(
 user
 );
-
-/* SUCCESS */
 
 socket.emit(
 "login success"
@@ -323,14 +367,46 @@ data=>{
 const user=
 
 users.find(
-
-u=>
-
-u.id===socket.id
-
+u=>u.id===socket.id
 );
 
 if(!user){
+return;
+}
+
+if(
+maintenanceMode
+&&
+!socket.adminData
+){
+return;
+}
+
+if(
+chatLocked
+&&
+!socket.adminData
+){
+return;
+}
+
+const muted=
+
+mutedUsers.find(
+
+m=>
+
+m.id===socket.id
+
+);
+
+if(muted){
+
+socket.emit(
+"banned",
+"🔇 أنت مكتوم"
+);
+
 return;
 }
 
@@ -340,6 +416,8 @@ io.emit(
 
 {
 
+id:user.id,
+
 username:
 user.username,
 
@@ -347,7 +425,10 @@ message:
 data.message,
 
 color:
-user.color
+user.color,
+
+reply:
+data.reply
 
 }
 
@@ -363,6 +444,14 @@ socket.on(
 
 data=>{
 
+if(
+privateLocked
+&&
+!socket.adminData
+){
+return;
+}
+
 io.to(
 data.to
 )
@@ -371,15 +460,7 @@ data.to
 
 "private message",
 
-{
-
-from:
-data.from,
-
-message:
-data.message
-
-}
+data
 
 );
 
@@ -414,7 +495,6 @@ socket.emit(
 );
 
 return;
-
 }
 
 socket.adminData=
@@ -469,8 +549,7 @@ id=>{
 
 if(
 
-!socket
-.adminData
+!socket.adminData
 ?.permissions
 ?.viewUserInfo
 
@@ -495,112 +574,6 @@ user
 
 });
 
-/* KICK */
-
-socket.on(
-
-"kick user",
-
-id=>{
-
-if(
-
-!socket
-.adminData
-?.permissions
-?.kick
-
-){
-return;
-}
-
-const user=
-
-users.find(
-u=>u.id===id
-);
-
-if(!user){
-return;
-}
-
-io.to(id)
-
-.emit(
-"banned",
-"⚠️ تم طردك"
-);
-
-io.sockets
-.sockets
-.get(id)
-?.disconnect();
-
-addLog(
-`⚠️ تم طرد ${user.username}`
-);
-
-});
-
-/* BAN */
-
-socket.on(
-
-"ban user",
-
-id=>{
-
-if(
-
-!socket
-.adminData
-?.permissions
-?.ban
-
-){
-return;
-}
-
-const user=
-
-users.find(
-u=>u.id===id
-);
-
-if(!user){
-return;
-}
-
-bannedUsers.push({
-
-ip:
-user.ip
-
-});
-
-saveFile(
-"banned.json",
-bannedUsers
-);
-
-io.to(id)
-
-.emit(
-"banned",
-"🚫 تم حظرك"
-);
-
-io.sockets
-.sockets
-.get(id)
-?.disconnect();
-
-addLog(
-`🚫 تم حظر ${user.username}`
-);
-
-});
-
 /* ADD ADMIN */
 
 socket.on(
@@ -611,8 +584,7 @@ data=>{
 
 if(
 
-!socket
-.adminData
+!socket.adminData
 ?.permissions
 ?.addAdmin
 
@@ -639,7 +611,148 @@ admins
 );
 
 addLog(
-`👮 تم إضافة ${data.name}`
+`👮 تمت إضافة ${data.name}`
+);
+
+});
+
+/* KICK */
+
+socket.on(
+
+"kick user",
+
+id=>{
+
+const user=
+users.find(
+u=>u.id===id
+);
+
+if(!user){
+return;
+}
+
+io.to(id)
+.emit(
+"banned",
+"⚠️ تم طردك"
+);
+
+io.sockets.sockets
+.get(id)
+?.disconnect();
+
+});
+
+/* BAN */
+
+socket.on(
+
+"ban user",
+
+id=>{
+
+const user=
+
+users.find(
+u=>u.id===id
+);
+
+if(!user){
+return;
+}
+
+bannedUsers.push({
+
+ip:
+user.ip
+
+});
+
+saveFile(
+"banned.json",
+bannedUsers
+);
+
+io.to(id)
+.emit(
+"banned",
+"🚫 تم حظرك"
+);
+
+io.sockets.sockets
+.get(id)
+?.disconnect();
+
+});
+
+/* MUTE */
+
+socket.on(
+
+"mute user",
+
+id=>{
+
+const user=
+
+users.find(
+u=>u.id===id
+);
+
+if(!user){
+return;
+}
+
+mutedUsers.push({
+
+id:
+user.id,
+
+username:
+user.username
+
+});
+
+saveFile(
+"muted.json",
+mutedUsers
+);
+
+});
+
+/* DEVICE BAN */
+
+socket.on(
+
+"disconnect user",
+
+id=>{
+
+const user=
+
+users.find(
+u=>u.id===id
+);
+
+if(!user){
+return;
+}
+
+deviceBannedUsers.push({
+
+device:
+user.device,
+
+username:
+user.username
+
+});
+
+saveFile(
+"deviceBanned.json",
+deviceBannedUsers
 );
 
 });
@@ -647,25 +760,12 @@ addLog(
 /* DISCONNECT */
 
 socket.on(
-
 "disconnect",
-
 ()=>{
 
-const user=
-
-users.find(
-u=>u.id===socket.id
-);
-
 users=
-
 users.filter(
-
-u=>
-
-u.id!==socket.id
-
+u=>u.id!==socket.id
 );
 
 io.emit(
@@ -673,29 +773,12 @@ io.emit(
 users
 );
 
-if(user){
-
-addLog(
-`👋 ${user.username} خرج`
-);
-
-}
-
 });
 
 });
 
 server.listen(
-
-process.env.PORT
-||
-3000,
-
+process.env.PORT||3000,
 ()=>{
-
-console.log(
-"🚀 Server Running"
-);
-
-}
-);
+console.log("🚀 Server Running");
+});
