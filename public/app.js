@@ -11,40 +11,28 @@ let replyData=null;
 /* ELEMENTS */
 
 const loginPage=
-document.getElementById(
-"loginPage"
-);
+document.getElementById("loginPage");
 
 const chatPage=
-document.getElementById(
-"chatPage"
-);
+document.getElementById("chatPage");
 
 const username=
-document.getElementById(
-"username"
-);
+document.getElementById("username");
 
 const adminPassword=
-document.getElementById(
-"adminPassword"
-);
+document.getElementById("adminPassword");
 
 const messages=
-document.getElementById(
-"messages"
-);
+document.getElementById("messages");
 
 const usersList=
-document.getElementById(
-"usersList"
-);
+document.getElementById("usersList");
 
 /* LOAD ADMINS */
 
 fetch("/admins.json")
 
-.then(r=>r.json())
+.then(res=>res.json())
 
 .then(data=>{
 
@@ -52,15 +40,11 @@ protectedNames=
 
 data.map(
 
-a=>
-
-a.name.toLowerCase()
+a=>a.name.toLowerCase()
 
 );
 
-})
-
-.catch(()=>{});
+});
 
 /* SHOW PASSWORD */
 
@@ -131,6 +115,7 @@ el.classList.add(
 );
 
 currentColor=
+
 el.dataset.color;
 
 };
@@ -169,7 +154,10 @@ adminPassword:
 adminPassword.value,
 
 color:
-currentColor
+currentColor,
+
+deviceToken:
+navigator.userAgent
 
 }
 
@@ -177,7 +165,7 @@ currentColor
 
 }
 
-/* SUCCESS */
+/* LOGIN */
 
 socket.on(
 
@@ -301,14 +289,17 @@ if(data.reply){
 
 replyHtml=`
 
-<div style="
-background:#222;
+<div
+style="
+background:#252525;
 padding:8px;
 border-radius:10px;
 margin-bottom:8px;
-">
+"
+>
 
-↩️ ${data.reply.user}
+↩️
+${data.reply.user}
 
 <br>
 
@@ -323,11 +314,15 @@ ${data.reply.text}
 div.innerHTML=`
 
 <div
+
 class="message-user"
-onclick='showUserPopup(${JSON.stringify(data)})'
+
 style="
 color:${data.color}
 "
+
+onclick='showUserPopup(${JSON.stringify(data)})'
+
 >
 
 ${data.username}
@@ -336,9 +331,7 @@ ${data.username}
 
 ${replyHtml}
 
-<div
-class="message-text"
->
+<div class="message-text">
 
 ${data.message}
 
@@ -351,6 +344,7 @@ div
 );
 
 messages.scrollTop=
+
 messages.scrollHeight;
 
 });
@@ -389,36 +383,11 @@ user
 };
 
 usersList.appendChild(
-div
-);
+div);
 
 });
 
 });
-
-/* USERS MENU */
-
-function openUsers(){
-
-document
-.getElementById(
-"usersMenu"
-)
-.style.display=
-"flex";
-
-}
-
-function closeUsers(){
-
-document
-.getElementById(
-"usersMenu"
-)
-.style.display=
-"none";
-
-}
 
 /* POPUP */
 
@@ -443,6 +412,7 @@ document.getElementById(
 );
 
 title.innerHTML=
+
 `👤 ${user.username}`;
 
 buttons.innerHTML=`
@@ -466,7 +436,7 @@ replyTo(
 )
 ">
 
-↩️ الرد
+↩️ رد
 
 </button>
 
@@ -486,19 +456,6 @@ openPrivate(
 
 overlay.style.display=
 "flex";
-
-}
-
-/* CLOSE POPUP */
-
-function closeUserPopup(){
-
-document
-.getElementById(
-"userPopupOverlay"
-)
-.style.display=
-"none";
 
 }
 
@@ -590,38 +547,6 @@ closeUserPopup();
 
 }
 
-function closePrivate(){
-
-document
-.getElementById(
-"privateChatBox"
-)
-.style.display=
-"none";
-
-}
-
-function openPrivateList(){
-
-if(!currentPrivateUser){
-
-alert(
-"اختر عضو من المتواجدين 👥"
-);
-
-return;
-
-}
-
-document
-.getElementById(
-"privateChatBox"
-)
-.style.display=
-"flex";
-
-}
-
 function sendPrivate(){
 
 const input=
@@ -662,5 +587,83 @@ text
 );
 
 input.value="";
+
+}
+
+socket.on(
+
+"private message",
+
+data=>{
+
+const box=
+
+document.getElementById(
+"privateMessages"
+);
+
+box.innerHTML+=`
+
+<div class="message">
+
+<b>
+
+${data.from}
+
+</b>
+
+<br>
+
+${data.message}
+
+</div>
+
+`;
+
+});
+
+/* MENU */
+
+function openUsers(){
+
+document
+.getElementById(
+"usersMenu"
+)
+.style.display=
+"flex";
+
+}
+
+function closeUsers(){
+
+document
+.getElementById(
+"usersMenu"
+)
+.style.display=
+"none";
+
+}
+
+function closePrivate(){
+
+document
+.getElementById(
+"privateChatBox"
+)
+.style.display=
+"none";
+
+}
+
+function closeUserPopup(){
+
+document
+.getElementById(
+"userPopupOverlay"
+)
+.style.display=
+"none";
 
 }
