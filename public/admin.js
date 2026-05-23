@@ -92,7 +92,9 @@ data=>{
 
 window.adminPermissions=
 
-data.permissions||{};
+data.permissions
+||
+{};
 
 loginPage.style.display=
 "none";
@@ -106,7 +108,7 @@ addLog(
 
 });
 
-/* LOGIN FAIL */
+/* LOGIN FAILED */
 
 socket.on(
 
@@ -115,35 +117,8 @@ socket.on(
 ()=>{
 
 alert(
-"بيانات الإدارة غير صحيحة"
+"❌ بيانات الإدارة خاطئة"
 );
-
-});
-
-/* STATS */
-
-socket.on(
-
-"server stats",
-
-data=>{
-
-statsBox.innerHTML=`
-
-👥 المتصلين:
-${data.onlineUsers}
-
-<br><br>
-
-🚫 المحظورين:
-${data.bannedUsers}
-
-<br><br>
-
-👮 الإدارة:
-${data.admins}
-
-`;
 
 });
 
@@ -170,11 +145,12 @@ div.className=
 
 let buttons="";
 
-/* USER INFO */
+/* INFO */
 
 if(
 
-window.adminPermissions
+window
+.adminPermissions
 .viewUserInfo
 
 ){
@@ -200,7 +176,8 @@ onclick=
 
 if(
 
-window.adminPermissions
+window
+.adminPermissions
 .kick
 
 ){
@@ -226,7 +203,8 @@ onclick=
 
 if(
 
-window.adminPermissions
+window
+.adminPermissions
 .ban
 
 ){
@@ -248,11 +226,66 @@ onclick=
 
 }
 
+/* MUTE */
+
+if(
+
+window
+.adminPermissions
+.mute
+
+){
+
+buttons+=`
+
+<button
+class=
+"action-btn"
+onclick=
+"muteUser('${user.id}')"
+>
+
+🔇 كتم
+
+</button>
+
+`;
+
+}
+
+/* DEVICE BAN */
+
+if(
+
+window
+.adminPermissions
+.disconnect
+
+){
+
+buttons+=`
+
+<button
+class=
+"action-btn"
+onclick=
+"disconnectUser('${user.id}')"
+>
+
+⛔ فصل
+
+</button>
+
+`;
+
+}
+
 div.innerHTML=`
 
 <div>
 
-👤 ${user.username}
+👤
+${user.username}
 
 </div>
 
@@ -275,7 +308,7 @@ div
 
 });
 
-/* USER INFO */
+/* INFO */
 
 function viewUser(id){
 
@@ -296,13 +329,13 @@ alert(
 
 `👤 ${user.username}
 
-📱 الجهاز:
-${user.device}
-
 🌐 IP:
 ${user.ip}
 
-🎨 اللون:
+📱 جهاز:
+${user.device}
+
+🎨 لون:
 ${user.color}
 
 🆔 ID:
@@ -312,7 +345,7 @@ ${user.id}`
 
 });
 
-/* KICK */
+/* ACTIONS */
 
 function kickUser(id){
 
@@ -327,8 +360,6 @@ addLog(
 
 }
 
-/* BAN */
-
 function banUser(id){
 
 socket.emit(
@@ -338,6 +369,32 @@ id
 
 addLog(
 "🚫 تم تنفيذ حظر"
+);
+
+}
+
+function muteUser(id){
+
+socket.emit(
+"mute user",
+id
+);
+
+addLog(
+"🔇 تم تنفيذ كتم"
+);
+
+}
+
+function disconnectUser(id){
+
+socket.emit(
+"disconnect user",
+id
+);
+
+addLog(
+"⛔ تم تنفيذ فصل"
 );
 
 }
@@ -355,7 +412,7 @@ if(
 ){
 
 alert(
-"ليس لديك صلاحية"
+"❌ لا توجد صلاحية"
 );
 
 return;
@@ -386,10 +443,6 @@ if(
 !password
 ){
 
-alert(
-"أدخل البيانات"
-);
-
 return;
 
 }
@@ -397,7 +450,6 @@ return;
 const permissions={
 
 kick:
-
 document
 .getElementById(
 "permKick"
@@ -405,15 +457,27 @@ document
 .checked,
 
 ban:
-
 document
 .getElementById(
 "permBan"
 )
 .checked,
 
-viewUserInfo:
+mute:
+document
+.getElementById(
+"permMute"
+)
+.checked,
 
+disconnect:
+document
+.getElementById(
+"permDisconnect"
+)
+.checked,
+
+viewUserInfo:
 document
 .getElementById(
 "permViewUser"
@@ -421,7 +485,6 @@ document
 .checked,
 
 addAdmin:
-
 document
 .getElementById(
 "permAddAdmin"
@@ -445,12 +508,37 @@ permissions
 );
 
 addLog(
-
 `👮 تمت إضافة ${name}`
-
 );
 
 }
+
+/* STATS */
+
+socket.on(
+
+"server stats",
+
+data=>{
+
+statsBox.innerHTML=`
+
+👥 المتصلين:
+${data.onlineUsers}
+
+<br><br>
+
+🚫 المحظورين:
+${data.bannedUsers}
+
+<br><br>
+
+👮 الإدارة:
+${data.admins}
+
+`;
+
+});
 
 /* LOGS */
 
@@ -472,8 +560,6 @@ div
 );
 
 }
-
-/* LIVE LOGS */
 
 socket.on(
 
