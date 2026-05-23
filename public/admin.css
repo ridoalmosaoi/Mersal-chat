@@ -1,3 +1,5 @@
+/* RESET */
+
 *{
 margin:0;
 padding:0;
@@ -7,7 +9,7 @@ font-family:Tahoma,sans-serif;
 
 body{
 
-background:#0d0d0d;
+background:#0b0b0b;
 
 color:white;
 
@@ -31,6 +33,13 @@ align-items:center;
 
 padding:20px;
 
+background:
+linear-gradient(
+180deg,
+#111,
+#050505
+);
+
 }
 
 .login-box{
@@ -43,7 +52,7 @@ background:#181818;
 
 padding:30px;
 
-border-radius:25px;
+border-radius:30px;
 
 display:flex;
 
@@ -57,7 +66,7 @@ border:1px solid #2a2a2a;
 
 .logo{
 
-font-size:30px;
+font-size:32px;
 
 text-align:center;
 
@@ -75,9 +84,11 @@ border:none;
 
 border-radius:15px;
 
+outline:none;
+
 color:white;
 
-outline:none;
+font-size:15px;
 
 }
 
@@ -87,11 +98,11 @@ padding:15px;
 
 background:#ffd700;
 
-color:black;
-
 border:none;
 
 border-radius:15px;
+
+font-size:16px;
 
 font-weight:bold;
 
@@ -103,15 +114,17 @@ cursor:pointer;
 
 .admin-panel{
 
+padding:15px;
+
 display:flex;
 
 flex-direction:column;
 
 gap:15px;
 
-padding:15px;
-
 }
+
+/* TOP */
 
 .top-bar{
 
@@ -123,9 +136,11 @@ display:flex;
 
 align-items:center;
 
-padding:0 15px;
+justify-content:center;
 
-border-radius:15px;
+border-radius:18px;
+
+padding:0 15px;
 
 }
 
@@ -139,19 +154,27 @@ color:#ffd700;
 
 }
 
+/* STATS */
+
 .stats-box{
 
-background:#1d1d1d;
+background:#1a1a1a;
 
 padding:15px;
 
 border-radius:18px;
 
+line-height:2;
+
+font-size:15px;
+
 }
+
+/* BOX */
 
 .admin-box{
 
-background:#1a1a1a;
+background:#181818;
 
 padding:15px;
 
@@ -161,7 +184,7 @@ display:flex;
 
 flex-direction:column;
 
-gap:12px;
+gap:15px;
 
 }
 
@@ -172,6 +195,8 @@ color:#ffd700;
 margin-bottom:10px;
 
 }
+
+/* USERS */
 
 .users-container{
 
@@ -187,9 +212,9 @@ gap:10px;
 
 background:#252525;
 
-padding:12px;
+padding:15px;
 
-border-radius:15px;
+border-radius:16px;
 
 display:flex;
 
@@ -217,9 +242,25 @@ border:none;
 
 border-radius:12px;
 
+cursor:pointer;
+
+font-size:14px;
+
 font-weight:bold;
 
-cursor:pointer;
+background:#333;
+
+color:white;
+
+}
+
+/* COLORS */
+
+.info-btn{
+
+background:#00d0ff;
+
+color:black;
 
 }
 
@@ -239,13 +280,7 @@ color:white;
 
 }
 
-.info-btn{
-
-background:#00d0ff;
-
-color:black;
-
-}
+/* LOGS */
 
 .logs-box{
 
@@ -255,7 +290,7 @@ flex-direction:column;
 
 gap:10px;
 
-max-height:350px;
+max-height:300px;
 
 overflow:auto;
 
@@ -265,15 +300,55 @@ overflow:auto;
 
 background:#252525;
 
-padding:10px;
+padding:12px;
 
 border-radius:12px;
 
 border-right:4px solid #ffd700;
 
+font-size:14px;
+
 }
 
-label{
+/* ADD ADMIN */
+
+.admin-box input{
+
+padding:15px;
+
+border:none;
+
+outline:none;
+
+background:#252525;
+
+color:white;
+
+border-radius:15px;
+
+}
+
+.permissions{
+
+display:grid;
+
+grid-template-columns:
+repeat(
+2,
+1fr
+);
+
+gap:10px;
+
+}
+
+.permissions label{
+
+background:#252525;
+
+padding:10px;
+
+border-radius:12px;
 
 display:flex;
 
@@ -281,9 +356,11 @@ gap:10px;
 
 align-items:center;
 
+cursor:pointer;
+
 }
 
-input[type=checkbox]{
+.permissions input{
 
 width:18px;
 
@@ -291,11 +368,26 @@ height:18px;
 
 }
 
+/* MOBILE */
+
 @media(max-width:700px){
+
+.permissions{
+
+grid-template-columns:
+1fr;
+
+}
 
 .user-actions{
 
 flex-direction:column;
+
+}
+
+.action-btn{
+
+width:100%;
 
 }
 
