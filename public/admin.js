@@ -7,29 +7,19 @@ let adminPermissions={};
 /* ELEMENTS */
 
 const loginPage=
-document.getElementById(
-"adminLogin"
-);
+document.getElementById("adminLogin");
 
 const panel=
-document.getElementById(
-"adminPanel"
-);
+document.getElementById("adminPanel");
 
 const onlineUsers=
-document.getElementById(
-"onlineUsers"
-);
+document.getElementById("onlineUsers");
 
 const logsBox=
-document.getElementById(
-"logsBox"
-);
+document.getElementById("logsBox");
 
 const statsBox=
-document.getElementById(
-"statsBox"
-);
+document.getElementById("statsBox");
 
 /* LOGIN */
 
@@ -50,28 +40,22 @@ if(
 !password
 ){
 
-alert(
-"أدخل البيانات"
-);
-
+alert("أدخل البيانات");
 return;
 
 }
 
 socket.emit(
-
 "admin panel login",
-
 {
 name,
 password
 }
-
 );
 
 }
 
-/* LOGIN */
+/* LOGIN EVENTS */
 
 socket.on(
 
@@ -106,7 +90,7 @@ alert(
 
 });
 
-/* ONLINE USERS */
+/* USERS */
 
 socket.on(
 
@@ -128,108 +112,62 @@ div.className=
 
 let buttons="";
 
-/* INFO */
-
 if(
-adminPermissions
-.viewUserInfo
+adminPermissions.viewUserInfo
 ){
 
 buttons+=`
-
-<button
-onclick=
-"viewUser('${user.id}')"
->
-
+<button onclick="viewUser('${user.id}')">
 ℹ️ معلومات
-
 </button>
-
 `;
 
 }
-
-/* KICK */
 
 if(
 adminPermissions.kick
 ){
 
 buttons+=`
-
-<button
-onclick=
-"kickUser('${user.id}')"
->
-
+<button onclick="kickUser('${user.id}')">
 ⚠️ طرد
-
 </button>
-
 `;
 
 }
-
-/* BAN */
 
 if(
 adminPermissions.ban
 ){
 
 buttons+=`
-
-<button
-onclick=
-"banUser('${user.id}')"
->
-
+<button onclick="banUser('${user.id}')">
 🚫 حظر
-
 </button>
-
 `;
 
 }
-
-/* MUTE */
 
 if(
 adminPermissions.mute
 ){
 
 buttons+=`
-
-<button
-onclick=
-"muteUser('${user.id}')"
->
-
+<button onclick="muteUser('${user.id}')">
 🔇 كتم
-
 </button>
-
 `;
 
 }
-
-/* DISCONNECT */
 
 if(
 adminPermissions.disconnect
 ){
 
 buttons+=`
-
-<button
-onclick=
-"disconnectUser('${user.id}')"
->
-
+<button onclick="disconnectUser('${user.id}')">
 ⛔ فصل
-
 </button>
-
 `;
 
 }
@@ -242,9 +180,7 @@ div.innerHTML=`
 
 </div>
 
-<div
-class="user-actions"
->
+<div class="user-actions">
 
 ${buttons}
 
@@ -281,17 +217,13 @@ alert(
 
 `👤 ${user.username}
 
-🌐 IP:
-${user.ip}
+🌐 ${user.ip}
 
-📱 جهاز:
-${user.device}
+📱 ${user.device}
 
-🎨 لون:
-${user.color}
+🎨 ${user.color}
 
-🆔:
-${user.id}`
+🆔 ${user.id}`
 
 );
 
@@ -335,23 +267,69 @@ id
 
 }
 
+/* CHAT CONTROL */
+
+function unbanAll(){
+
+socket.emit(
+"unban all"
+);
+
+}
+
+function unmuteAll(){
+
+socket.emit(
+"unmute all"
+);
+
+}
+
+function clearChat(){
+
+socket.emit(
+"clear chat"
+);
+
+}
+
+function toggleChatLock(){
+
+socket.emit(
+"toggle chat lock"
+);
+
+}
+
+function togglePrivateLock(){
+
+socket.emit(
+"toggle private lock"
+);
+
+}
+
+function toggleMaintenance(){
+
+socket.emit(
+"maintenance mode"
+);
+
+}
+
 /* ADD ADMIN */
 
 function addAdmin(){
 
 const name=
-document
-.getElementById(
+document.getElementById(
 "newAdminName"
-)
-.value.trim();
+).value.trim();
 
 const password=
-document
-.getElementById(
+document.getElementById(
 "newAdminPassword"
-)
-.value.trim();
+).value.trim();
 
 if(
 !name||
@@ -369,55 +347,84 @@ return;
 const permissions={
 
 kick:
-document
-.getElementById(
+document.getElementById(
 "permKick"
 ).checked,
 
 ban:
-document
-.getElementById(
+document.getElementById(
 "permBan"
 ).checked,
 
+unban:
+document.getElementById(
+"permUnban"
+).checked,
+
 mute:
-document
-.getElementById(
+document.getElementById(
 "permMute"
 ).checked,
 
+unmute:
+document.getElementById(
+"permUnmute"
+).checked,
+
 disconnect:
-document
-.getElementById(
+document.getElementById(
 "permDisconnect"
 ).checked,
 
+deleteMessage:
+document.getElementById(
+"permDeleteMessage"
+).checked,
+
 viewUserInfo:
-document
-.getElementById(
+document.getElementById(
 "permViewUser"
 ).checked,
 
+stars:
+document.getElementById(
+"permStars"
+).checked,
+
+chatLock:
+document.getElementById(
+"permChatLock"
+).checked,
+
+privateLock:
+document.getElementById(
+"permPrivateLock"
+).checked,
+
+maintenance:
+document.getElementById(
+"permMaintenance"
+).checked,
+
+protection:
+document.getElementById(
+"permProtection"
+).checked,
+
 addAdmin:
-document
-.getElementById(
+document.getElementById(
 "permAddAdmin"
 ).checked
 
 };
 
 socket.emit(
-
 "add admin",
-
 {
-
 name,
 password,
 permissions
-
 }
-
 );
 
 }
@@ -431,7 +438,6 @@ socket.on(
 admins=>{
 
 const box=
-
 document.getElementById(
 "adminsList"
 );
@@ -451,12 +457,8 @@ div.className=
 div.innerHTML=`
 
 <div>
-
 👮 ${admin.name}
-
 </div>
-
-<div>
 
 <button
 onclick=
@@ -466,8 +468,6 @@ onclick=
 🗑️ إزالة
 
 </button>
-
-</div>
 
 `;
 
@@ -482,11 +482,9 @@ div
 function removeAdmin(name){
 
 if(
-
 !confirm(
 `حذف ${name} ؟`
 )
-
 ){
 return;
 }
@@ -497,69 +495,6 @@ name
 );
 
 }
-
-/* EVENTS */
-
-socket.on(
-
-"admin added",
-
-()=>{
-
-alert(
-"✅ تمت إضافة الأدمن"
-);
-
-});
-
-socket.on(
-
-"admin exists",
-
-()=>{
-
-alert(
-"❌ الأدمن موجود"
-);
-
-});
-
-socket.on(
-
-"admin error",
-
-msg=>{
-
-alert(msg);
-
-});
-
-/* STATS */
-
-socket.on(
-
-"server stats",
-
-data=>{
-
-statsBox.innerHTML=`
-
-👥 المتصلين:
-${data.onlineUsers}
-
-<br><br>
-
-🚫 المحظورين:
-${data.bannedUsers}
-
-<br><br>
-
-👮 الأدمنية:
-${data.admins}
-
-`;
-
-});
 
 /* LOGS */
 
@@ -573,8 +508,7 @@ document.createElement(
 div.className=
 "log-item";
 
-div.innerText=
-text;
+div.innerText=text;
 
 logsBox.prepend(
 div
