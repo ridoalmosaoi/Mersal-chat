@@ -582,47 +582,13 @@ socket.on(
 
 data=>{
 
-/* CHECK PERMISSION */
-
 if(
-
 !socket.adminData
-||
-!socket.adminData.permissions
-||
-!socket.adminData.permissions.addAdmin
-
+?.permissions
+?.addAdmin
 ){
-
-socket.emit(
-"admin error",
-"❌ لا توجد صلاحية"
-);
-
 return;
-
 }
-
-/* CHECK DATA */
-
-if(
-
-!data.name
-||
-!data.password
-
-){
-
-socket.emit(
-"admin error",
-"❌ البيانات ناقصة"
-);
-
-return;
-
-}
-
-/* CHECK EXISTS */
 
 const exists=
 
@@ -630,13 +596,11 @@ admins.find(
 
 a=>
 
-a.name
-.toLowerCase()
+a.name.toLowerCase()
 
 ===
 
-data.name
-.toLowerCase()
+data.name.toLowerCase()
 
 );
 
@@ -650,44 +614,20 @@ return;
 
 }
 
-/* CREATE */
+admins.push({
 
-const newAdmin={
+name:data.name,
 
-name:
-data.name,
+password:data.password,
 
-password:
-data.password,
+permissions:data.permissions
 
-permissions:
-data.permissions
-||
-{
-
-kick:false,
-ban:false,
-mute:false,
-disconnect:false,
-viewUserInfo:false,
-addAdmin:false
-
-}
-
-};
-
-admins.push(
-newAdmin
-);
-
-/* SAVE */
+});
 
 saveFile(
 "admins.json",
 admins
 );
-
-/* SEND UPDATE */
 
 io.emit(
 "admins list",
@@ -698,16 +638,53 @@ socket.emit(
 "admin added"
 );
 
-/* LOG */
+addLog(
+`👮 تمت إضافة ${data.name}`
+);
+
+});
+
+/* REMOVE ADMIN */
+
+socket.on(
+
+"remove admin",
+
+name=>{
+
+if(
+!socket.adminData
+?.permissions
+?.addAdmin
+){
+return;
+}
+
+admins=
+
+admins.filter(
+
+a=>
+
+a.name!==name
+
+);
+
+saveFile(
+"admins.json",
+admins
+);
+
+io.emit(
+"admins list",
+admins
+);
 
 addLog(
-
-`👮 تمت إضافة الأدمن ${data.name}`
-
+`🗑️ تم حذف ${name}`
 );
 
-}
-);
+});
 /* KICK */
 
 socket.on(
