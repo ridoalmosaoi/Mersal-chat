@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ar" dir="rtl">
 
 <head>
@@ -17,7 +16,7 @@ content="width=device-width,initial-scale=1"
 
 <link
 rel="stylesheet"
-href="admin.css?v=1"
+href="admin.css"
 >
 
 </head>
@@ -74,8 +73,6 @@ class="admin-panel"
 style="display:none"
 >
 
-<!-- TOP -->
-
 <div class="top-bar">
 
 <div class="top-title">
@@ -116,7 +113,7 @@ class="logs-box"
 
 </div>
 
-<!-- USERS -->
+<!-- ONLINE -->
 
 <div class="admin-box">
 
@@ -152,10 +149,9 @@ placeholder="اسم الأدمن"
 
 <input
 id="newAdminPassword"
+type="password"
 placeholder="كلمة السر"
 >
-
-<!-- PERMISSIONS -->
 
 <div class="permissions">
 
@@ -199,7 +195,7 @@ id="permDisconnect"
 type="checkbox"
 >
 
-⛔ فصل جهاز
+⛔ فصل
 
 </label>
 
@@ -210,7 +206,7 @@ id="permViewUser"
 type="checkbox"
 >
 
-ℹ️ معلومات مستخدم
+ℹ️ معلومات
 
 </label>
 
@@ -242,7 +238,7 @@ onclick="addAdmin()"
 
 <script src="/socket.io/socket.io.js"></script>
 
-<script src="admin.js?v=1"></script>
+<script src="admin.js"></script>
 
 </body>
 
