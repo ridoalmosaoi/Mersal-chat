@@ -7,7 +7,7 @@
 
 <meta
 name="viewport"
-content="width=device-width,initial-scale=1"
+content="width=device-width, initial-scale=1"
 >
 
 <title>
@@ -42,14 +42,12 @@ class="login-page"
 id="adminName"
 type="text"
 placeholder="اسم الإدارة"
-autocomplete="off"
 >
 
 <input
 id="adminPass"
 type="password"
 placeholder="كلمة السر"
-autocomplete="off"
 >
 
 <button
@@ -134,6 +132,46 @@ class="users-container"
 
 </div>
 
+<!-- CHAT CONTROL -->
+
+<div class="admin-box">
+
+<h2>
+
+⚙️ التحكم بالشات
+
+</h2>
+
+<div class="user-actions">
+
+<button onclick="unbanAll()">
+🔓 فك الحظر
+</button>
+
+<button onclick="unmuteAll()">
+🔊 فك الكتم
+</button>
+
+<button onclick="clearChat()">
+🧹 تنظيف
+</button>
+
+<button onclick="toggleChatLock()">
+🔒 العام
+</button>
+
+<button onclick="togglePrivateLock()">
+💬 الخاص
+</button>
+
+<button onclick="toggleMaintenance()">
+🛠️ الصيانة
+</button>
+
+</div>
+
+</div>
+
 <!-- ADD ADMIN -->
 
 <div class="admin-box">
@@ -158,69 +196,73 @@ placeholder="كلمة السر"
 <div class="permissions">
 
 <label>
-
-<input
-id="permKick"
-type="checkbox"
->
-
+<input id="permKick" type="checkbox">
 ⚠️ طرد
-
 </label>
 
 <label>
-
-<input
-id="permBan"
-type="checkbox"
->
-
+<input id="permBan" type="checkbox">
 🚫 حظر
-
 </label>
 
 <label>
+<input id="permUnban" type="checkbox">
+🔓 فك حظر
+</label>
 
-<input
-id="permMute"
-type="checkbox"
->
-
+<label>
+<input id="permMute" type="checkbox">
 🔇 كتم
-
 </label>
 
 <label>
+<input id="permUnmute" type="checkbox">
+🔊 فك كتم
+</label>
 
-<input
-id="permDisconnect"
-type="checkbox"
->
-
+<label>
+<input id="permDisconnect" type="checkbox">
 ⛔ فصل
-
 </label>
 
 <label>
+<input id="permDeleteMessage" type="checkbox">
+🗑 حذف رسالة
+</label>
 
-<input
-id="permViewUser"
-type="checkbox"
->
-
+<label>
+<input id="permViewUser" type="checkbox">
 ℹ️ معلومات
-
 </label>
 
 <label>
+<input id="permStars" type="checkbox">
+⭐ النجوم
+</label>
 
-<input
-id="permAddAdmin"
-type="checkbox"
->
+<label>
+<input id="permChatLock" type="checkbox">
+🔒 قفل العام
+</label>
 
-👮 إضافة أدمن
+<label>
+<input id="permPrivateLock" type="checkbox">
+💬 قفل الخاص
+</label>
 
+<label>
+<input id="permMaintenance" type="checkbox">
+🛠️ الصيانة
+</label>
+
+<label>
+<input id="permProtection" type="checkbox">
+🛡️ الحماية
+</label>
+
+<label>
+<input id="permAddAdmin" type="checkbox">
+👮 إدارة الأدمنية
 </label>
 
 </div>
@@ -262,5 +304,4 @@ class="users-container"
 <script src="admin.js"></script>
 
 </body>
-
 </html>
