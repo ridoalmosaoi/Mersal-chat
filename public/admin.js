@@ -2,24 +2,34 @@ const socket=io();
 
 /* GLOBAL */
 
-window.adminPermissions={};
+let adminPermissions={};
 
 /* ELEMENTS */
 
 const loginPage=
-document.getElementById("adminLogin");
+document.getElementById(
+"adminLogin"
+);
 
 const panel=
-document.getElementById("adminPanel");
+document.getElementById(
+"adminPanel"
+);
 
 const onlineUsers=
-document.getElementById("onlineUsers");
+document.getElementById(
+"onlineUsers"
+);
 
 const logsBox=
-document.getElementById("logsBox");
+document.getElementById(
+"logsBox"
+);
 
 const statsBox=
-document.getElementById("statsBox");
+document.getElementById(
+"statsBox"
+);
 
 /* LOGIN */
 
@@ -61,7 +71,7 @@ password
 
 }
 
-/* LOGIN SUCCESS */
+/* LOGIN */
 
 socket.on(
 
@@ -69,7 +79,7 @@ socket.on(
 
 data=>{
 
-window.adminPermissions=
+adminPermissions=
 data.permissions||{};
 
 loginPage.style.display=
@@ -84,8 +94,6 @@ addLog(
 
 });
 
-/* LOGIN FAILED */
-
 socket.on(
 
 "admin login failed",
@@ -98,7 +106,7 @@ alert(
 
 });
 
-/* USERS */
+/* ONLINE USERS */
 
 socket.on(
 
@@ -123,7 +131,8 @@ let buttons="";
 /* INFO */
 
 if(
-window.adminPermissions.viewUserInfo
+adminPermissions
+.viewUserInfo
 ){
 
 buttons+=`
@@ -144,7 +153,7 @@ onclick=
 /* KICK */
 
 if(
-window.adminPermissions.kick
+adminPermissions.kick
 ){
 
 buttons+=`
@@ -165,7 +174,7 @@ onclick=
 /* BAN */
 
 if(
-window.adminPermissions.ban
+adminPermissions.ban
 ){
 
 buttons+=`
@@ -186,7 +195,7 @@ onclick=
 /* MUTE */
 
 if(
-window.adminPermissions.mute
+adminPermissions.mute
 ){
 
 buttons+=`
@@ -204,10 +213,10 @@ onclick=
 
 }
 
-/* DEVICE */
+/* DISCONNECT */
 
 if(
-window.adminPermissions.disconnect
+adminPermissions.disconnect
 ){
 
 buttons+=`
@@ -229,12 +238,13 @@ div.innerHTML=`
 
 <div>
 
-👤
-${user.username}
+👤 ${user.username}
 
 </div>
 
-<div>
+<div
+class="user-actions"
+>
 
 ${buttons}
 
@@ -271,11 +281,17 @@ alert(
 
 `👤 ${user.username}
 
-🌐 ${user.ip}
+🌐 IP:
+${user.ip}
 
-📱 ${user.device}
+📱 جهاز:
+${user.device}
 
-🎨 ${user.color}`
+🎨 لون:
+${user.color}
+
+🆔:
+${user.id}`
 
 );
 
@@ -324,7 +340,6 @@ id
 function addAdmin(){
 
 const name=
-
 document
 .getElementById(
 "newAdminName"
@@ -332,7 +347,6 @@ document
 .value.trim();
 
 const password=
-
 document
 .getElementById(
 "newAdminPassword"
@@ -408,7 +422,83 @@ permissions
 
 }
 
-/* ADMIN EVENTS */
+/* ADMINS LIST */
+
+socket.on(
+
+"admins list",
+
+admins=>{
+
+const box=
+
+document.getElementById(
+"adminsList"
+);
+
+box.innerHTML="";
+
+admins.forEach(admin=>{
+
+const div=
+document.createElement(
+"div"
+);
+
+div.className=
+"user-card";
+
+div.innerHTML=`
+
+<div>
+
+👮 ${admin.name}
+
+</div>
+
+<div>
+
+<button
+onclick=
+"removeAdmin('${admin.name}')"
+>
+
+🗑️ إزالة
+
+</button>
+
+</div>
+
+`;
+
+box.appendChild(
+div
+);
+
+});
+
+});
+
+function removeAdmin(name){
+
+if(
+
+!confirm(
+`حذف ${name} ؟`
+)
+
+){
+return;
+}
+
+socket.emit(
+"remove admin",
+name
+);
+
+}
+
+/* EVENTS */
 
 socket.on(
 
@@ -429,7 +519,7 @@ socket.on(
 ()=>{
 
 alert(
-"❌ الاسم موجود"
+"❌ الأدمن موجود"
 );
 
 });
@@ -440,9 +530,7 @@ socket.on(
 
 msg=>{
 
-alert(
-msg
-);
+alert(msg);
 
 });
 
@@ -454,18 +542,20 @@ socket.on(
 
 data=>{
 
-statsBox.innerHTML=
+statsBox.innerHTML=`
 
-`
-👥 ${data.onlineUsers}
-
-<br><br>
-
-🚫 ${data.bannedUsers}
+👥 المتصلين:
+${data.onlineUsers}
 
 <br><br>
 
-👮 ${data.admins}
+🚫 المحظورين:
+${data.bannedUsers}
+
+<br><br>
+
+👮 الأدمنية:
+${data.admins}
 
 `;
 
@@ -476,7 +566,6 @@ statsBox.innerHTML=
 function addLog(text){
 
 const div=
-
 document.createElement(
 "div"
 );
