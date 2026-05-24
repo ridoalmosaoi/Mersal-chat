@@ -7,55 +7,36 @@ window.adminPermissions={};
 /* ELEMENTS */
 
 const loginPage=
-document.getElementById(
-"adminLogin"
-);
+document.getElementById("adminLogin");
 
 const panel=
-document.getElementById(
-"adminPanel"
-);
+document.getElementById("adminPanel");
 
 const onlineUsers=
-document.getElementById(
-"onlineUsers"
-);
+document.getElementById("onlineUsers");
 
 const logsBox=
-document.getElementById(
-"logsBox"
-);
+document.getElementById("logsBox");
 
 const statsBox=
-document.getElementById(
-"statsBox"
-);
+document.getElementById("statsBox");
 
 /* LOGIN */
 
 function loginAdmin(){
 
 const name=
-
-document
-.getElementById(
+document.getElementById(
 "adminName"
-)
-.value
-.trim();
+).value.trim();
 
 const password=
-
-document
-.getElementById(
+document.getElementById(
 "adminPass"
-)
-.value
-.trim();
+).value.trim();
 
 if(
-!name
-||
+!name||
 !password
 ){
 
@@ -72,10 +53,8 @@ socket.emit(
 "admin panel login",
 
 {
-
 name,
 password
-
 }
 
 );
@@ -91,10 +70,7 @@ socket.on(
 data=>{
 
 window.adminPermissions=
-
-data.permissions
-||
-{};
+data.permissions||{};
 
 loginPage.style.display=
 "none";
@@ -117,7 +93,7 @@ socket.on(
 ()=>{
 
 alert(
-"❌ بيانات الإدارة خاطئة"
+"❌ بيانات خاطئة"
 );
 
 });
@@ -135,7 +111,6 @@ onlineUsers.innerHTML="";
 users.forEach(user=>{
 
 const div=
-
 document.createElement(
 "div"
 );
@@ -148,18 +123,12 @@ let buttons="";
 /* INFO */
 
 if(
-
-window
-.adminPermissions
-.viewUserInfo
-
+window.adminPermissions.viewUserInfo
 ){
 
 buttons+=`
 
 <button
-class=
-"action-btn info-btn"
 onclick=
 "viewUser('${user.id}')"
 >
@@ -175,18 +144,12 @@ onclick=
 /* KICK */
 
 if(
-
-window
-.adminPermissions
-.kick
-
+window.adminPermissions.kick
 ){
 
 buttons+=`
 
 <button
-class=
-"action-btn kick-btn"
 onclick=
 "kickUser('${user.id}')"
 >
@@ -202,18 +165,12 @@ onclick=
 /* BAN */
 
 if(
-
-window
-.adminPermissions
-.ban
-
+window.adminPermissions.ban
 ){
 
 buttons+=`
 
 <button
-class=
-"action-btn ban-btn"
 onclick=
 "banUser('${user.id}')"
 >
@@ -229,18 +186,12 @@ onclick=
 /* MUTE */
 
 if(
-
-window
-.adminPermissions
-.mute
-
+window.adminPermissions.mute
 ){
 
 buttons+=`
 
 <button
-class=
-"action-btn"
 onclick=
 "muteUser('${user.id}')"
 >
@@ -253,21 +204,15 @@ onclick=
 
 }
 
-/* DEVICE BAN */
+/* DEVICE */
 
 if(
-
-window
-.adminPermissions
-.disconnect
-
+window.adminPermissions.disconnect
 ){
 
 buttons+=`
 
 <button
-class=
-"action-btn"
 onclick=
 "disconnectUser('${user.id}')"
 >
@@ -289,10 +234,7 @@ ${user.username}
 
 </div>
 
-<div
-class=
-"user-actions"
->
+<div>
 
 ${buttons}
 
@@ -308,7 +250,7 @@ div
 
 });
 
-/* INFO */
+/* USER INFO */
 
 function viewUser(id){
 
@@ -329,17 +271,11 @@ alert(
 
 `👤 ${user.username}
 
-🌐 IP:
-${user.ip}
+🌐 ${user.ip}
 
-📱 جهاز:
-${user.device}
+📱 ${user.device}
 
-🎨 لون:
-${user.color}
-
-🆔 ID:
-${user.id}`
+🎨 ${user.color}`
 
 );
 
@@ -354,10 +290,6 @@ socket.emit(
 id
 );
 
-addLog(
-"⚠️ تم تنفيذ طرد"
-);
-
 }
 
 function banUser(id){
@@ -365,10 +297,6 @@ function banUser(id){
 socket.emit(
 "ban user",
 id
-);
-
-addLog(
-"🚫 تم تنفيذ حظر"
 );
 
 }
@@ -380,10 +308,6 @@ socket.emit(
 id
 );
 
-addLog(
-"🔇 تم تنفيذ كتم"
-);
-
 }
 
 function disconnectUser(id){
@@ -393,31 +317,11 @@ socket.emit(
 id
 );
 
-addLog(
-"⛔ تم تنفيذ فصل"
-);
-
 }
 
 /* ADD ADMIN */
 
 function addAdmin(){
-
-if(
-
-!window
-.adminPermissions
-.addAdmin
-
-){
-
-alert(
-"❌ لا توجد صلاحية"
-);
-
-return;
-
-}
 
 const name=
 
@@ -425,8 +329,7 @@ document
 .getElementById(
 "newAdminName"
 )
-.value
-.trim();
+.value.trim();
 
 const password=
 
@@ -434,14 +337,16 @@ document
 .getElementById(
 "newAdminPassword"
 )
-.value
-.trim();
+.value.trim();
 
 if(
-!name
-||
+!name||
 !password
 ){
+
+alert(
+"❌ أدخل البيانات"
+);
 
 return;
 
@@ -453,43 +358,37 @@ kick:
 document
 .getElementById(
 "permKick"
-)
-.checked,
+).checked,
 
 ban:
 document
 .getElementById(
 "permBan"
-)
-.checked,
+).checked,
 
 mute:
 document
 .getElementById(
 "permMute"
-)
-.checked,
+).checked,
 
 disconnect:
 document
 .getElementById(
 "permDisconnect"
-)
-.checked,
+).checked,
 
 viewUserInfo:
 document
 .getElementById(
 "permViewUser"
-)
-.checked,
+).checked,
 
 addAdmin:
 document
 .getElementById(
 "permAddAdmin"
-)
-.checked
+).checked
 
 };
 
@@ -507,11 +406,45 @@ permissions
 
 );
 
-addLog(
-`👮 تمت إضافة ${name}`
+}
+
+/* ADMIN EVENTS */
+
+socket.on(
+
+"admin added",
+
+()=>{
+
+alert(
+"✅ تمت إضافة الأدمن"
 );
 
-}
+});
+
+socket.on(
+
+"admin exists",
+
+()=>{
+
+alert(
+"❌ الاسم موجود"
+);
+
+});
+
+socket.on(
+
+"admin error",
+
+msg=>{
+
+alert(
+msg
+);
+
+});
 
 /* STATS */
 
@@ -521,20 +454,18 @@ socket.on(
 
 data=>{
 
-statsBox.innerHTML=`
+statsBox.innerHTML=
 
-👥 المتصلين:
-${data.onlineUsers}
-
-<br><br>
-
-🚫 المحظورين:
-${data.bannedUsers}
+`
+👥 ${data.onlineUsers}
 
 <br><br>
 
-👮 الإدارة:
-${data.admins}
+🚫 ${data.bannedUsers}
+
+<br><br>
+
+👮 ${data.admins}
 
 `;
 
@@ -553,7 +484,8 @@ document.createElement(
 div.className=
 "log-item";
 
-div.innerText=text;
+div.innerText=
+text;
 
 logsBox.prepend(
 div
