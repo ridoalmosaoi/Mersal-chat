@@ -163,6 +163,56 @@ buttons+=`
 if(
 adminPermissions.disconnect
 ){
+  if(
+adminPermissions.unban
+){
+
+buttons+=`
+
+<button onclick=
+"unbanUser('${user.id}')">
+
+🔓 فك حظر
+
+</button>
+
+`;
+
+}
+
+if(
+adminPermissions.unmute
+){
+
+buttons+=`
+
+<button onclick=
+"unmuteUser('${user.id}')">
+
+🔊 فك كتم
+
+</button>
+
+`;
+
+}
+
+if(
+adminPermissions.undisconnect
+){
+
+buttons+=`
+
+<button onclick=
+"undisconnectUser('${user.id}')">
+
+⛔🔓 فك فصل
+
+</button>
+
+`;
+
+}
 
 buttons+=`
 <button onclick="disconnectUser('${user.id}')">
@@ -262,6 +312,32 @@ function disconnectUser(id){
 
 socket.emit(
 "disconnect user",
+id
+);
+
+}
+function unbanUser(id){
+
+socket.emit(
+"unban user",
+id
+);
+
+}
+
+function unmuteUser(id){
+
+socket.emit(
+"unmute user",
+id
+);
+
+}
+
+function undisconnectUser(id){
+
+socket.emit(
+"undisconnect user",
 id
 );
 
