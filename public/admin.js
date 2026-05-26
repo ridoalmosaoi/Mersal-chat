@@ -198,25 +198,72 @@ buttons+=`
 }
 
 if(
-adminPermissions.undisconnect
+adminPermissions.ban
 ){
 
 buttons+=`
-
-<button onclick=
-"undisconnectUser('${user.id}')">
-
-⛔🔓 فك فصل
-
+<button onclick="banUser('${user.id}')">
+🚫 حظر
 </button>
-
 `;
 
 }
 
+if(
+adminPermissions.unban
+){
+
+buttons+=`
+<button onclick="unbanUser('${user.id}')">
+🔓 فك حظر
+</button>
+`;
+
+}
+
+if(
+adminPermissions.mute
+){
+
+buttons+=`
+<button onclick="muteUser('${user.id}')">
+🔇 كتم
+</button>
+`;
+
+}
+
+if(
+adminPermissions.unmute
+){
+
+buttons+=`
+<button onclick="unmuteUser('${user.id}')">
+🔊 فك كتم
+</button>
+`;
+
+}
+
+if(
+adminPermissions.disconnect
+){
+
 buttons+=`
 <button onclick="disconnectUser('${user.id}')">
 ⛔ فصل
+</button>
+`;
+
+}
+
+if(
+adminPermissions.undisconnect
+){
+
+buttons+=`
+<button onclick="undisconnectUser('${user.id}')">
+⛔🔓 فك فصل
 </button>
 `;
 
