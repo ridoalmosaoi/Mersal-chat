@@ -6,39 +6,24 @@ let adminPermissions={};
 
 /* ELEMENTS */
 
-const loginPage=
-document.getElementById("adminLogin");
-
-const panel=
-document.getElementById("adminPanel");
-
-const onlineUsers=
-document.getElementById("onlineUsers");
-
-const logsBox=
-document.getElementById("logsBox");
-
-const statsBox=
-document.getElementById("statsBox");
+const loginPage=document.getElementById("adminLogin");
+const panel=document.getElementById("adminPanel");
+const onlineUsers=document.getElementById("onlineUsers");
+const logsBox=document.getElementById("logsBox");
 
 /* LOGIN */
 
 function loginAdmin(){
 
-const name=
-document.getElementById(
-"adminName"
-).value.trim();
+const name=document
+.getElementById("adminName")
+.value.trim();
 
-const password=
-document.getElementById(
-"adminPass"
-).value.trim();
+const password=document
+.getElementById("adminPass")
+.value.trim();
 
-if(
-!name||
-!password
-){
+if(!name||!password){
 
 alert("أدخل البيانات");
 return;
@@ -58,19 +43,14 @@ password
 /* LOGIN EVENTS */
 
 socket.on(
-
 "admin login success",
-
 data=>{
 
 adminPermissions=
 data.permissions||{};
 
-loginPage.style.display=
-"none";
-
-panel.style.display=
-"flex";
+loginPage.style.display="none";
+panel.style.display="flex";
 
 addLog(
 "✅ تم تسجيل الدخول"
@@ -79,9 +59,7 @@ addLog(
 });
 
 socket.on(
-
 "admin login failed",
-
 ()=>{
 
 alert(
@@ -93,9 +71,7 @@ alert(
 /* USERS */
 
 socket.on(
-
 "admin online users",
-
 users=>{
 
 onlineUsers.innerHTML="";
@@ -103,18 +79,16 @@ onlineUsers.innerHTML="";
 users.forEach(user=>{
 
 const div=
-document.createElement(
-"div"
-);
+document.createElement("div");
 
 div.className=
 "user-card";
 
 let buttons="";
 
-if(
-adminPermissions.viewUserInfo
-){
+/* INFO */
+
+if(adminPermissions.viewUserInfo){
 
 buttons+=`
 <button onclick="viewUser('${user.id}')">
@@ -124,9 +98,9 @@ buttons+=`
 
 }
 
-if(
-adminPermissions.kick
-){
+/* KICK */
+
+if(adminPermissions.kick){
 
 buttons+=`
 <button onclick="kickUser('${user.id}')">
@@ -136,9 +110,9 @@ buttons+=`
 
 }
 
-if(
-adminPermissions.ban
-){
+/* BAN */
+
+if(adminPermissions.ban){
 
 buttons+=`
 <button onclick="banUser('${user.id}')">
@@ -148,70 +122,9 @@ buttons+=`
 
 }
 
-if(
-adminPermissions.mute
-){
+/* UNBAN */
 
-buttons+=`
-<button onclick="muteUser('${user.id}')">
-🔇 كتم
-</button>
-`;
-
-}
-
-if(
-adminPermissions.disconnect
-){
-  if(
-adminPermissions.unban
-){
-
-buttons+=`
-
-<button onclick=
-"unbanUser('${user.id}')">
-
-🔓 فك حظر
-
-</button>
-
-`;
-
-}
-
-if(
-adminPermissions.unmute
-){
-
-buttons+=`
-
-<button onclick=
-"unmuteUser('${user.id}')">
-
-🔊 فك كتم
-
-</button>
-
-`;
-
-}
-
-if(
-adminPermissions.ban
-){
-
-buttons+=`
-<button onclick="banUser('${user.id}')">
-🚫 حظر
-</button>
-`;
-
-}
-
-if(
-adminPermissions.unban
-){
+if(adminPermissions.unban){
 
 buttons+=`
 <button onclick="unbanUser('${user.id}')">
@@ -221,9 +134,9 @@ buttons+=`
 
 }
 
-if(
-adminPermissions.mute
-){
+/* MUTE */
+
+if(adminPermissions.mute){
 
 buttons+=`
 <button onclick="muteUser('${user.id}')">
@@ -233,9 +146,9 @@ buttons+=`
 
 }
 
-if(
-adminPermissions.unmute
-){
+/* UNMUTE */
+
+if(adminPermissions.unmute){
 
 buttons+=`
 <button onclick="unmuteUser('${user.id}')">
@@ -245,9 +158,9 @@ buttons+=`
 
 }
 
-if(
-adminPermissions.disconnect
-){
+/* DISCONNECT */
+
+if(adminPermissions.disconnect){
 
 buttons+=`
 <button onclick="disconnectUser('${user.id}')">
@@ -257,9 +170,9 @@ buttons+=`
 
 }
 
-if(
-adminPermissions.undisconnect
-){
+/* UNDISCONNECT */
+
+if(adminPermissions.undisconnect){
 
 buttons+=`
 <button onclick="undisconnectUser('${user.id}')">
@@ -272,22 +185,16 @@ buttons+=`
 div.innerHTML=`
 
 <div>
-
 👤 ${user.username}
-
 </div>
 
 <div class="user-actions">
-
 ${buttons}
-
 </div>
 
 `;
 
-onlineUsers.appendChild(
-div
-);
+onlineUsers.appendChild(div);
 
 });
 
@@ -305,9 +212,7 @@ id
 }
 
 socket.on(
-
 "user info",
-
 user=>{
 
 alert(
@@ -346,27 +251,19 @@ id
 
 }
 
-function muteUser(id){
-
-socket.emit(
-"mute user",
-id
-);
-
-}
-
-function disconnectUser(id){
-
-socket.emit(
-"disconnect user",
-id
-);
-
-}
 function unbanUser(id){
 
 socket.emit(
 "unban user",
+id
+);
+
+}
+
+function muteUser(id){
+
+socket.emit(
+"mute user",
 id
 );
 
@@ -381,61 +278,20 @@ id
 
 }
 
-function undisconnectUser(id){
+function disconnectUser(id){
 
 socket.emit(
-"undisconnect user",
+"disconnect user",
 id
 );
 
 }
 
-/* CHAT CONTROL */
-
-function unbanAll(){
+function undisconnectUser(id){
 
 socket.emit(
-"unban all"
-);
-
-}
-
-function unmuteAll(){
-
-socket.emit(
-"unmute all"
-);
-
-}
-
-function clearChat(){
-
-socket.emit(
-"clear chat"
-);
-
-}
-
-function toggleChatLock(){
-
-socket.emit(
-"toggle chat lock"
-);
-
-}
-
-function togglePrivateLock(){
-
-socket.emit(
-"toggle private lock"
-);
-
-}
-
-function toggleMaintenance(){
-
-socket.emit(
-"maintenance mode"
+"undisconnect user",
+id
 );
 
 }
@@ -454,10 +310,7 @@ document.getElementById(
 "newAdminPassword"
 ).value.trim();
 
-if(
-!name||
-!password
-){
+if(!name||!password){
 
 alert(
 "❌ أدخل البيانات"
@@ -470,74 +323,30 @@ return;
 const permissions={
 
 kick:
-document.getElementById(
-"permKick"
-).checked,
+document.getElementById("permKick").checked,
 
 ban:
-document.getElementById(
-"permBan"
-).checked,
+document.getElementById("permBan").checked,
 
 unban:
-document.getElementById(
-"permUnban"
-).checked,
+document.getElementById("permUnban").checked,
 
 mute:
-document.getElementById(
-"permMute"
-).checked,
+document.getElementById("permMute").checked,
 
 unmute:
-document.getElementById(
-"permUnmute"
-).checked,
+document.getElementById("permUnmute").checked,
 
 disconnect:
-document.getElementById(
-"permDisconnect"
-).checked,
+document.getElementById("permDisconnect").checked,
 
-deleteMessage:
-document.getElementById(
-"permDeleteMessage"
-).checked,
+undisconnect:true,
 
 viewUserInfo:
-document.getElementById(
-"permViewUser"
-).checked,
-
-stars:
-document.getElementById(
-"permStars"
-).checked,
-
-chatLock:
-document.getElementById(
-"permChatLock"
-).checked,
-
-privateLock:
-document.getElementById(
-"permPrivateLock"
-).checked,
-
-maintenance:
-document.getElementById(
-"permMaintenance"
-).checked,
-
-protection:
-document.getElementById(
-"permProtection"
-).checked,
+document.getElementById("permViewUser").checked,
 
 addAdmin:
-document.getElementById(
-"permAddAdmin"
-).checked
+document.getElementById("permAddAdmin").checked
 
 };
 
@@ -555,9 +364,7 @@ permissions
 /* ADMINS LIST */
 
 socket.on(
-
 "admins list",
-
 admins=>{
 
 const box=
@@ -583,10 +390,8 @@ div.innerHTML=`
 👮 ${admin.name}
 </div>
 
-<button
-onclick=
-"removeAdmin('${admin.name}')"
->
+<button onclick=
+"removeAdmin('${admin.name}')">
 
 🗑️ إزالة
 
@@ -594,9 +399,7 @@ onclick=
 
 `;
 
-box.appendChild(
-div
-);
+box.appendChild(div);
 
 });
 
@@ -604,13 +407,9 @@ div
 
 function removeAdmin(name){
 
-if(
-!confirm(
-`حذف ${name} ؟`
-)
-){
-return;
-}
+if(!confirm(
+`حذف ${name}?`
+)) return;
 
 socket.emit(
 "remove admin",
@@ -633,16 +432,12 @@ div.className=
 
 div.innerText=text;
 
-logsBox.prepend(
-div
-);
+logsBox.prepend(div);
 
 }
 
 socket.on(
-
 "new log",
-
 log=>{
 
 addLog(
