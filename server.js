@@ -818,6 +818,144 @@ username:
 user.username
 
 });
+    
+
+saveFile(
+"deviceBanned.json",
+deviceBannedUsers
+);
+
+});
+    /* UNBAN USER */
+
+socket.on(
+"unban user",
+id=>{
+
+const user=
+users.find(
+u=>u.id===id
+);
+
+if(!user){
+return;
+}
+
+bannedUsers=
+bannedUsers.filter(
+b=>b.ip!==user.ip
+);
+
+saveFile(
+"banned.json",
+bannedUsers
+);
+
+addLog(
+`🔓 تم فك حظر ${user.username}`
+);
+
+});
+
+/* UNMUTE USER */
+
+socket.on(
+"unmute user",
+id=>{
+
+const user=
+users.find(
+u=>u.id===id
+);
+
+if(!user){
+return;
+}
+
+mutedUsers=
+mutedUsers.filter(
+m=>m.id!==user.id
+);
+
+saveFile(
+"muted.json",
+mutedUsers
+);
+
+addLog(
+`🔊 تم فك كتم ${user.username}`
+);
+
+});
+
+/* UNDISCONNECT USER */
+
+socket.on(
+"undisconnect user",
+id=>{
+
+const user=
+users.find(
+u=>u.id===id
+);
+
+if(!user){
+return;
+}
+
+deviceBannedUsers=
+deviceBannedUsers.filter(
+d=>d.device!==user.device
+);
+
+saveFile(
+"deviceBanned.json",
+deviceBannedUsers
+);
+
+addLog(
+`⛔🔓 تم فك فصل ${user.username}`
+);
+
+});
+
+/* UNBAN ALL */
+
+socket.on(
+"unban all",
+()=>{
+
+bannedUsers=[];
+
+saveFile(
+"banned.json",
+bannedUsers
+);
+
+});
+
+/* UNMUTE ALL */
+
+socket.on(
+"unmute all",
+()=>{
+
+mutedUsers=[];
+
+saveFile(
+"muted.json",
+mutedUsers
+);
+
+});
+
+/* UNDISCONNECT ALL */
+
+socket.on(
+"undisconnect all",
+()=>{
+
+deviceBannedUsers=[];
 
 saveFile(
 "deviceBanned.json",
