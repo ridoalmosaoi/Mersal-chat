@@ -158,7 +158,35 @@ admins
 );
 
 });
+app.get(
+"/banned.json",
+(req,res)=>{
 
+res.json(
+bannedUsers
+);
+
+});
+
+app.get(
+"/muted.json",
+(req,res)=>{
+
+res.json(
+mutedUsers
+);
+
+});
+
+app.get(
+"/deviceBanned.json",
+(req,res)=>{
+
+res.json(
+deviceBannedUsers
+);
+
+});
 /* SOCKET */
 
 io.on(
