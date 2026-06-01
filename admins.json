@@ -1,7 +1,7 @@
 [
   {
-    "name":"Admin",
-    "password":"Mersal2026#",
+    "name":"&Admin",
+    "password":"admin",
     "permissions":{
       "kick":true,
       "ban":true,
