@@ -1,7 +1,7 @@
 [
   {
     "name":"Admin",
-    "password":"admin771",
+    "password":" 1",
     "permissions":{
       "kick":true,
       "ban":true,
