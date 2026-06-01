@@ -502,3 +502,47 @@ log.message
 );
 
 });
+async function loadBannedList(){
+
+const res=
+await fetch(
+"/banned.json"
+);
+
+const data=
+await res.json();
+
+const box=
+document.getElementById(
+"bannedList"
+);
+
+if(!box)return;
+
+box.innerHTML="";
+
+data.forEach(ban=>{
+
+const div=
+document.createElement(
+"div"
+);
+
+div.className=
+"user-card";
+
+div.innerHTML=`
+
+<div>
+🚫 ${ban.ip}
+</div>
+
+`;
+
+box.appendChild(div);
+
+});
+
+}
+
+loadBannedList();
