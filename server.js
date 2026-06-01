@@ -146,18 +146,7 @@ message
 );
 
 }
-
 /* ADMINS API */
-
-app.get(
-"/admins.json",
-(req,res)=>{
-
-res.json(
-admins
-);
-
-});
 app.get(
 "/banned.json",
 (req,res)=>{
