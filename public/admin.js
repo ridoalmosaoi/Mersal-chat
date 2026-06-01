@@ -295,6 +295,63 @@ id
 );
 
 }
+/* CHAT CONTROL */
+
+function unbanAll(){
+
+socket.emit(
+“unban all”
+);
+
+}
+
+function unmuteAll(){
+
+socket.emit(
+“unmute all”
+);
+
+}
+
+function undisconnectAll(){
+
+socket.emit(
+“undisconnect all”
+);
+
+}
+
+function clearChat(){
+
+socket.emit(
+“clear chat”
+);
+
+}
+
+function toggleChatLock(){
+
+socket.emit(
+“toggle chat lock”
+);
+
+}
+
+function togglePrivateLock(){
+
+socket.emit(
+“toggle private lock”
+);
+
+}
+
+function toggleMaintenance(){
+
+socket.emit(
+“maintenance mode”
+);
+
+}
 
 /* ADD ADMIN */
 
