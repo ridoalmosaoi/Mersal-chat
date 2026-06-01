@@ -300,7 +300,7 @@ id
 function unbanAll(){
 
 socket.emit(
-“unban all”
+"unban all"
 );
 
 }
@@ -308,7 +308,7 @@ socket.emit(
 function unmuteAll(){
 
 socket.emit(
-“unmute all”
+"unmute all"
 );
 
 }
@@ -316,7 +316,7 @@ socket.emit(
 function undisconnectAll(){
 
 socket.emit(
-“undisconnect all”
+"undisconnect all"
 );
 
 }
@@ -324,7 +324,7 @@ socket.emit(
 function clearChat(){
 
 socket.emit(
-“clear chat”
+"clear chat"
 );
 
 }
@@ -332,7 +332,7 @@ socket.emit(
 function toggleChatLock(){
 
 socket.emit(
-“toggle chat lock”
+"toggle chat lock"
 );
 
 }
@@ -340,7 +340,7 @@ socket.emit(
 function togglePrivateLock(){
 
 socket.emit(
-“toggle private lock”
+"toggle private lock"
 );
 
 }
@@ -348,7 +348,7 @@ socket.emit(
 function toggleMaintenance(){
 
 socket.emit(
-“maintenance mode”
+"maintenance mode"
 );
 
 }
