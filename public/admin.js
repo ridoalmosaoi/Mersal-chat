@@ -530,14 +530,20 @@ document.createElement(
 
 div.className=
 "user-card";
-
 div.innerHTML=`
 
 <div>
 🚫 ${ban.ip}
 </div>
 
+<button onclick="unbanIp('${ban.ip}')">
+🔓 فك
+</button>
+
 `;
+
+
+
 
 box.appendChild(div);
 
