@@ -552,3 +552,11 @@ box.appendChild(div);
 }
 
 loadBannedList();
+function unbanIp(ip){
+
+socket.emit(
+"unban ip",
+ip
+);
+
+}
