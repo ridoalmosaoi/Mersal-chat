@@ -935,7 +935,25 @@ addLog(
 );
 
 });
+socket.on(
+"unban ip",
+ip=>{
 
+bannedUsers=
+bannedUsers.filter(
+b=>b.ip!==ip
+);
+
+saveFile(
+"banned.json",
+bannedUsers
+);
+
+addLog(
+`🔓 تم فك حظر ${ip}`
+);
+
+});
 /* UNBAN ALL */
 
 socket.on(
