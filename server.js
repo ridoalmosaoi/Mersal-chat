@@ -181,6 +181,23 @@ deviceBannedUsers
 io.on(
 "connection",
 socket=>{
+    socket.on(
+"check admin",
+name=>{
+
+const isAdmin=
+admins.some(
+a=>
+a.name.toLowerCase()===
+name.toLowerCase()
+);
+
+socket.emit(
+"admin check result",
+isAdmin
+);
+
+});
 
 /* JOIN */
 
