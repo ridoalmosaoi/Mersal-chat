@@ -276,6 +276,11 @@ socket.emit(
 id
 );
 
+setTimeout(
+loadMutedList,
+500
+);
+
 }
 
 function disconnectUser(id){
