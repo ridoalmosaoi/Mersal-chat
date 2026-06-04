@@ -28,45 +28,25 @@ document.getElementById("messages");
 const usersList=
 document.getElementById("usersList");
 
-/* LOAD ADMINS */
-
-fetch("/admins.json")
-
-.then(res=>res.json())
-
-.then(data=>{
-
-protectedNames=
-
-data.map(
-
-a=>a.name.toLowerCase()
-
-);
-
-});
-
 /* SHOW PASSWORD */
 
 username.addEventListener(
-
 "input",
-
 ()=>{
 
-const name=
+socket.emit(
+"check admin",
+username.value.trim()
+);
 
-username.value
-.trim()
-.toLowerCase();
+}
+);
 
-if(
+socket.on(
+"admin check result",
+isAdmin=>{
 
-protectedNames.includes(
-name
-)
-
-){
+if(isAdmin){
 
 adminPassword.style.display=
 "block";
@@ -81,7 +61,6 @@ adminPassword.value="";
 }
 
 }
-
 );
 
 /* COLORS */
