@@ -560,3 +560,52 @@ ip
 );
 
 }
+async function loadMutedList(){
+
+const res=
+await fetch(
+"/muted.json"
+);
+
+const data=
+await res.json();
+
+const box=
+document.getElementById(
+"mutedList"
+);
+
+if(!box)return;
+
+box.innerHTML="";
+
+data.forEach(user=>{
+
+const div=
+document.createElement(
+"div"
+);
+
+div.className=
+"user-card";
+
+div.innerHTML=`
+
+<div>
+🔇 ${user.username}
+</div>
+
+<button onclick="unmuteUser('${user.id}')">
+🔊 فك
+</button>
+
+`;
+
+box.appendChild(div);
+
+});
+
+}
+
+loadMutedList();
+
