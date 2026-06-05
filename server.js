@@ -29,6 +29,7 @@ let admins=[];
 let bannedUsers=[];
 let mutedUsers=[];
 let deviceBannedUsers=[];
+let stars=[];
 let logs=[];
 
 /* FILE SYSTEM */
@@ -91,6 +92,10 @@ null,
 admins=
 loadFile(
 "admins.json"
+);
+stars=
+loadFile(
+"stars.json"
 );
 
 bannedUsers=
@@ -821,6 +826,62 @@ user.username
 saveFile(
 "muted.json",
 mutedUsers
+);
+
+});
+    socket.on(
+"give star",
+username=>{
+
+if(
+!socket.adminData?.permissions?.stars
+){
+return;
+}
+
+if(
+!stars.includes(username)
+){
+
+stars.push(
+username
+);
+
+saveFile(
+"stars.json",
+stars
+);
+
+addLog(
+`⭐ تم إعطاء نجمة لـ ${username}`
+);
+
+}
+
+});
+
+socket.on(
+"remove star",
+username=>{
+
+if(
+!socket.adminData?.permissions?.stars
+){
+return;
+}
+
+stars=
+stars.filter(
+u=>u!==username
+);
+
+saveFile(
+"stars.json",
+stars
+);
+
+addLog(
+`⭐❌ تم سحب نجمة من ${username}`
 );
 
 });
