@@ -1002,6 +1002,17 @@ addLog(
 );
 
 });
+    socket.on(
+"toggle stars mode",
+()=>{
+
+starsMode=!starsMode;
+
+addLog(
+`⭐ وضع النجوم ${starsMode ? "ON" : "OFF"}`
+);
+
+});
 
 /* UNDISCONNECT USER */
 
