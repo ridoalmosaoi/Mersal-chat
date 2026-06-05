@@ -16,7 +16,8 @@
       "addAdmin":true,
       "removeAdmin":true,
       "viewIP":true,
-      "viewUserInfo":true
+      "viewUserInfo": true,
+"stars": true
     }
   }
 ]
