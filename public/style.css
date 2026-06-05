@@ -7,18 +7,46 @@ box-sizing:border-box;
 font-family:Tahoma,sans-serif;
 }
 
+html,
 body{
-background:#0b0b0b;
-color:white;
-height:100vh;
+
+height:100%;
+
 overflow:hidden;
+
 }
 
+body{
+
+background:#0b0b0b;
+
+color:white;
+
+font-family:Tahoma,sans-serif;
+
+}
 /* LOGIN */
 
 .login-page{
 
-height:100vh;
+height:100dvh;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+padding:20px;
+
+background:
+linear-gradient(
+180deg,
+#111,
+#050505
+);
+
+}
 
 display:flex;
 
@@ -132,11 +160,13 @@ border-color:white;
 
 .chat-page{
 
-height:100vh;
+height:100dvh;
 
 display:flex;
 
 flex-direction:column;
+
+overflow:hidden;
 
 }
 
