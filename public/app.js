@@ -609,8 +609,9 @@ document
 .getElementById(
 "usersMenu"
 )
-.style.display=
-"flex";
+.classList.add(
+"show"
+);
 
 }
 
@@ -620,8 +621,9 @@ document
 .getElementById(
 "usersMenu"
 )
-.style.display=
-"none";
+.classList.remove(
+"show"
+);
 
 }
 
