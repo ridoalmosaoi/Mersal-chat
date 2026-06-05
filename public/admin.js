@@ -374,6 +374,13 @@ socket.emit(
 );
 
 }
+function toggleStarsMode(){
+
+socket.emit(
+"toggle stars mode"
+);
+
+}
 
 /* ADD ADMIN */
 
