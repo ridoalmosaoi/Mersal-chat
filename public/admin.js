@@ -145,6 +145,23 @@ buttons+=`
 `;
 
 }
+  /* STARS */
+
+if(adminPermissions.stars){
+
+buttons+=`
+<button onclick="giveStar('${user.username}')">
+⭐ نجمة
+</button>
+`;
+
+buttons+=`
+<button onclick="removeStar('${user.username}')">
+⭐❌ سحب
+</button>
+`;
+
+}
 
 /* UNMUTE */
 
@@ -675,4 +692,20 @@ loadDisconnectedList,
 }
 
 loadDisconnectedList();
+function giveStar(username){
 
+socket.emit(
+"give star",
+username
+);
+
+}
+
+function removeStar(username){
+
+socket.emit(
+"remove star",
+username
+);
+
+}
