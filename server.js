@@ -952,6 +952,25 @@ addLog(
 );
 
 });
+    socket.on(
+"undisconnect device",
+device=>{
+
+deviceBannedUsers=
+deviceBannedUsers.filter(
+d=>d.device!==device
+);
+
+saveFile(
+"deviceBanned.json",
+deviceBannedUsers
+);
+
+addLog(
+"⛔🔓 تم فك فصل جهاز"
+);
+
+});
 socket.on(
 "unban ip",
 ip=>{
