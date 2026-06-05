@@ -422,6 +422,8 @@ document.getElementById("permMute").checked,
 
 unmute:
 document.getElementById("permUnmute").checked,
+  stars:
+document.getElementById("permStars").checked,
 
 disconnect:
 document.getElementById("permDisconnect").checked,
