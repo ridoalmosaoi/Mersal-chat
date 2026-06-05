@@ -613,4 +613,66 @@ box.appendChild(div);
 }
 
 loadMutedList();
+async function loadDisconnectedList(){
+
+const res=
+await fetch(
+"/deviceBanned.json"
+);
+
+const data=
+await res.json();
+
+const box=
+document.getElementById(
+"disconnectedList"
+);
+
+if(!box)return;
+
+box.innerHTML="";
+
+data.forEach(user=>{
+
+const div=
+document.createElement(
+"div"
+);
+
+div.className=
+"user-card";
+
+div.innerHTML=`
+
+<div>
+⛔ ${user.username}
+</div>
+
+<button onclick="undisconnectDevice('${user.device}')">
+🔓 فك
+</button>
+
+`;
+
+box.appendChild(div);
+
+});
+
+}
+
+function undisconnectDevice(device){
+
+socket.emit(
+"undisconnect device",
+device
+);
+
+setTimeout(
+loadDisconnectedList,
+500
+);
+
+}
+
+loadDisconnectedList();
 
