@@ -24,6 +24,7 @@ let users=[];
 let chatLocked=false;
 let privateLocked=false;
 let maintenanceMode=false;
+let starsMode=false;
 
 let admins=[];
 let bannedUsers=[];
