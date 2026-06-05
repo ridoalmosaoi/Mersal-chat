@@ -221,6 +221,7 @@ if(
 ){
 return;
 }
+    socket.username=username;
 
 /* PREVENT DUPLICATE */
 
