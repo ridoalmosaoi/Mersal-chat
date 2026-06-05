@@ -423,6 +423,8 @@ undisconnect:true,
 
 viewUserInfo:
 document.getElementById("permViewUser").checked,
+  stars:
+document.getElementById("permStars").checked,
 
 addAdmin:
 document.getElementById("permAddAdmin").checked
