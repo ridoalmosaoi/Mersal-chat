@@ -429,7 +429,25 @@ chatLocked
 ){
 return;
 }
+if(starsMode){
 
+const hasStar=
+stars.includes(
+socket.username
+);
+
+if(!hasStar){
+
+socket.emit(
+"banned",
+"⭐ الكتابة لأصحاب النجمة فقط"
+);
+
+return;
+
+}
+
+}
 const muted=
 
 mutedUsers.find(
