@@ -9,7 +9,12 @@ font-family:Tahoma,sans-serif;
 
 body{
 
-background:#0b0b0b;
+background:
+linear-gradient(
+180deg,
+#0b0b0b,
+#111827
+);
 
 color:white;
 
@@ -62,6 +67,9 @@ gap:15px;
 
 border:1px solid #2a2a2a;
 
+box-shadow:
+0 10px 30px rgba(0,0,0,.4);
+
 }
 
 .logo{
@@ -108,6 +116,14 @@ font-weight:bold;
 
 cursor:pointer;
 
+transition:.2s;
+
+}
+
+.login-btn:hover{
+
+transform:scale(1.03);
+
 }
 
 /* PANEL */
@@ -128,7 +144,7 @@ gap:15px;
 
 .top-bar{
 
-height:65px;
+height:70px;
 
 background:#171717;
 
@@ -138,19 +154,23 @@ align-items:center;
 
 justify-content:center;
 
-border-radius:18px;
+border-radius:20px;
 
 padding:0 15px;
+
+border:1px solid #2a2a2a;
 
 }
 
 .top-title{
 
-font-size:22px;
+font-size:24px;
 
-font-weight:bold;
+font-weight:900;
 
 color:#ffd700;
+
+letter-spacing:1px;
 
 }
 
@@ -160,13 +180,15 @@ color:#ffd700;
 
 background:#1a1a1a;
 
-padding:15px;
+padding:18px;
 
-border-radius:18px;
+border-radius:20px;
 
 line-height:2;
 
 font-size:15px;
+
+border:1px solid #2a2a2a;
 
 }
 
@@ -176,15 +198,20 @@ font-size:15px;
 
 background:#181818;
 
-padding:15px;
+padding:18px;
 
-border-radius:18px;
+border-radius:20px;
 
 display:flex;
 
 flex-direction:column;
 
 gap:15px;
+
+border:1px solid #2a2a2a;
+
+box-shadow:
+0 4px 15px rgba(0,0,0,.35);
 
 }
 
@@ -210,17 +237,27 @@ gap:10px;
 
 .user-card{
 
-background:#252525;
+background:#232323;
 
-padding:15px;
+padding:16px;
 
-border-radius:16px;
+border-radius:18px;
 
 display:flex;
 
 flex-direction:column;
 
-gap:10px;
+gap:12px;
+
+border:1px solid #333;
+
+transition:.2s;
+
+}
+
+.user-card:hover{
+
+transform:translateY(-2px);
 
 }
 
@@ -234,13 +271,15 @@ gap:8px;
 
 }
 
-.action-btn{
+/* BUTTONS */
 
-padding:10px;
+button{
+
+padding:12px;
 
 border:none;
 
-border-radius:12px;
+border-radius:14px;
 
 cursor:pointer;
 
@@ -248,13 +287,25 @@ font-size:14px;
 
 font-weight:bold;
 
+transition:.2s;
+
+}
+
+button:hover{
+
+transform:scale(1.03);
+
+opacity:.9;
+
+}
+
+.action-btn{
+
 background:#333;
 
 color:white;
 
 }
-
-/* COLORS */
 
 .info-btn{
 
@@ -300,17 +351,20 @@ overflow:auto;
 
 background:#252525;
 
-padding:12px;
+padding:14px;
 
-border-radius:12px;
+border-radius:14px;
 
 border-right:4px solid #ffd700;
 
 font-size:14px;
 
+box-shadow:
+0 2px 8px rgba(0,0,0,.3);
+
 }
 
-/* ADD ADMIN */
+/* INPUTS */
 
 .admin-box input{
 
@@ -327,6 +381,8 @@ color:white;
 border-radius:15px;
 
 }
+
+/* PERMISSIONS */
 
 .permissions{
 
@@ -358,6 +414,14 @@ align-items:center;
 
 cursor:pointer;
 
+transition:.2s;
+
+}
+
+.permissions label:hover{
+
+background:#303030;
+
 }
 
 .permissions input{
@@ -365,6 +429,28 @@ cursor:pointer;
 width:18px;
 
 height:18px;
+
+}
+
+/* SCROLLBAR */
+
+::-webkit-scrollbar{
+
+width:8px;
+
+}
+
+::-webkit-scrollbar-track{
+
+background:#111;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+background:#ffd700;
+
+border-radius:10px;
 
 }
 
@@ -385,7 +471,7 @@ flex-direction:column;
 
 }
 
-.action-btn{
+button{
 
 width:100%;
 
