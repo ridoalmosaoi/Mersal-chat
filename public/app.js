@@ -454,16 +454,13 @@ alert(
 
 /* REPLY */
 
-function replyTo(
-user,
-text
-){
+function replyTo(user,text){
+
+closeUsers();
 
 replyData={
-
 user,
 text
-
 };
 
 document
@@ -481,6 +478,9 @@ document
 
 `↩️ ${user}: ${text}`;
 
+closeUserPopup();
+
+}
 closeUserPopup();
 
 }
