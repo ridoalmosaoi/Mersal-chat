@@ -481,9 +481,6 @@ document
 closeUserPopup();
 
 }
-closeUserPopup();
-
-}
 
 function cancelReply(){
 
