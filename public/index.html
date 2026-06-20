@@ -1,42 +1,25 @@
 <!DOCTYPE html>
-
 <html lang="ar" dir="rtl">
-
 <head>
-
 <meta charset="UTF-8">
 
 <meta
-name="viewport"
-content="
-width=device-width,
-initial-scale=1.0
-">
+name=“viewport”
+content=“width=device-width,initial-scale=1.0,viewport-fit=cover”
 
-<title>
-
-🔥 Mersal Chat
-
-</title>
-
+<title>🔥 Mersal Chat</title>
 <link
 rel="stylesheet"
-href="style.css?v=2"
+href="style.css?v=4"
 >
-
 </head>
-
 <body>
-
 <!-- LOGIN -->
-
 <div
 id="loginPage"
 class="login-page"
 >
-
 <div class="login-box">
-
 <h1 class="logo">
 
 🔥 Mersal Chat
@@ -44,359 +27,230 @@ class="login-page"
 </h1>
 
 <input
-id="username"
-type="text"
-placeholder="اكتب اسمك"
-maxlength="20"
-autocomplete="off"
->
+id=“username”
+type=“text”
+placeholder=“اكتب اسمك”
+maxlength=“20”
+autocomplete=“off”
 
 <input
-id="adminPassword"
-type="password"
-placeholder="كلمة سر الإدارة"
-style="display:none"
-autocomplete="off"
->
-
-<!-- COLORS -->
+id=“adminPassword”
+type=“password”
+placeholder=“كلمة سر الإدارة”
+style=“display:none”
+autocomplete=“off”
 
 <div class="colors-box">
-
-<div
-class="color-option active-color"
-style="background:#ffd700"
-data-color="#ffd700"
-></div>
-
-<div
-class="color-option"
-style="background:#00d0ff"
-data-color="#00d0ff"
-></div>
-
-<div
-class="color-option"
-style="background:#00ff88"
-data-color="#00ff88"
-></div>
-
-<div
-class="color-option"
-style="background:#ff3b3b"
-data-color="#ff3b3b"
-></div>
-
-<div
-class="color-option"
-style="background:#ff00ff"
-data-color="#ff00ff"
-></div>
-
+<div class="color-option active-color" data-color="#ffd700"></div>
+<div class="color-option" data-color="#00d0ff"></div>
+<div class="color-option" data-color="#00ff88"></div>
+<div class="color-option" data-color="#ff3b3b"></div>
+<div class="color-option" data-color="#ff00ff"></div>
 </div>
 
 <button
-class="join-btn"
-onclick="joinChat()"
->
+class=“join-btn”
+onclick=“joinChat()”
 
 دخول
 
 </button>
-
 </div>
-
 </div>
-
 <!-- CHAT -->
-
 <div
 id="chatPage"
 class="chat-page"
 style="display:none"
 >
-
-<!-- TOP -->
-
+<!-- TOP BAR -->
 <div class="top-bar">
-
 <div class="top-left">
 
 <button
-class="top-btn"
-onclick="
-openUsers()
-"
->
+class=“top-btn”
+onclick=“openUsers()”
 
 👥
 
 </button>
 
 <button
-class="top-btn"
-onclick="
-openPrivateList()
-"
->
+class=“top-btn”
+onclick=“openPrivateList()”
 
 💬
 
 <span
-id="privateBadge"
-class="private-badge"
-style="display:none"
->
+id=“privateBadge”
+class=“private-badge”
+style=“display:none”
 
 0
 
 </span>
-
 </button>
 
 <button
-class="top-btn"
-onclick="
+class=“top-btn”
+onclick=”
 window.open(
-'/admin.html',
-'_blank'
-)
-"
->
+‘/admin.html’,
+‘_blank’
+)”
 
 👑
 
 </button>
-
 </div>
-
 <div class="top-title">
 
 🔥 Mersal
 
 </div>
-
 </div>
-
 <!-- USERS -->
-
 <div
 id="usersMenu"
 class="side-menu"
-style="display:none"
 >
-
 <div class="menu-header">
+<span>
 
 👥 المتواجدون
 
+</span>
+
 <button
-class="close-btn"
-onclick="
-closeUsers()
-"
->
+class=“close-btn”
+onclick=“closeUsers()”
 
 ✖
 
 </button>
-
 </div>
-
 <div
 id="usersList"
 class="users-list"
 >
-
 </div>
-
 </div>
-
 <!-- MESSAGES -->
-
 <div
 id="messages"
 class="messages"
 >
-
 </div>
-
 <!-- REPLY -->
-
 <div
 id="replyBox"
-style="
-display:none;
-padding:10px;
-background:#202020;
-"
+class="reply-box"
+style="display:none"
 >
-
-<div
-id="replyText"
->
-
+<div id="replyText">
 </div>
 
 <button
-onclick="
-cancelReply()
-"
->
+onclick=“cancelReply()”
 
 ✖
 
 </button>
-
 </div>
-
 <!-- INPUT -->
-
 <div class="message-box">
 
 <input
-id="messageInput"
-type="text"
-placeholder="اكتب رسالتك..."
-autocomplete="off"
->
+id=“messageInput”
+type=“text”
+placeholder=“اكتب رسالتك…”
+autocomplete=“off”
 
 <button
-class="send-btn"
-onclick="
-sendMessage()
-"
->
+class=“send-btn”
+onclick=“sendMessage()”
 
 إرسال
 
 </button>
-
 </div>
-
 </div>
-
-<!-- PRIVATE -->
-
+<!-- PRIVATE CHAT -->
 <div
 id="privateChatBox"
 class="private-chat"
 style="display:none"
 >
-
 <div class="private-header">
-
-<div
-id="privateTitle"
->
+<div id="privateTitle">
 
 💬 مرسال خاص
 
 </div>
 
 <button
-class="close-btn"
-onclick="
-closePrivate()
-"
->
+class=“close-btn”
+onclick=“closePrivate()”
 
 ✖
 
 </button>
-
 </div>
-
 <div
 id="privateMessages"
 class="private-messages"
 >
-
 </div>
-
 <div
 class="private-input-box"
 >
 
 <input
-id="privateInput"
-placeholder="
-اكتب رسالة...
-"
->
+id=“privateInput”
+placeholder=“اكتب رسالة…”
 
 <button
-onclick="
-sendPrivate()
-"
->
+onclick=“sendPrivate()”
 
 إرسال
 
 </button>
-
 </div>
-
 </div>
-
 <!-- USER POPUP -->
-
 <div
 id="userPopupOverlay"
-style="display:none"
 class="popup-overlay"
-onclick="
-closeUserPopup()
-"
+style="display:none"
+onclick="closeUserPopup()"
 >
-
 <div
 class="user-popup"
-onclick="
-event.stopPropagation()
-"
+onclick="event.stopPropagation()"
 >
-
-<div
-class="popup-header"
->
-
-<div
-id="popupUsername"
->
+<div class="popup-header">
+<div id="popupUsername">
 
 👤 مستخدم
 
 </div>
 
 <button
-class="close-btn"
-onclick="
-closeUserPopup()
-"
->
+class=“close-btn”
+onclick=“closeUserPopup()”
 
 ✖
 
 </button>
-
 </div>
-
 <div
 id="popupButtons"
 class="popup-buttons"
 >
-
 </div>
-
 </div>
-
 </div>
-
 <script src="/socket.io/socket.io.js"></script>
-
-<script src="app.js?v=2"></script>
-
+<script src="app.js?v=4"></script>
 </body>
-
 </html>
