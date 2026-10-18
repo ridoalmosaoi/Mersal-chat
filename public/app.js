@@ -12,99 +12,173 @@ let toastTimer = null;
 
 const $ = id => document.getElementById(id);
 
+
+/* =========================
+   ELEMENTS
+========================= */
+
 const loginPage = $("loginPage");
 const chatPage = $("chatPage");
 const username = $("username");
 const adminPassword = $("adminPassword");
+
 const messages = $("messages");
+const messageInput = $("messageInput");
+
 const usersList = $("usersList");
 const usersMenu = $("usersMenu");
 const menuTitle = $("menuTitle");
 const loginStatus = $("loginStatus");
+
+const privateChatBox = $("privateChatBox");
 const privateMessages = $("privateMessages");
 const privateInput = $("privateInput");
 
-/* MOBILE KEYBOARD / VIEWPORT */
+const publicInputBoxes =
+  document.querySelectorAll(".message-box");
 
-function updateViewportHeight(){
+const publicInputBox =
+  publicInputBoxes.length
+    ? publicInputBoxes[publicInputBoxes.length - 1]
+    : null;
+
+
+/* =========================
+   IPHONE VIEWPORT / KEYBOARD
+========================= */
+
+function updateChatKeyboard(){
 
   const viewport =
     window.visualViewport;
 
-  const height =
-    viewport
-      ? viewport.height
-      : window.innerHeight;
+  if(!viewport){
+    return;
+  }
 
+  const viewportHeight =
+    viewport.height;
+
+  /* ارتفاع التطبيق الحقيقي */
   document.documentElement.style.setProperty(
     "--app-height",
-    `${height}px`
+    `${viewportHeight}px`
   );
+
+  /*
+    حساب ارتفاع الكيبورد
+    عندما يكون الكيبورد مغلقًا = 0
+    عندما يكون مفتوحًا = ارتفاع الكيبورد
+  */
+  const keyboardHeight =
+    Math.max(
+      0,
+      window.innerHeight -
+      viewport.height -
+      viewport.offsetTop
+    );
+
+  document.documentElement.style.setProperty(
+    "--keyboard-height",
+    `${keyboardHeight}px`
+  );
+
 }
 
-updateViewportHeight();
 
+/* تشغيل أول مرة */
+updateChatKeyboard();
+
+
+/* عند تغيير حجم الشاشة */
 window.addEventListener(
   "resize",
-  updateViewportHeight
+  updateChatKeyboard
 );
 
+
+/* iPhone visual viewport */
 if(window.visualViewport){
 
   window.visualViewport.addEventListener(
     "resize",
-    updateViewportHeight
+    updateChatKeyboard
+  );
+
+  window.visualViewport.addEventListener(
+    "scroll",
+    updateChatKeyboard
   );
 
 }
-/* KEEP CHAT AT BOTTOM WHEN IPHONE KEYBOARD OPENS */
+
+
+/* =========================
+   KEEP CHAT AT BOTTOM
+========================= */
 
 function keepChatBottom(){
 
   requestAnimationFrame(() => {
 
     if(messages){
+
       messages.scrollTop =
         messages.scrollHeight;
+
     }
 
     if(privateMessages){
+
       privateMessages.scrollTop =
         privateMessages.scrollHeight;
+
     }
 
   });
 
 }
 
+
+/* =========================
+   KEYBOARD FOCUS
+========================= */
+
+if(messageInput){
+
+  messageInput.addEventListener(
+    "focus",
+    () => {
+
+      setTimeout(
+        keepChatBottom,
+        100
+      );
+
+    }
+  );
+
+}
+
+
 if(privateInput){
 
   privateInput.addEventListener(
     "focus",
     () => {
+
       setTimeout(
         keepChatBottom,
         100
       );
+
     }
   );
 
 }
 
-if($("messageInput")){
 
-  $("messageInput").addEventListener(
-    "focus",
-    () => {
-      setTimeout(
-        keepChatBottom,
-        100
-      );
-    }
-  );
-
-}
-
+/* عند تغير حجم الشاشة والكيبورد مفتوح */
 if(window.visualViewport){
 
   window.visualViewport.addEventListener(
@@ -112,13 +186,14 @@ if(window.visualViewport){
     () => {
 
       if(
-        document.activeElement ===
-          $("messageInput") ||
-        document.activeElement ===
-          privateInput
+        document.activeElement === messageInput ||
+        document.activeElement === privateInput
       ){
 
-        keepChatBottom();
+        setTimeout(
+          keepChatBottom,
+          50
+        );
 
       }
 
@@ -127,99 +202,178 @@ if(window.visualViewport){
 
 }
 
-/* HELPERS */
+
+/* =========================
+   HELPERS
+========================= */
+
 function escapeHtml(value){
+
   return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+
 }
 
+
 function showToast(text){
-  const toast = $("toast");
+
+  const toast =
+    $("toast");
 
   if(!toast) return;
 
-  toast.textContent = text;
-  toast.classList.add("show");
+  toast.textContent =
+    text;
 
-  clearTimeout(toastTimer);
+  toast.classList.add(
+    "show"
+  );
 
-  toastTimer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, 2200);
+  clearTimeout(
+    toastTimer
+  );
+
+  toastTimer =
+    setTimeout(
+      () => {
+        toast.classList.remove(
+          "show"
+        );
+      },
+      2200
+    );
+
 }
 
-function setLoginStatus(text, error = false){
+
+function setLoginStatus(
+  text,
+  error = false
+){
+
   if(!loginStatus) return;
 
-  loginStatus.textContent = text || "";
-  loginStatus.style.color = error
-    ? "#ff9d9d"
-    : "#9dffca";
+  loginStatus.textContent =
+    text || "";
+
+  loginStatus.style.color =
+    error
+      ? "#ff9d9d"
+      : "#9dffca";
+
 }
 
-/* ADMIN PASSWORD FIELD */
-username.addEventListener("input", () => {
 
-  const name = username.value.trim();
+/* =========================
+   ADMIN PASSWORD
+========================= */
 
-  setLoginStatus("");
+if(username){
 
-  if(!name){
-    adminPassword.style.display = "none";
-    adminPassword.value = "";
-    return;
+  username.addEventListener(
+    "input",
+    () => {
+
+      const name =
+        username.value.trim();
+
+      setLoginStatus("");
+
+      if(!name){
+
+        adminPassword.style.display =
+          "none";
+
+        adminPassword.value =
+          "";
+
+        return;
+
+      }
+
+      socket.emit(
+        "check admin",
+        name
+      );
+
+    }
+  );
+
+}
+
+
+socket.on(
+  "admin check result",
+  isAdmin => {
+
+    if(isAdmin){
+
+      adminPassword.style.display =
+        "block";
+
+    }else{
+
+      adminPassword.style.display =
+        "none";
+
+      adminPassword.value =
+        "";
+
+    }
+
   }
+);
 
-  socket.emit("check admin", name);
-});
 
-socket.on("admin check result", isAdmin => {
+/* =========================
+   COLORS
+========================= */
 
-  if(isAdmin){
-
-    adminPassword.style.display = "block";
-
-  }else{
-
-    adminPassword.style.display = "none";
-    adminPassword.value = "";
-
-  }
-
-});
-
-/* COLORS */
 document
   .querySelectorAll(".color-option")
   .forEach(el => {
 
-    el.addEventListener("click", () => {
+    el.addEventListener(
+      "click",
+      () => {
 
-      document
-        .querySelectorAll(".color-option")
-        .forEach(x =>
-          x.classList.remove("active-color")
+        document
+          .querySelectorAll(".color-option")
+          .forEach(x =>
+            x.classList.remove(
+              "active-color"
+            )
+          );
+
+        el.classList.add(
+          "active-color"
         );
 
-      el.classList.add("active-color");
+        currentColor =
+          el.dataset.color ||
+          "#ffd700";
 
-      currentColor =
-        el.dataset.color || "#ffd700";
-
-    });
+      }
+    );
 
   });
 
-/* LOGIN */
+
+/* =========================
+   LOGIN
+========================= */
+
 function joinChat(){
 
-  if(loginPending) return;
+  if(loginPending)
+    return;
 
-  const name = username.value.trim();
+  const name =
+    username.value.trim();
 
   if(!name){
 
@@ -231,6 +385,7 @@ function joinChat(){
     username.focus();
 
     return;
+
   }
 
   loginPending = true;
@@ -240,94 +395,124 @@ function joinChat(){
     false
   );
 
-  socket.emit("join", {
-
-    username: name,
-
-    adminPassword:
-      adminPassword.value,
-
-    color:
-      currentColor,
-
-    deviceToken:
-      navigator.userAgent
-
-  });
+  socket.emit(
+    "join",
+    {
+      username: name,
+      adminPassword:
+        adminPassword.value,
+      color:
+        currentColor,
+      deviceToken:
+        navigator.userAgent
+    }
+  );
 
 }
 
-window.joinChat = joinChat;
+window.joinChat =
+  joinChat;
 
-/* LOGIN SUCCESS */
-socket.on("login success", () => {
 
-  currentUser =
-    username.value.trim();
+/* دخول ناجح */
+socket.on(
+  "login success",
+  () => {
 
-  loginPending = false;
+    currentUser =
+      username.value.trim();
 
-  loginPage.style.display = "none";
+    loginPending = false;
 
-  chatPage.style.display = "flex";
+    loginPage.style.display =
+      "none";
 
-  setLoginStatus("");
-
-  messages.innerHTML = "";
-
-  privateMessages.innerHTML = "";
-
-});
-
-/* LOGIN ERROR */
-socket.on("banned", msg => {
-
-  loginPending = false;
-
-  setLoginStatus(
-    msg || "تعذر الدخول",
-    true
-  );
-
-  showToast(
-    msg || "تعذر تنفيذ العملية"
-  );
-
-});
-
-/* CONNECTION */
-socket.on("connect", () => {
-
-  if(!currentUser){
+    chatPage.style.display =
+      "flex";
 
     setLoginStatus("");
 
+    messages.innerHTML =
+      "";
+
+    privateMessages.innerHTML =
+      "";
+
+    keepChatBottom();
+
   }
+);
 
-});
 
-socket.on("disconnect", () => {
+/* =========================
+   BAN / CONNECTION
+========================= */
 
-  if(currentUser){
+socket.on(
+  "banned",
+  msg => {
+
+    loginPending = false;
+
+    setLoginStatus(
+      msg ||
+      "تعذر الدخول",
+      true
+    );
 
     showToast(
-      "⚠️ انقطع الاتصال بالخادم"
+      msg ||
+      "تعذر تنفيذ العملية"
     );
 
   }
+);
 
-});
 
-/* PUBLIC CHAT */
+socket.on(
+  "connect",
+  () => {
+
+    if(!currentUser){
+
+      setLoginStatus("");
+
+    }
+
+  }
+);
+
+
+socket.on(
+  "disconnect",
+  () => {
+
+    if(currentUser){
+
+      showToast(
+        "⚠️ انقطع الاتصال بالخادم"
+      );
+
+    }
+
+  }
+);
+
+
+/* =========================
+   PUBLIC CHAT
+========================= */
+
 function sendMessage(){
 
-  const input =
-    $("messageInput");
+  if(!messageInput)
+    return;
 
   const text =
-    input.value.trim();
+    messageInput.value.trim();
 
-  if(!text) return;
+  if(!text)
+    return;
 
   socket.emit(
     "chat message",
@@ -337,47 +522,83 @@ function sendMessage(){
     }
   );
 
-  input.value = "";
+  messageInput.value =
+    "";
 
   cancelReply();
 
-  input.focus();
+  /*
+    إبقاء التركيز على مربع الكتابة
+    حتى يبقى كيبورد iPhone ظاهرًا
+  */
+  messageInput.focus({
+    preventScroll: true
+  });
+
+  setTimeout(
+    () => {
+
+      if(
+        document.activeElement !==
+        messageInput
+      ){
+
+        messageInput.focus({
+          preventScroll: true
+        });
+
+      }
+
+    },
+    50
+  );
 
 }
 
 window.sendMessage =
   sendMessage;
 
-/* ENTER TO SEND */
-$("messageInput")
-  .addEventListener("keydown", e => {
 
-    if(
-      e.key === "Enter" &&
-      !e.shiftKey
-    ){
+/* إرسال بالـ Enter */
+if(messageInput){
 
-      e.preventDefault();
+  messageInput.addEventListener(
+    "keydown",
+    e => {
 
-      sendMessage();
+      if(
+        e.key === "Enter" &&
+        !e.shiftKey
+      ){
+
+        e.preventDefault();
+
+        sendMessage();
+
+      }
 
     }
+  );
 
-  });
+}
 
-/* RECEIVE PUBLIC MESSAGE */
+
+/* استقبال رسالة عامة */
 socket.on(
   "chat message",
   data => {
 
     const div =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     div.className =
       "message";
 
     if(
-      data.username === currentUser
+      data.username ===
+      currentUser
     ){
 
       div.classList.add(
@@ -386,27 +607,36 @@ socket.on(
 
     }
 
+
     const user =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     user.className =
       "message-user";
 
     user.style.color =
-      data.color || "#ffd700";
+      data.color ||
+      "#ffd700";
 
     user.textContent =
-      data.username || "مستخدم";
+      data.username ||
+      "مستخدم";
 
     user.addEventListener(
       "click",
       () => showUserPopup(data)
     );
 
+
+    /* الرد */
     if(data.reply){
 
       const reply =
-        document.createElement("div");
+        document.createElement(
+          "div"
+        );
 
       reply.className =
         "reply-preview";
@@ -418,24 +648,37 @@ socket.on(
           data.reply.text || ""
         }`;
 
-      div.appendChild(reply);
+      div.appendChild(
+        reply
+      );
 
     }
 
+
     const text =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     text.className =
       "message-text";
 
     text.textContent =
-      data.message || "";
+      data.message ||
+      "";
 
-    div.appendChild(user);
 
-    div.appendChild(text);
+    div.appendChild(
+      user
+    );
 
-    messages.appendChild(div);
+    div.appendChild(
+      text
+    );
+
+    messages.appendChild(
+      div
+    );
 
     messages.scrollTop =
       messages.scrollHeight;
@@ -443,7 +686,11 @@ socket.on(
   }
 );
 
-/* USERS */
+
+/* =========================
+   USERS
+========================= */
+
 socket.on(
   "online users",
   users => {
@@ -458,16 +705,28 @@ socket.on(
   }
 );
 
+
 function renderUsers(){
 
-  usersList.innerHTML = "";
+  usersList.innerHTML =
+    "";
 
-  const list = usersCache.filter(user => user);
+  /*
+    إبقاء قائمة المستخدمين كما هي
+    وتشمل المستخدم الحالي
+  */
+  const list =
+    usersCache.filter(
+      user => user
+    );
+
 
   if(!list.length){
 
     const empty =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     empty.className =
       "empty-users";
@@ -475,54 +734,70 @@ function renderUsers(){
     empty.textContent =
       privateListMode
         ? "لا يوجد مستخدمون للمراسلة الآن"
-        : "لا يوجد مستخدمون آخرون متصلون";
+        : "لا يوجد مستخدمون متصلون";
 
-    usersList.appendChild(empty);
-
-    return;
-  }
-
-  list.forEach(user => {
-
-    const div =
-      document.createElement("div");
-
-    div.className =
-      "user-item";
-
-    div.textContent =
-      `👤 ${user.username}`;
-
-    div.addEventListener(
-      "click",
-      () => {
-
-        if(privateListMode){
-
-          openPrivate(
-            user.id,
-            user.username
-          );
-
-        }else{
-
-          showUserPopup(user);
-
-        }
-
-      }
+    usersList.appendChild(
+      empty
     );
 
-    usersList.appendChild(div);
+    return;
 
-  });
+  }
+
+
+  list.forEach(
+    user => {
+
+      const div =
+        document.createElement(
+          "div"
+        );
+
+      div.className =
+        "user-item";
+
+      div.textContent =
+        `👤 ${user.username}`;
+
+
+      div.addEventListener(
+        "click",
+        () => {
+
+          if(privateListMode){
+
+            openPrivate(
+              user.id,
+              user.username
+            );
+
+          }else{
+
+            showUserPopup(
+              user
+            );
+
+          }
+
+        }
+      );
+
+
+      usersList.appendChild(
+        div
+      );
+
+    }
+  );
 
 }
 
-/* USERS MENU */
+
+/* فتح المستخدمين */
 function openUsers(){
 
-  privateListMode = false;
+  privateListMode =
+    false;
 
   menuTitle.textContent =
     "👥 المتواجدون";
@@ -532,13 +807,12 @@ function openUsers(){
   usersMenu.style.display =
     "flex";
 
-  requestAnimationFrame(() => {
-
-    usersMenu.classList.add(
-      "show"
-    );
-
-  });
+  requestAnimationFrame(
+    () =>
+      usersMenu.classList.add(
+        "show"
+      )
+  );
 
   usersMenu.setAttribute(
     "aria-hidden",
@@ -550,10 +824,12 @@ function openUsers(){
 window.openUsers =
   openUsers;
 
-/* PRIVATE USERS LIST */
+
+/* فتح قائمة الخاص */
 function openPrivateList(){
 
-  privateListMode = true;
+  privateListMode =
+    true;
 
   menuTitle.textContent =
     "💬 اختر شخصًا للمراسلة";
@@ -563,13 +839,12 @@ function openPrivateList(){
   usersMenu.style.display =
     "flex";
 
-  requestAnimationFrame(() => {
-
-    usersMenu.classList.add(
-      "show"
-    );
-
-  });
+  requestAnimationFrame(
+    () =>
+      usersMenu.classList.add(
+        "show"
+      )
+  );
 
   usersMenu.setAttribute(
     "aria-hidden",
@@ -581,7 +856,8 @@ function openPrivateList(){
 window.openPrivateList =
   openPrivateList;
 
-/* CLOSE USERS MENU */
+
+/* إغلاق القائمة */
 function closeUsers(){
 
   usersMenu.classList.remove(
@@ -593,27 +869,34 @@ function closeUsers(){
     "true"
   );
 
-  setTimeout(() => {
+  setTimeout(
+    () => {
 
-    if(
-      !usersMenu.classList.contains(
-        "show"
-      )
-    ){
+      if(
+        !usersMenu.classList.contains(
+          "show"
+        )
+      ){
 
-      usersMenu.style.display =
-        "none";
+        usersMenu.style.display =
+          "none";
 
-    }
+      }
 
-  }, 230);
+    },
+    230
+  );
 
 }
 
 window.closeUsers =
   closeUsers;
 
-/* USER POPUP */
+
+/* =========================
+   USER POPUP
+========================= */
+
 function showUserPopup(user){
 
   closeUsers();
@@ -627,16 +910,22 @@ function showUserPopup(user){
   const buttons =
     $("popupButtons");
 
+
   title.textContent =
     `👤 ${
-      user.username || "مستخدم"
+      user.username ||
+      "مستخدم"
     }`;
 
-  buttons.innerHTML = "";
+  buttons.innerHTML =
+    "";
 
-  /* COPY */
+
+  /* نسخ الاسم */
   const copyBtn =
-    document.createElement("button");
+    document.createElement(
+      "button"
+    );
 
   copyBtn.textContent =
     "📋 نسخ الاسم";
@@ -644,12 +933,17 @@ function showUserPopup(user){
   copyBtn.addEventListener(
     "click",
     () =>
-      copyName(user.username)
+      copyName(
+        user.username
+      )
   );
 
-  /* REPLY */
+
+  /* رد */
   const replyBtn =
-    document.createElement("button");
+    document.createElement(
+      "button"
+    );
 
   replyBtn.textContent =
     "↩️ رد";
@@ -663,9 +957,12 @@ function showUserPopup(user){
       )
   );
 
-  /* PRIVATE */
+
+  /* خاص */
   const privateBtn =
-    document.createElement("button");
+    document.createElement(
+      "button"
+    );
 
   privateBtn.textContent =
     "💬 مرسال خاص";
@@ -678,6 +975,7 @@ function showUserPopup(user){
         user.username
       )
   );
+
 
   buttons.append(
     copyBtn,
@@ -693,18 +991,20 @@ function showUserPopup(user){
 window.showUserPopup =
   showUserPopup;
 
-/* CLOSE USER POPUP */
+
+/* إغلاق popup */
 function closeUserPopup(){
 
-  $("userPopupOverlay")
-    .style.display = "none";
+  $("userPopupOverlay").style.display =
+    "none";
 
 }
 
 window.closeUserPopup =
   closeUserPopup;
 
-/* COPY USERNAME */
+
+/* نسخ الاسم */
 async function copyName(name){
 
   try{
@@ -732,8 +1032,15 @@ async function copyName(name){
 window.copyName =
   copyName;
 
-/* REPLY */
-function replyTo(user, text){
+
+/* =========================
+   REPLY
+========================= */
+
+function replyTo(
+  user,
+  text
+){
 
   closeUsers();
 
@@ -750,17 +1057,18 @@ function replyTo(user, text){
   $("replyText").textContent =
     `↩️ ${user}: ${text}`;
 
-  $("messageInput").focus();
+  messageInput.focus();
 
 }
 
 window.replyTo =
   replyTo;
 
-/* CANCEL REPLY */
+
 function cancelReply(){
 
-  replyData = null;
+  replyData =
+    null;
 
   $("replyBox").style.display =
     "none";
@@ -770,16 +1078,25 @@ function cancelReply(){
 window.cancelReply =
   cancelReply;
 
-/* PRIVATE CHAT */
-function openPrivate(id, name){
 
-  if(!id) return;
+/* =========================
+   PRIVATE CHAT
+========================= */
+
+function openPrivate(
+  id,
+  name
+){
+
+  if(!id)
+    return;
 
   currentPrivateUser =
     id;
 
   currentPrivateName =
-    name || "مستخدم";
+    name ||
+    "مستخدم";
 
   closeUsers();
 
@@ -791,8 +1108,8 @@ function openPrivate(id, name){
   privateMessages.innerHTML =
     "";
 
-  $("privateChatBox")
-    .style.display = "flex";
+  privateChatBox.style.display =
+    "flex";
 
   privateInput.focus();
 
@@ -801,11 +1118,12 @@ function openPrivate(id, name){
 window.openPrivate =
   openPrivate;
 
-/* CLOSE PRIVATE */
+
+/* إغلاق الخاص */
 function closePrivate(){
 
-  $("privateChatBox")
-    .style.display = "none";
+  privateChatBox.style.display =
+    "none";
 
   currentPrivateUser =
     null;
@@ -821,7 +1139,8 @@ function closePrivate(){
 window.closePrivate =
   closePrivate;
 
-/* SEND PRIVATE */
+
+/* إرسال خاص */
 function sendPrivate(){
 
   const text =
@@ -830,26 +1149,44 @@ function sendPrivate(){
   if(
     !text ||
     !currentPrivateUser
-  ) return;
+  ){
+
+    return;
+
+  }
+
 
   socket.emit(
     "private message",
     {
-      to: currentPrivateUser,
-      from: currentUser,
-      message: text
+      to:
+        currentPrivateUser,
+
+      from:
+        currentUser,
+
+      message:
+        text
     }
   );
 
-  // إظهار رسالتك عندك مباشرة
+
+  /*
+    إظهار رسالتك عندك مباشرة
+  */
   const div =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   div.className =
     "private-message me";
 
+
   const name =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   name.className =
     "private-name";
@@ -857,28 +1194,50 @@ function sendPrivate(){
   name.textContent =
     currentUser;
 
+
   const message =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   message.textContent =
     text;
 
-  div.appendChild(name);
-  div.appendChild(message);
 
-  privateMessages.appendChild(div);
+  div.appendChild(
+    name
+  );
+
+  div.appendChild(
+    message
+  );
+
+
+  privateMessages.appendChild(
+    div
+  );
+
 
   privateMessages.scrollTop =
     privateMessages.scrollHeight;
 
-  privateInput.value = "";
+
+  privateInput.value =
+    "";
+
+
+  /* إبقاء الكيبورد */
+  privateInput.focus({
+    preventScroll: true
+  });
 
 }
 
 window.sendPrivate =
   sendPrivate;
 
-/* PRIVATE ENTER */
+
+/* إرسال الخاص بـ Enter */
 privateInput.addEventListener(
   "keydown",
   e => {
@@ -894,41 +1253,66 @@ privateInput.addEventListener(
   }
 );
 
-/* RECEIVE PRIVATE */
+
+/* استقبال الخاص */
 socket.on(
   "private message",
   data => {
 
-    const div =
-      document.createElement("div");
+    /*
+      إذا كانت الرسالة ظهرت محليًا
+      عند المرسل، لا نكررها.
+      أما رسائل الطرف الآخر فنضيفها.
+    */
+    if(
+      data.from === currentUser
+    ){
 
-    div.className =
-      "private-message " +
-      (
-        data.from === currentUser
-          ? "me"
-          : "other"
+      return;
+
+    }
+
+
+    const div =
+      document.createElement(
+        "div"
       );
 
+    div.className =
+      "private-message other";
+
+
     const name =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     name.className =
       "private-name";
 
     name.textContent =
-      data.from || "مستخدم";
+      data.from ||
+      "مستخدم";
+
 
     const text =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     text.textContent =
-      data.message || "";
+      data.message ||
+      "";
 
-    div.append(
-      name,
+
+    div.appendChild(
+      name
+    );
+
+    div.appendChild(
       text
     );
+
 
     privateMessages.appendChild(
       div
@@ -940,21 +1324,52 @@ socket.on(
   }
 );
 
-/* ESC */
+
+/* =========================
+   HIDE DUPLICATE PUBLIC INPUT
+========================= */
+
+publicInputBoxes.forEach(
+  (box, index) => {
+
+    if(
+      index !==
+      publicInputBoxes.length - 1
+    ){
+
+      box.style.display =
+        "none";
+
+    }
+
+  }
+);
+
+
+/* =========================
+   ESC
+========================= */
+
 document.addEventListener(
   "keydown",
   e => {
 
-    if(e.key !== "Escape")
+    if(
+      e.key !==
+      "Escape"
+    ){
+
       return;
+
+    }
 
     closeUserPopup();
 
     closeUsers();
 
     if(
-      $("privateChatBox")
-        .style.display === "flex"
+      privateChatBox.style.display ===
+      "flex"
     ){
 
       closePrivate();
@@ -963,156 +1378,3 @@ document.addEventListener(
 
   }
 );
-/* ===== FINAL iPHONE KEYBOARD POSITION ===== */
-
-function updateKeyboardPosition(){
-
-  if(!window.visualViewport){
-    return;
-  }
-
-  const viewport =
-    window.visualViewport;
-
-  const keyboardBottom =
-    Math.max(
-      0,
-      window.innerHeight -
-      viewport.height -
-      viewport.offsetTop
-    );
-
-  document.documentElement.style.setProperty(
-    "--keyboard-bottom",
-    `${keyboardBottom}px`
-  );
-
-}
-
-updateKeyboardPosition();
-
-if(window.visualViewport){
-
-  window.visualViewport.addEventListener(
-    "resize",
-    updateKeyboardPosition
-  );
-
-  window.visualViewport.addEventListener(
-    "scroll",
-    updateKeyboardPosition
-  );
-
-}
-/* ===== FINAL CHAT + PRIVATE KEYBOARD FIX ===== */
-
-const publicInputBoxes =
-  document.querySelectorAll(".message-box");
-
-const publicInputBox =
-  publicInputBoxes[publicInputBoxes.length - 1];
-
-const privateChatBox =
-  document.getElementById("privateChatBox");
-
-const privateInputBox =
-  document.querySelector(".private-input-box");
-
-
-/* إخفاء أي نسخة زائدة من مربع الكتابة العام */
-
-publicInputBoxes.forEach((box, index) => {
-
-  if(index !== publicInputBoxes.length - 1){
-
-    box.style.display = "none";
-
-  }
-
-});
-
-
-/* فتح الخاص */
-
-function openPrivate(id, name){
-
-  currentPrivateUser = id;
-
-  document.getElementById(
-    "privateTitle"
-  ).innerHTML = `💬 ${name}`;
-
-  privateChatBox.style.display = "flex";
-
-  if(publicInputBox){
-
-    publicInputBox.style.display = "none";
-
-  }
-
-  closeUserPopup();
-
-}
-
-
-/* إغلاق الخاص */
-
-function closePrivate(){
-
-  privateChatBox.style.display = "none";
-
-  if(publicInputBox){
-
-    publicInputBox.style.display = "flex";
-
-  }
-
-}
-
-
-/* وضع مربع الكتابة العام فوق الكيبورد */
-
-function updateChatKeyboard(){
-
-  if(!window.visualViewport){
-
-    return;
-
-  }
-
-  const viewport =
-    window.visualViewport;
-
-  const keyboardHeight =
-    Math.max(
-      0,
-      window.innerHeight -
-      viewport.height -
-      viewport.offsetTop
-    );
-
-  document.documentElement.style.setProperty(
-    "--keyboard-height",
-    `${keyboardHeight}px`
-  );
-
-}
-
-
-/* تحديث عند ظهور/اختفاء الكيبورد */
-
-updateChatKeyboard();
-
-if(window.visualViewport){
-
-  window.visualViewport.addEventListener(
-    "resize",
-    updateChatKeyboard
-  );
-
-  window.visualViewport.addEventListener(
-    "scroll",
-    updateChatKeyboard
-  );
-
-}
