@@ -963,3 +963,44 @@ document.addEventListener(
 
   }
 );
+/* ===== FINAL iPHONE KEYBOARD POSITION ===== */
+
+function updateKeyboardPosition(){
+
+  if(!window.visualViewport){
+    return;
+  }
+
+  const viewport =
+    window.visualViewport;
+
+  const keyboardBottom =
+    Math.max(
+      0,
+      window.innerHeight -
+      viewport.height -
+      viewport.offsetTop
+    );
+
+  document.documentElement.style.setProperty(
+    "--keyboard-bottom",
+    `${keyboardBottom}px`
+  );
+
+}
+
+updateKeyboardPosition();
+
+if(window.visualViewport){
+
+  window.visualViewport.addEventListener(
+    "resize",
+    updateKeyboardPosition
+  );
+
+  window.visualViewport.addEventListener(
+    "scroll",
+    updateKeyboardPosition
+  );
+
+}
