@@ -1305,3 +1305,34 @@ document.addEventListener(
 
   }
 );
+/* IPHONE - PREVENT PAGE FROM MOVING WHEN KEYBOARD OPENS */
+
+function lockPagePosition(){
+  window.scrollTo(0, 0);
+}
+
+window.addEventListener("scroll", lockPagePosition, {
+  passive: true
+});
+
+if(window.visualViewport){
+  window.visualViewport.addEventListener("scroll", lockPagePosition);
+}
+
+document.addEventListener("focusin", function(e){
+  if(
+    e.target &&
+    (
+      e.target.id === "messageInput" ||
+      e.target.id === "privateInput"
+    )
+  ){
+    setTimeout(()=>{
+      window.scrollTo(0, 0);
+    }, 50);
+
+    setTimeout(()=>{
+      window.scrollTo(0, 0);
+    }, 300);
+  }
+});
