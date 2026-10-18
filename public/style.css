@@ -80,3 +80,131 @@ button{cursor:pointer}
   .message{max-width:88%}
   .private-chat{width:100vw;height:var(--app-height);max-height:none;min-height:0;left:0;top:0;transform:none;border-radius:0;border-left:0;border-right:0}
 }
+/* ===== iPHONE KEYBOARD FIX ===== */
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  height: var(--app-height, 100dvh);
+}
+
+.chat-page {
+  height: var(--app-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.message-box {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  padding-bottom: calc(
+    10px + env(safe-area-inset-bottom)
+  );
+}
+
+.message-box input {
+  min-width: 0;
+  font-size: 16px;
+}
+
+/* ===== PRIVATE CHAT ===== */
+
+.private-chat {
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: var(--app-height, 100dvh);
+  max-height: var(--app-height, 100dvh);
+
+  transform: none;
+  margin: 0;
+
+  border-radius: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
+.private-header {
+  flex: 0 0 60px;
+  min-height: 60px;
+}
+
+.private-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.private-input-box {
+  flex: 0 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 10px;
+  padding-bottom: calc(
+    10px + env(safe-area-inset-bottom)
+  );
+}
+
+.private-input-box input {
+  min-width: 0;
+  font-size: 16px;
+}
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+
+  .chat-page {
+    height: var(--app-height, 100dvh);
+  }
+
+  .message-box {
+    padding: 8px;
+    padding-bottom: calc(
+      8px + env(safe-area-inset-bottom)
+    );
+  }
+
+  .private-chat {
+    width: 100%;
+    height: var(--app-height, 100dvh);
+    max-height: var(--app-height, 100dvh);
+  }
+
+  .private-input-box {
+    padding: 8px;
+    padding-bottom: calc(
+      8px + env(safe-area-inset-bottom)
+    );
+  }
+
+}
+
