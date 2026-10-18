@@ -207,4 +207,41 @@ body {
   }
 
 }
+/* ===== FINAL iPHONE KEYBOARD FIX ===== */
+
+@media (max-width: 700px) {
+
+  .chat-page {
+    position: relative;
+    height: var(--app-height, 100dvh);
+    overflow: hidden;
+  }
+
+  .messages {
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 90px;
+  }
+
+  .message-box {
+    position: fixed;
+    left: 0;
+    bottom: var(--keyboard-bottom, 0px);
+
+    width: 100%;
+    z-index: 10000;
+
+    box-sizing: border-box;
+
+    padding: 8px;
+
+    background: #171717;
+    border-top: 1px solid #2a2a2a;
+  }
+
+  .message-box input {
+    font-size: 16px;
+  }
+
+}
 
