@@ -387,12 +387,7 @@ function renderUsers(){
 
   usersList.innerHTML = "";
 
-  const list =
-    usersCache.filter(
-      user =>
-        user &&
-        user.username !== currentUser
-    );
+  const list = usersCache.filter(user => user);
 
   if(!list.length){
 
