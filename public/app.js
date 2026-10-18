@@ -57,6 +57,75 @@ if(window.visualViewport){
   );
 
 }
+/* KEEP CHAT AT BOTTOM WHEN IPHONE KEYBOARD OPENS */
+
+function keepChatBottom(){
+
+  requestAnimationFrame(() => {
+
+    if(messages){
+      messages.scrollTop =
+        messages.scrollHeight;
+    }
+
+    if(privateMessages){
+      privateMessages.scrollTop =
+        privateMessages.scrollHeight;
+    }
+
+  });
+
+}
+
+if(privateInput){
+
+  privateInput.addEventListener(
+    "focus",
+    () => {
+      setTimeout(
+        keepChatBottom,
+        100
+      );
+    }
+  );
+
+}
+
+if($("messageInput")){
+
+  $("messageInput").addEventListener(
+    "focus",
+    () => {
+      setTimeout(
+        keepChatBottom,
+        100
+      );
+    }
+  );
+
+}
+
+if(window.visualViewport){
+
+  window.visualViewport.addEventListener(
+    "resize",
+    () => {
+
+      if(
+        document.activeElement ===
+          $("messageInput") ||
+        document.activeElement ===
+          privateInput
+      ){
+
+        keepChatBottom();
+
+      }
+
+    }
+  );
+
+}
 
 /* HELPERS */
 function escapeHtml(value){
