@@ -766,8 +766,37 @@ function sendPrivate(){
     }
   );
 
-  privateInput.value =
-    "";
+  // إظهار رسالتك عندك مباشرة
+  const div =
+    document.createElement("div");
+
+  div.className =
+    "private-message me";
+
+  const name =
+    document.createElement("div");
+
+  name.className =
+    "private-name";
+
+  name.textContent =
+    currentUser;
+
+  const message =
+    document.createElement("div");
+
+  message.textContent =
+    text;
+
+  div.appendChild(name);
+  div.appendChild(message);
+
+  privateMessages.appendChild(div);
+
+  privateMessages.scrollTop =
+    privateMessages.scrollHeight;
+
+  privateInput.value = "";
 
 }
 
