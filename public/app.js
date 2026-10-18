@@ -1004,3 +1004,115 @@ if(window.visualViewport){
   );
 
 }
+/* ===== FINAL CHAT + PRIVATE KEYBOARD FIX ===== */
+
+const publicInputBoxes =
+  document.querySelectorAll(".message-box");
+
+const publicInputBox =
+  publicInputBoxes[publicInputBoxes.length - 1];
+
+const privateChatBox =
+  document.getElementById("privateChatBox");
+
+const privateInputBox =
+  document.querySelector(".private-input-box");
+
+
+/* إخفاء أي نسخة زائدة من مربع الكتابة العام */
+
+publicInputBoxes.forEach((box, index) => {
+
+  if(index !== publicInputBoxes.length - 1){
+
+    box.style.display = "none";
+
+  }
+
+});
+
+
+/* فتح الخاص */
+
+function openPrivate(id, name){
+
+  currentPrivateUser = id;
+
+  document.getElementById(
+    "privateTitle"
+  ).innerHTML = `💬 ${name}`;
+
+  privateChatBox.style.display = "flex";
+
+  if(publicInputBox){
+
+    publicInputBox.style.display = "none";
+
+  }
+
+  closeUserPopup();
+
+}
+
+
+/* إغلاق الخاص */
+
+function closePrivate(){
+
+  privateChatBox.style.display = "none";
+
+  if(publicInputBox){
+
+    publicInputBox.style.display = "flex";
+
+  }
+
+}
+
+
+/* وضع مربع الكتابة العام فوق الكيبورد */
+
+function updateChatKeyboard(){
+
+  if(!window.visualViewport){
+
+    return;
+
+  }
+
+  const viewport =
+    window.visualViewport;
+
+  const keyboardHeight =
+    Math.max(
+      0,
+      window.innerHeight -
+      viewport.height -
+      viewport.offsetTop
+    );
+
+  document.documentElement.style.setProperty(
+    "--keyboard-height",
+    `${keyboardHeight}px`
+  );
+
+}
+
+
+/* تحديث عند ظهور/اختفاء الكيبورد */
+
+updateChatKeyboard();
+
+if(window.visualViewport){
+
+  window.visualViewport.addEventListener(
+    "resize",
+    updateChatKeyboard
+  );
+
+  window.visualViewport.addEventListener(
+    "scroll",
+    updateChatKeyboard
+  );
+
+}
