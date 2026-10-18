@@ -12,200 +12,84 @@ let toastTimer = null;
 
 const $ = id => document.getElementById(id);
 
-
-/* =========================
-   ELEMENTS
-========================= */
-
 const loginPage = $("loginPage");
 const chatPage = $("chatPage");
 const username = $("username");
 const adminPassword = $("adminPassword");
-
 const messages = $("messages");
-const messageInput = $("messageInput");
-
 const usersList = $("usersList");
 const usersMenu = $("usersMenu");
 const menuTitle = $("menuTitle");
 const loginStatus = $("loginStatus");
-
-const privateChatBox = $("privateChatBox");
 const privateMessages = $("privateMessages");
 const privateInput = $("privateInput");
 
-const publicInputBoxes =
-  document.querySelectorAll(".message-box");
 
-const publicInputBox =
-  publicInputBoxes.length
-    ? publicInputBoxes[publicInputBoxes.length - 1]
-    : null;
+/* =========================================================
+   IPHONE KEYBOARD / VIEWPORT
+========================================================= */
 
-
-/* =========================
-   IPHONE VIEWPORT / KEYBOARD
-========================= */
-
-function updateChatKeyboard(){
+function updateChatViewport(){
 
   const viewport =
     window.visualViewport;
 
-  if(!viewport){
-    return;
-  }
+  const height =
+    viewport
+      ? viewport.height
+      : window.innerHeight;
 
-  const viewportHeight =
-    viewport.height;
-
-  /* ارتفاع التطبيق الحقيقي */
   document.documentElement.style.setProperty(
     "--app-height",
-    `${viewportHeight}px`
+    `${height}px`
   );
 
-  /*
-    حساب ارتفاع الكيبورد
-    عندما يكون الكيبورد مغلقًا = 0
-    عندما يكون مفتوحًا = ارتفاع الكيبورد
-  */
-  const keyboardHeight =
-    Math.max(
-      0,
-      window.innerHeight -
-      viewport.height -
-      viewport.offsetTop
+  if(viewport){
+
+    const keyboardHeight =
+      Math.max(
+        0,
+        window.innerHeight -
+        viewport.height -
+        viewport.offsetTop
+      );
+
+    document.documentElement.style.setProperty(
+      "--keyboard-height",
+      `${keyboardHeight}px`
     );
 
-  document.documentElement.style.setProperty(
-    "--keyboard-height",
-    `${keyboardHeight}px`
-  );
+  }else{
+
+    document.documentElement.style.setProperty(
+      "--keyboard-height",
+      "0px"
+    );
+
+  }
 
 }
 
+updateChatViewport();
 
-/* تشغيل أول مرة */
-updateChatKeyboard();
-
-
-/* عند تغيير حجم الشاشة */
 window.addEventListener(
   "resize",
-  updateChatKeyboard
+  updateChatViewport
 );
 
-
-/* iPhone visual viewport */
 if(window.visualViewport){
 
   window.visualViewport.addEventListener(
     "resize",
-    updateChatKeyboard
-  );
-
-  window.visualViewport.addEventListener(
-    "scroll",
-    updateChatKeyboard
+    updateChatViewport
   );
 
 }
 
 
-/* =========================
-   KEEP CHAT AT BOTTOM
-========================= */
-
-function keepChatBottom(){
-
-  requestAnimationFrame(() => {
-
-    if(messages){
-
-      messages.scrollTop =
-        messages.scrollHeight;
-
-    }
-
-    if(privateMessages){
-
-      privateMessages.scrollTop =
-        privateMessages.scrollHeight;
-
-    }
-
-  });
-
-}
-
-
-/* =========================
-   KEYBOARD FOCUS
-========================= */
-
-if(messageInput){
-
-  messageInput.addEventListener(
-    "focus",
-    () => {
-
-      setTimeout(
-        keepChatBottom,
-        100
-      );
-
-    }
-  );
-
-}
-
-
-if(privateInput){
-
-  privateInput.addEventListener(
-    "focus",
-    () => {
-
-      setTimeout(
-        keepChatBottom,
-        100
-      );
-
-    }
-  );
-
-}
-
-
-/* عند تغير حجم الشاشة والكيبورد مفتوح */
-if(window.visualViewport){
-
-  window.visualViewport.addEventListener(
-    "resize",
-    () => {
-
-      if(
-        document.activeElement === messageInput ||
-        document.activeElement === privateInput
-      ){
-
-        setTimeout(
-          keepChatBottom,
-          50
-        );
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================
+/* =========================================================
    HELPERS
-========================= */
+========================================================= */
 
 function escapeHtml(value){
 
@@ -221,39 +105,26 @@ function escapeHtml(value){
 
 function showToast(text){
 
-  const toast =
-    $("toast");
+  const toast = $("toast");
 
   if(!toast) return;
 
-  toast.textContent =
-    text;
+  toast.textContent = text;
 
-  toast.classList.add(
-    "show"
-  );
+  toast.classList.add("show");
 
-  clearTimeout(
-    toastTimer
-  );
+  clearTimeout(toastTimer);
 
   toastTimer =
     setTimeout(
-      () => {
-        toast.classList.remove(
-          "show"
-        );
-      },
+      () => toast.classList.remove("show"),
       2200
     );
 
 }
 
 
-function setLoginStatus(
-  text,
-  error = false
-){
+function setLoginStatus(text, error = false){
 
   if(!loginStatus) return;
 
@@ -268,42 +139,37 @@ function setLoginStatus(
 }
 
 
-/* =========================
-   ADMIN PASSWORD
-========================= */
+/* =========================================================
+   ADMIN PASSWORD FIELD
+========================================================= */
 
-if(username){
+username.addEventListener(
+  "input",
+  () => {
 
-  username.addEventListener(
-    "input",
-    () => {
+    const name =
+      username.value.trim();
 
-      const name =
-        username.value.trim();
+    setLoginStatus("");
 
-      setLoginStatus("");
+    if(!name){
 
-      if(!name){
+      adminPassword.style.display =
+        "none";
 
-        adminPassword.style.display =
-          "none";
+      adminPassword.value = "";
 
-        adminPassword.value =
-          "";
-
-        return;
-
-      }
-
-      socket.emit(
-        "check admin",
-        name
-      );
+      return;
 
     }
-  );
 
-}
+    socket.emit(
+      "check admin",
+      name
+    );
+
+  }
+);
 
 
 socket.on(
@@ -320,8 +186,7 @@ socket.on(
       adminPassword.style.display =
         "none";
 
-      adminPassword.value =
-        "";
+      adminPassword.value = "";
 
     }
 
@@ -329,9 +194,9 @@ socket.on(
 );
 
 
-/* =========================
+/* =========================================================
    COLORS
-========================= */
+========================================================= */
 
 document
   .querySelectorAll(".color-option")
@@ -363,14 +228,13 @@ document
   });
 
 
-/* =========================
+/* =========================================================
    LOGIN
-========================= */
+========================================================= */
 
 function joinChat(){
 
-  if(loginPending)
-    return;
+  if(loginPending) return;
 
   const name =
     username.value.trim();
@@ -401,8 +265,7 @@ function joinChat(){
       username: name,
       adminPassword:
         adminPassword.value,
-      color:
-        currentColor,
+      color: currentColor,
       deviceToken:
         navigator.userAgent
     }
@@ -414,7 +277,6 @@ window.joinChat =
   joinChat;
 
 
-/* دخول ناجح */
 socket.on(
   "login success",
   () => {
@@ -432,21 +294,13 @@ socket.on(
 
     setLoginStatus("");
 
-    messages.innerHTML =
-      "";
+    messages.innerHTML = "";
 
-    privateMessages.innerHTML =
-      "";
-
-    keepChatBottom();
+    privateMessages.innerHTML = "";
 
   }
 );
 
-
-/* =========================
-   BAN / CONNECTION
-========================= */
 
 socket.on(
   "banned",
@@ -455,14 +309,12 @@ socket.on(
     loginPending = false;
 
     setLoginStatus(
-      msg ||
-      "تعذر الدخول",
+      msg || "تعذر الدخول",
       true
     );
 
     showToast(
-      msg ||
-      "تعذر تنفيذ العملية"
+      msg || "تعذر تنفيذ العملية"
     );
 
   }
@@ -499,20 +351,92 @@ socket.on(
 );
 
 
-/* =========================
+/* =========================================================
+   PUBLIC INPUT
+   احتفظ بمربع كتابة عام واحد فقط
+========================================================= */
+
+const publicInputBoxes =
+  document.querySelectorAll(
+    ".message-box"
+  );
+
+const publicInputBox =
+  publicInputBoxes[0] || null;
+
+
+/*
+  إذا كان HTML يحتوي أكثر من
+  message-box نحذف النسخ الزائدة
+*/
+
+publicInputBoxes.forEach(
+  (box, index) => {
+
+    if(index > 0){
+
+      box.remove();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   KEYBOARD FOCUS
+========================================================= */
+
+const messageInput =
+  $("messageInput");
+
+
+if(messageInput){
+
+  messageInput.addEventListener(
+    "focus",
+    () => {
+
+      setTimeout(
+        updateChatViewport,
+        50
+      );
+
+    }
+  );
+
+}
+
+
+if(privateInput){
+
+  privateInput.addEventListener(
+    "focus",
+    () => {
+
+      setTimeout(
+        updateChatViewport,
+        50
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
    PUBLIC CHAT
-========================= */
+========================================================= */
 
 function sendMessage(){
 
-  if(!messageInput)
-    return;
+  if(!messageInput) return;
 
   const text =
     messageInput.value.trim();
 
-  if(!text)
-    return;
+  if(!text) return;
 
   socket.emit(
     "chat message",
@@ -522,35 +446,22 @@ function sendMessage(){
     }
   );
 
-  messageInput.value =
-    "";
+  messageInput.value = "";
 
   cancelReply();
 
   /*
-    إبقاء التركيز على مربع الكتابة
-    حتى يبقى كيبورد iPhone ظاهرًا
+    إبقاء الكيبورد مفتوح
   */
-  messageInput.focus({
-    preventScroll: true
-  });
 
-  setTimeout(
+  requestAnimationFrame(
     () => {
 
-      if(
-        document.activeElement !==
-        messageInput
-      ){
+      messageInput.focus();
 
-        messageInput.focus({
-          preventScroll: true
-        });
+      updateChatViewport();
 
-      }
-
-    },
-    50
+    }
   );
 
 }
@@ -559,7 +470,6 @@ window.sendMessage =
   sendMessage;
 
 
-/* إرسال بالـ Enter */
 if(messageInput){
 
   messageInput.addEventListener(
@@ -583,7 +493,10 @@ if(messageInput){
 }
 
 
-/* استقبال رسالة عامة */
+/* =========================================================
+   RECEIVE PUBLIC MESSAGE
+========================================================= */
+
 socket.on(
   "chat message",
   data => {
@@ -624,13 +537,14 @@ socket.on(
       data.username ||
       "مستخدم";
 
+
     user.addEventListener(
       "click",
-      () => showUserPopup(data)
+      () =>
+        showUserPopup(data)
     );
 
 
-    /* الرد */
     if(data.reply){
 
       const reply =
@@ -664,8 +578,7 @@ socket.on(
       "message-text";
 
     text.textContent =
-      data.message ||
-      "";
+      data.message || "";
 
 
     div.appendChild(
@@ -680,6 +593,7 @@ socket.on(
       div
     );
 
+
     messages.scrollTop =
       messages.scrollHeight;
 
@@ -687,9 +601,9 @@ socket.on(
 );
 
 
-/* =========================
+/* =========================================================
    USERS
-========================= */
+========================================================= */
 
 socket.on(
   "online users",
@@ -708,13 +622,14 @@ socket.on(
 
 function renderUsers(){
 
-  usersList.innerHTML =
-    "";
+  usersList.innerHTML = "";
 
   /*
-    إبقاء قائمة المستخدمين كما هي
-    وتشمل المستخدم الحالي
+    مهم:
+    لا نحذف المستخدم الحالي.
+    هذا هو الإصلاح الذي كان يعمل عندك.
   */
+
   const list =
     usersCache.filter(
       user => user
@@ -734,7 +649,7 @@ function renderUsers(){
     empty.textContent =
       privateListMode
         ? "لا يوجد مستخدمون للمراسلة الآن"
-        : "لا يوجد مستخدمون متصلون";
+        : "لا يوجد مستخدمون آخرون متصلون";
 
     usersList.appendChild(
       empty
@@ -793,7 +708,6 @@ function renderUsers(){
 }
 
 
-/* فتح المستخدمين */
 function openUsers(){
 
   privateListMode =
@@ -825,7 +739,6 @@ window.openUsers =
   openUsers;
 
 
-/* فتح قائمة الخاص */
 function openPrivateList(){
 
   privateListMode =
@@ -857,7 +770,6 @@ window.openPrivateList =
   openPrivateList;
 
 
-/* إغلاق القائمة */
 function closeUsers(){
 
   usersMenu.classList.remove(
@@ -893,9 +805,9 @@ window.closeUsers =
   closeUsers;
 
 
-/* =========================
+/* =========================================================
    USER POPUP
-========================= */
+========================================================= */
 
 function showUserPopup(user){
 
@@ -917,11 +829,10 @@ function showUserPopup(user){
       "مستخدم"
     }`;
 
-  buttons.innerHTML =
-    "";
+
+  buttons.innerHTML = "";
 
 
-  /* نسخ الاسم */
   const copyBtn =
     document.createElement(
       "button"
@@ -939,7 +850,6 @@ function showUserPopup(user){
   );
 
 
-  /* رد */
   const replyBtn =
     document.createElement(
       "button"
@@ -958,7 +868,6 @@ function showUserPopup(user){
   );
 
 
-  /* خاص */
   const privateBtn =
     document.createElement(
       "button"
@@ -983,6 +892,7 @@ function showUserPopup(user){
     privateBtn
   );
 
+
   overlay.style.display =
     "flex";
 
@@ -992,10 +902,10 @@ window.showUserPopup =
   showUserPopup;
 
 
-/* إغلاق popup */
 function closeUserPopup(){
 
-  $("userPopupOverlay").style.display =
+  $("userPopupOverlay")
+    .style.display =
     "none";
 
 }
@@ -1004,14 +914,14 @@ window.closeUserPopup =
   closeUserPopup;
 
 
-/* نسخ الاسم */
 async function copyName(name){
 
   try{
 
-    await navigator.clipboard.writeText(
-      name || ""
-    );
+    await navigator.clipboard
+      .writeText(
+        name || ""
+      );
 
     showToast(
       "✅ تم نسخ الاسم"
@@ -1033,9 +943,9 @@ window.copyName =
   copyName;
 
 
-/* =========================
+/* =========================================================
    REPLY
-========================= */
+========================================================= */
 
 function replyTo(
   user,
@@ -1051,11 +961,16 @@ function replyTo(
     text
   };
 
-  $("replyBox").style.display =
+
+  $("replyBox")
+    .style.display =
     "flex";
 
-  $("replyText").textContent =
+
+  $("replyText")
+    .textContent =
     `↩️ ${user}: ${text}`;
+
 
   messageInput.focus();
 
@@ -1067,10 +982,10 @@ window.replyTo =
 
 function cancelReply(){
 
-  replyData =
-    null;
+  replyData = null;
 
-  $("replyBox").style.display =
+  $("replyBox")
+    .style.display =
     "none";
 
 }
@@ -1079,17 +994,17 @@ window.cancelReply =
   cancelReply;
 
 
-/* =========================
+/* =========================================================
    PRIVATE CHAT
-========================= */
+========================================================= */
 
 function openPrivate(
   id,
   name
 ){
 
-  if(!id)
-    return;
+  if(!id) return;
+
 
   currentPrivateUser =
     id;
@@ -1098,20 +1013,43 @@ function openPrivate(
     name ||
     "مستخدم";
 
+
   closeUsers();
 
   closeUserPopup();
 
-  $("privateTitle").textContent =
+
+  $("privateTitle")
+    .textContent =
     `💬 ${currentPrivateName}`;
+
+
+  /*
+    تنظيف نافذة الخاص عند فتح شخص جديد
+  */
 
   privateMessages.innerHTML =
     "";
 
-  privateChatBox.style.display =
+
+  $("privateChatBox")
+    .style.display =
     "flex";
 
-  privateInput.focus();
+
+  /*
+    التركيز على خانة الخاص
+  */
+
+  requestAnimationFrame(
+    () => {
+
+      privateInput.focus();
+
+      updateChatViewport();
+
+    }
+  );
 
 }
 
@@ -1119,17 +1057,19 @@ window.openPrivate =
   openPrivate;
 
 
-/* إغلاق الخاص */
 function closePrivate(){
 
-  privateChatBox.style.display =
+  $("privateChatBox")
+    .style.display =
     "none";
+
 
   currentPrivateUser =
     null;
 
   currentPrivateName =
     null;
+
 
   privateInput.value =
     "";
@@ -1140,11 +1080,15 @@ window.closePrivate =
   closePrivate;
 
 
-/* إرسال خاص */
+/* =========================================================
+   SEND PRIVATE
+========================================================= */
+
 function sendPrivate(){
 
   const text =
     privateInput.value.trim();
+
 
   if(
     !text ||
@@ -1159,14 +1103,9 @@ function sendPrivate(){
   socket.emit(
     "private message",
     {
-      to:
-        currentPrivateUser,
-
-      from:
-        currentUser,
-
-      message:
-        text
+      to: currentPrivateUser,
+      from: currentUser,
+      message: text
     }
   );
 
@@ -1174,6 +1113,7 @@ function sendPrivate(){
   /*
     إظهار رسالتك عندك مباشرة
   */
+
   const div =
     document.createElement(
       "div"
@@ -1192,7 +1132,8 @@ function sendPrivate(){
     "private-name";
 
   name.textContent =
-    currentUser;
+    currentUser ||
+    "أنت";
 
 
   const message =
@@ -1204,11 +1145,8 @@ function sendPrivate(){
     text;
 
 
-  div.appendChild(
-    name
-  );
-
-  div.appendChild(
+  div.append(
+    name,
     message
   );
 
@@ -1222,14 +1160,26 @@ function sendPrivate(){
     privateMessages.scrollHeight;
 
 
-  privateInput.value =
-    "";
+  /*
+    إفراغ الحقل
+    مع إبقاء الكيبورد مفتوح
+  */
+
+  privateInput.value = "";
 
 
-  /* إبقاء الكيبورد */
-  privateInput.focus({
-    preventScroll: true
-  });
+  requestAnimationFrame(
+    () => {
+
+      privateInput.focus();
+
+      updateChatViewport();
+
+      privateMessages.scrollTop =
+        privateMessages.scrollHeight;
+
+    }
+  );
 
 }
 
@@ -1237,49 +1187,47 @@ window.sendPrivate =
   sendPrivate;
 
 
-/* إرسال الخاص بـ Enter */
-privateInput.addEventListener(
-  "keydown",
-  e => {
+if(privateInput){
 
-    if(e.key === "Enter"){
+  privateInput.addEventListener(
+    "keydown",
+    e => {
 
-      e.preventDefault();
+      if(e.key === "Enter"){
 
-      sendPrivate();
+        e.preventDefault();
+
+        sendPrivate();
+
+      }
 
     }
+  );
 
-  }
-);
+}
 
 
-/* استقبال الخاص */
+/* =========================================================
+   RECEIVE PRIVATE MESSAGE
+========================================================= */
+
 socket.on(
   "private message",
   data => {
-
-    /*
-      إذا كانت الرسالة ظهرت محليًا
-      عند المرسل، لا نكررها.
-      أما رسائل الطرف الآخر فنضيفها.
-    */
-    if(
-      data.from === currentUser
-    ){
-
-      return;
-
-    }
-
 
     const div =
       document.createElement(
         "div"
       );
 
+
     div.className =
-      "private-message other";
+      "private-message " +
+      (
+        data.from === currentUser
+          ? "me"
+          : "other"
+      );
 
 
     const name =
@@ -1305,11 +1253,8 @@ socket.on(
       "";
 
 
-    div.appendChild(
-      name
-    );
-
-    div.appendChild(
+    div.append(
+      name,
       text
     );
 
@@ -1318,6 +1263,7 @@ socket.on(
       div
     );
 
+
     privateMessages.scrollTop =
       privateMessages.scrollHeight;
 
@@ -1325,51 +1271,26 @@ socket.on(
 );
 
 
-/* =========================
-   HIDE DUPLICATE PUBLIC INPUT
-========================= */
-
-publicInputBoxes.forEach(
-  (box, index) => {
-
-    if(
-      index !==
-      publicInputBoxes.length - 1
-    ){
-
-      box.style.display =
-        "none";
-
-    }
-
-  }
-);
-
-
-/* =========================
+/* =========================================================
    ESC
-========================= */
+========================================================= */
 
 document.addEventListener(
   "keydown",
   e => {
 
-    if(
-      e.key !==
-      "Escape"
-    ){
-
+    if(e.key !== "Escape")
       return;
 
-    }
 
     closeUserPopup();
 
     closeUsers();
 
+
     if(
-      privateChatBox.style.display ===
-      "flex"
+      $("privateChatBox")
+        .style.display === "flex"
     ){
 
       closePrivate();
