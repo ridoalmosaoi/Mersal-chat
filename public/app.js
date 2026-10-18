@@ -24,11 +24,17 @@ const loginStatus = $("loginStatus");
 const privateMessages = $("privateMessages");
 const privateInput = $("privateInput");
 
-/* MOBILE VIEWPORT */
+/* MOBILE KEYBOARD / VIEWPORT */
+
 function updateViewportHeight(){
-  const height = window.visualViewport
-    ? window.visualViewport.height
-    : window.innerHeight;
+
+  const viewport =
+    window.visualViewport;
+
+  const height =
+    viewport
+      ? viewport.height
+      : window.innerHeight;
 
   document.documentElement.style.setProperty(
     "--app-height",
@@ -38,18 +44,18 @@ function updateViewportHeight(){
 
 updateViewportHeight();
 
-window.addEventListener("resize", updateViewportHeight);
+window.addEventListener(
+  "resize",
+  updateViewportHeight
+);
 
 if(window.visualViewport){
+
   window.visualViewport.addEventListener(
     "resize",
     updateViewportHeight
   );
 
-  window.visualViewport.addEventListener(
-    "scroll",
-    updateViewportHeight
-  );
 }
 
 /* HELPERS */
