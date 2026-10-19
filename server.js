@@ -1,1154 +1,2244 @@
-const express=require("express");
-const http=require("http");
-const socketIO=require("socket.io");
-const fs=require("fs");
-const path=require("path");
+const express = require("express");
+const http = require("http");
+const socketIO = require("socket.io");
+const fs = require("fs");
+const path = require("path");
 
-const app=express();
-const server=http.createServer(app);
+const app = express();
 
-const io=socketIO(server,{
-    cors:{origin:"*"}
+const server = http.createServer(app);
+
+const io = socketIO(server, {
+    cors: {
+        origin: "*"
+    }
 });
 
 app.use(
-express.static(
-path.join(__dirname,"public")
-)
+    express.static(
+        path.join(__dirname, "public")
+    )
 );
 
-/* DATA */
 
-let users=[];
+/* =========================================================
+   DATA
+========================================================= */
 
-let chatLocked=false;
-let privateLocked=false;
-let maintenanceMode=false;
-let starsMode=false;
+let users = [];
 
-let admins=[];
-let bannedUsers=[];
-let mutedUsers=[];
-let deviceBannedUsers=[];
-let stars=[];
-let logs=[];
+let chatLocked = false;
+let privateLocked = false;
+let maintenanceMode = false;
+let starsMode = false;
 
-/* FILE SYSTEM */
+let admins = [];
+let bannedUsers = [];
+let mutedUsers = [];
+let deviceBannedUsers = [];
+let stars = [];
+let logs = [];
 
-function loadFile(file,def=[]){
+/*
+   ROOMS
+   كل غرفة تكون بهذا الشكل:
 
-try{
+   {
+       id: "room_xxxxx",
+       name: "اسم الغرفة",
+       description: "وصف الغرفة",
+       enabled: true
+   }
+*/
 
-if(!fs.existsSync(file)){
+let rooms = [];
 
-fs.writeFileSync(
-file,
-JSON.stringify(
-def,
-null,
-2
-)
-);
 
-return def;
+/* =========================================================
+   FILE SYSTEM
+========================================================= */
 
+function loadFile(file, def = []) {
+
+    try {
+
+        if (!fs.existsSync(file)) {
+
+            fs.writeFileSync(
+                file,
+                JSON.stringify(
+                    def,
+                    null,
+                    2
+                )
+            );
+
+            return def;
+        }
+
+        return JSON.parse(
+            fs.readFileSync(
+                file,
+                "utf8"
+            )
+        );
+
+    } catch (error) {
+
+        console.log(
+            "File load error:",
+            file,
+            error
+        );
+
+        return def;
+    }
 }
 
-return JSON.parse(
-fs.readFileSync(
-file,
-"utf8"
-)
-);
 
-}catch{
+function saveFile(file, data) {
 
-return def;
+    try {
 
+        fs.writeFileSync(
+            file,
+            JSON.stringify(
+                data,
+                null,
+                2
+            )
+        );
+
+    } catch (error) {
+
+        console.log(
+            "File save error:",
+            file,
+            error
+        );
+    }
 }
 
+
+/* =========================================================
+   LOAD DATA
+========================================================= */
+
+admins =
+    loadFile(
+        "admins.json"
+    );
+
+stars =
+    loadFile(
+        "stars.json"
+    );
+
+bannedUsers =
+    loadFile(
+        "banned.json"
+    );
+
+mutedUsers =
+    loadFile(
+        "muted.json"
+    );
+
+deviceBannedUsers =
+    loadFile(
+        "deviceBanned.json"
+    );
+
+logs =
+    loadFile(
+        "logs.json"
+    );
+
+rooms =
+    loadFile(
+        "rooms.json"
+    );
+
+
+/* =========================================================
+   ROOM NORMALIZATION
+========================================================= */
+
+if (!Array.isArray(rooms)) {
+    rooms = [];
 }
 
-function saveFile(
-file,
-data
-){
+rooms = rooms
+    .filter(room => room && room.id)
+    .map(room => {
 
-fs.writeFileSync(
+        return {
+            id: String(room.id),
+            name: String(room.name || "غرفة"),
+            description: String(
+                room.description || ""
+            ),
+            enabled:
+                room.enabled !== false
+        };
 
-file,
-
-JSON.stringify(
-data,
-null,
-2
-)
-
-);
-
-}
-
-/* LOAD */
-
-admins=
-loadFile(
-"admins.json"
-);
-stars=
-loadFile(
-"stars.json"
-);
-
-bannedUsers=
-loadFile(
-"banned.json"
-);
-
-mutedUsers=
-loadFile(
-"muted.json"
-);
-
-deviceBannedUsers=
-loadFile(
-"deviceBanned.json"
-);
-
-logs=
-loadFile(
-"logs.json"
-);
-
-/* LOG */
-
-function addLog(message){
-
-const log={
-
-time:
-new Date()
-.toLocaleString(),
-
-message
-
-};
-
-logs.unshift(
-log
-);
+    });
 
 saveFile(
-"logs.json",
-logs
+    "rooms.json",
+    rooms
 );
 
-io.emit(
-"new log",
-log
-);
 
-console.log(
-message
-);
+/* =========================================================
+   LOG
+========================================================= */
 
+function addLog(message) {
+
+    const log = {
+
+        time:
+            new Date()
+                .toLocaleString(),
+
+        message
+
+    };
+
+    logs.unshift(log);
+
+    /*
+       لا نخلي ملف السجلات يكبر إلى ما لا نهاية
+    */
+
+    if (logs.length > 1000) {
+        logs = logs.slice(0, 1000);
+    }
+
+    saveFile(
+        "logs.json",
+        logs
+    );
+
+    io.emit(
+        "new log",
+        log
+    );
+
+    console.log(message);
 }
-/* ADMINS API */
-app.get(
-"/banned.json",
-(req,res)=>{
 
-res.json(
-bannedUsers
+
+/* =========================================================
+   ROOM HELPERS
+========================================================= */
+
+function getRoom(roomId) {
+
+    return rooms.find(
+        room =>
+            room.id === String(roomId)
+    );
+}
+
+
+function sendRooms(target) {
+
+    const data =
+        rooms.map(room => ({
+            id: room.id,
+            name: room.name,
+            description: room.description,
+            enabled: room.enabled
+        }));
+
+    target.emit(
+        "rooms list",
+        data
+    );
+}
+
+
+function generateRoomId() {
+
+    return (
+        "room_" +
+        Date.now() +
+        "_" +
+        Math.random()
+            .toString(36)
+            .substring(2, 8)
+    );
+}
+
+
+/* =========================================================
+   ADMIN API
+========================================================= */
+
+app.get(
+    "/banned.json",
+    (req, res) => {
+
+        res.json(
+            bannedUsers
+        );
+
+    }
 );
 
-});
 
 app.get(
-"/muted.json",
-(req,res)=>{
+    "/muted.json",
+    (req, res) => {
 
-res.json(
-mutedUsers
+        res.json(
+            mutedUsers
+        );
+
+    }
 );
 
-});
 
 app.get(
-"/deviceBanned.json",
-(req,res)=>{
+    "/deviceBanned.json",
+    (req, res) => {
 
-res.json(
-deviceBannedUsers
+        res.json(
+            deviceBannedUsers
+        );
+
+    }
 );
 
-});
-/* SOCKET */
+
+/* =========================================================
+   SOCKET
+========================================================= */
 
 io.on(
-"connection",
-socket=>{
-    socket.on(
-"check admin",
-name=>{
-
-const isAdmin=
-admins.some(
-a=>
-a.name.toLowerCase()===
-name.toLowerCase()
-);
+    "connection",
+    socket => {
 
-socket.emit(
-"admin check result",
-isAdmin
-);
 
-});
+        /* =================================================
+           CHECK ADMIN
+        ================================================= */
 
-/* JOIN */
+        socket.on(
+            "check admin",
+            name => {
 
-socket.on(
+                const isAdmin =
+                    admins.some(
+                        admin =>
+                            admin.name
+                                .toLowerCase() ===
+                            String(name)
+                                .toLowerCase()
+                    );
 
-"join",
+                socket.emit(
+                    "admin check result",
+                    isAdmin
+                );
 
-data=>{
+            }
+        );
 
-const username=
-data.username?.trim();
 
-if(
-!username
-){
-return;
-}
-    socket.username=username;
+        /* =================================================
+           USER JOIN
+        ================================================= */
 
-/* PREVENT DUPLICATE */
+        socket.on(
+            "join",
+            data => {
 
-const exists=
+                const username =
+                    data.username?.trim();
 
-users.find(
+                if (!username) {
+                    return;
+                }
 
-u=>
+                socket.username =
+                    username;
 
-u.username
-.toLowerCase()
 
-===
+                /* PREVENT DUPLICATE */
 
-username
-.toLowerCase()
+                const exists =
+                    users.find(
+                        user =>
+                            user.username
+                                .toLowerCase() ===
+                            username
+                                .toLowerCase()
+                    );
 
-);
+                if (exists) {
 
-if(exists){
+                    socket.emit(
+                        "banned",
+                        "⚠️ الاسم مستخدم"
+                    );
 
-socket.emit(
-"banned",
-"⚠️ الاسم مستخدم"
-);
+                    return;
+                }
 
-return;
-}
 
-const device=
+                /* DEVICE */
 
-data.deviceToken
-||
+                const device =
+                    data.deviceToken ||
+                    socket.handshake
+                        .headers[
+                            "user-agent"
+                        ];
 
-socket.handshake
-.headers[
-"user-agent"
-];
 
-const ip=
-socket.handshake.address;
+                /* IP */
 
-/* DEVICE BAN */
+                const ip =
+                    socket.handshake.address;
 
-const deviceBlocked=
 
-deviceBannedUsers.find(
+                /* DEVICE BAN */
 
-d=>
+                const deviceBlocked =
+                    deviceBannedUsers.find(
+                        d =>
+                            d.device ===
+                            device
+                    );
 
-d.device===device
+                if (deviceBlocked) {
 
-);
+                    socket.emit(
+                        "banned",
+                        "⛔ الجهاز محظور"
+                    );
 
-if(deviceBlocked){
+                    return;
+                }
 
-socket.emit(
-"banned",
-"⛔ الجهاز محظور"
-);
 
-return;
-}
+                /* NORMAL BAN */
 
-/* NORMAL BAN */
+                const banned =
+                    bannedUsers.find(
+                        b =>
+                            b.ip === ip
+                    );
 
-const banned=
+                if (banned) {
 
-bannedUsers.find(
+                    socket.emit(
+                        "banned",
+                        "🚫 محظور"
+                    );
 
-b=>
+                    return;
+                }
 
-b.ip===ip
 
-);
+                /* ADMIN CHECK */
 
-if(banned){
+                const admin =
+                    admins.find(
+                        a =>
+                            a.name
+                                .toLowerCase() ===
+                            username
+                                .toLowerCase()
+                    );
 
-socket.emit(
-"banned",
-"🚫 محظور"
-);
 
-return;
-}
+                if (admin) {
 
-/* ADMIN CHECK */
+                    if (
+                        admin.password !==
+                        data.adminPassword
+                    ) {
 
-const admin=
+                        socket.emit(
+                            "banned",
+                            "🚫 كلمة السر خطأ"
+                        );
 
-admins.find(
+                        return;
+                    }
 
-a=>
+                    socket.adminData =
+                        admin;
+                }
 
-a.name
-.toLowerCase()
 
-===
+                /* USER */
 
-username
-.toLowerCase()
+                const user = {
 
-);
+                    id:
+                        socket.id,
 
-if(admin){
+                    username,
 
-if(
+                    color:
+                        data.color ||
+                        "#ffd700",
 
-admin.password
+                    ip,
 
-!==
+                    device,
 
-data.adminPassword
+                    isAdmin:
+                        !!admin
 
-){
+                };
 
-socket.emit(
 
-"banned",
+                users.push(user);
 
-"🚫 كلمة السر خطأ"
 
-);
+                /*
+                   نخزن قائمة الغرف المفتوحة
+                   لهذا الاتصال.
+                */
 
-return;
+                socket.publicRooms =
+                    new Set();
 
-}
 
-socket.adminData=
-admin;
+                socket.emit(
+                    "login success"
+                );
 
-}
 
-/* USER */
+                io.emit(
+                    "online users",
+                    users
+                );
 
-const user={
 
-id:
-socket.id,
+                /*
+                   بعد تسجيل الدخول
+                   نرسل الغرف للمستخدم.
+                */
 
-username,
+                sendRooms(socket);
 
-color:
-data.color
-||
-"#ffd700",
 
-ip,
+                addLog(
+                    `👤 ${username} دخل`
+                );
 
-device,
+            }
+        );
 
-isAdmin:
-!!admin
 
-};
+        /* =================================================
+           GET ROOMS
+        ================================================= */
 
-users.push(
-user
-);
+        socket.on(
+            "get rooms",
+            () => {
 
-socket.emit(
-"login success"
-);
+                sendRooms(socket);
 
-io.emit(
-"online users",
-users
-);
+            }
+        );
 
-addLog(
-`👤 ${username} دخل`
-);
 
-});
+        /* =================================================
+           JOIN ROOM
+        ================================================= */
 
-/* CHAT */
+        socket.on(
+            "join room",
+            roomId => {
 
-socket.on(
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            socket.id
+                    );
 
-"chat message",
+                if (!user) {
+                    return;
+                }
 
-data=>{
 
-const user=
+                const room =
+                    getRoom(roomId);
 
-users.find(
-u=>u.id===socket.id
-);
 
-if(!user){
-return;
-}
-
-if(
-maintenanceMode
-&&
-!socket.adminData
-){
-return;
-}
-
-if(
-chatLocked
-&&
-!socket.adminData
-){
-return;
-}
-if(starsMode){
-
-const hasStar=
-stars.includes(
-socket.username
-);
+                if (!room) {
 
-if(!hasStar){
+                    socket.emit(
+                        "room error",
+                        "❌ الغرفة غير موجودة"
+                    );
 
-socket.emit(
-"banned",
-"⭐ الكتابة لأصحاب النجمة فقط"
-);
+                    return;
+                }
 
-return;
 
-}
+                if (!room.enabled) {
 
-}
-const muted=
+                    socket.emit(
+                        "room error",
+                        "🚫 هذه الغرفة معطلة"
+                    );
 
-mutedUsers.find(
+                    return;
+                }
 
-m=>
 
-m.id===socket.id
+                /*
+                   إذا كان داخل الغرفة
+                   لا نعيد إضافتها.
+                */
 
-);
+                if (
+                    socket.publicRooms.has(
+                        room.id
+                    )
+                ) {
 
-if(muted){
+                    socket.emit(
+                        "room joined",
+                        room
+                    );
 
-socket.emit(
-"banned",
-"🔇 أنت مكتوم"
-);
+                    return;
+                }
 
-return;
-}
 
-io.emit(
+                /*
+                   حد أقصى 3 غرف
+                */
 
-"chat message",
+                if (
+                    socket.publicRooms.size >= 3
+                ) {
 
-{
+                    socket.emit(
+                        "room limit",
+                        {
+                            max: 3,
+                            message:
+                                "⚠️ يمكنك فتح 3 غرف عامة كحد أقصى"
+                        }
+                    );
 
-id:user.id,
+                    return;
+                }
 
-username:
-user.username,
 
-message:
-data.message,
+                /*
+                   Socket.IO room
+                */
 
-color:
-user.color,
+                socket.join(
+                    "public:" +
+                    room.id
+                );
 
-reply:
-data.reply
 
-}
+                socket.publicRooms.add(
+                    room.id
+                );
 
-);
 
-});
+                socket.emit(
+                    "room joined",
+                    room
+                );
 
-/* PRIVATE */
 
-socket.on(
+                /*
+                   إعلام الموجودين
+                */
 
-"private message",
+                socket
+                    .to(
+                        "public:" +
+                        room.id
+                    )
+                    .emit(
+                        "room user joined",
+                        {
+                            id:
+                                user.id,
+                            username:
+                                user.username
+                        }
+                    );
 
-data=>{
 
-if(
-privateLocked
-&&
-!socket.adminData
-){
-return;
-}
+                addLog(
+                    `🏠 ${user.username} دخل غرفة ${room.name}`
+                );
 
-io.to(
-data.to
-)
+            }
+        );
 
-.emit(
 
-"private message",
+        /* =================================================
+           LEAVE ROOM
+        ================================================= */
 
-data
+        socket.on(
+            "leave room",
+            roomId => {
 
-);
+                const room =
+                    getRoom(roomId);
 
-});
+                if (!room) {
+                    return;
+                }
 
-/* ADMIN LOGIN */
 
-socket.on(
+                socket.leave(
+                    "public:" +
+                    room.id
+                );
 
-"admin panel login",
 
-data=>{
+                if (
+                    socket.publicRooms
+                ) {
 
-const admin=
+                    socket.publicRooms.delete(
+                        room.id
+                    );
 
-admins.find(
+                }
 
-a=>
 
-a.name===data.name
+                socket.emit(
+                    "room left",
+                    {
+                        id:
+                            room.id
+                    }
+                );
 
-&&
 
-a.password===data.password
+                addLog(
+                    `🚪 ${socket.username || "مستخدم"} خرج من غرفة ${room.name}`
+                );
 
-);
+            }
+        );
 
-if(!admin){
 
-socket.emit(
-"admin login failed"
-);
+        /* =================================================
+           CHAT
+        ================================================= */
 
-return;
-}
+        socket.on(
+            "chat message",
+            data => {
 
-socket.adminData=
-admin;
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            socket.id
+                    );
 
-socket.emit(
+                if (!user) {
+                    return;
+                }
 
-"admin login success",
 
-{
+                /* MAINTENANCE */
 
-permissions:
-admin.permissions
+                if (
+                    maintenanceMode &&
+                    !socket.adminData
+                ) {
 
-}
+                    return;
+                }
 
-);
 
-socket.emit(
-"admin online users",
-users
-);
+                /* CHAT LOCK */
 
-socket.emit(
+                if (
+                    chatLocked &&
+                    !socket.adminData
+                ) {
 
-"server stats",
+                    return;
+                }
 
-{
 
-onlineUsers:
-users.length,
+                /* STARS MODE */
 
-bannedUsers:
-bannedUsers.length,
+                if (starsMode) {
 
-admins:
-admins.length
+                    const hasStar =
+                        stars.includes(
+                            socket.username
+                        );
 
-}
+                    if (!hasStar) {
 
-);
+                        socket.emit(
+                            "banned",
+                            "⭐ الكتابة لأصحاب النجمة فقط"
+                        );
 
-});
+                        return;
+                    }
+                }
 
-/* USER INFO */
 
-socket.on(
+                /* MUTE */
 
-"view user",
+                const muted =
+                    mutedUsers.find(
+                        m =>
+                            m.id ===
+                            socket.id
+                    );
 
-id=>{
+                if (muted) {
 
-if(
+                    socket.emit(
+                        "banned",
+                        "🔇 أنت مكتوم"
+                    );
 
-!socket.adminData
-?.permissions
-?.viewUserInfo
+                    return;
+                }
 
-){
-return;
-}
 
-const user=
+                /*
+                   ROOM MESSAGE
+                */
 
-users.find(
-u=>u.id===id
-);
+                const roomId =
+                    data?.roomId
+                        ? String(
+                            data.roomId
+                        )
+                        : null;
 
-if(!user){
-return;
-}
 
-socket.emit(
-"user info",
-user
-);
+                if (roomId) {
 
-});
+                    const room =
+                        getRoom(roomId);
 
-/* ADD ADMIN */
 
-socket.on(
+                    if (!room) {
+                        return;
+                    }
 
-"add admin",
 
-data=>{
+                    if (!room.enabled) {
+                        return;
+                    }
 
-if(
-!socket.adminData
-?.permissions
-?.addAdmin
-){
-return;
-}
 
-const exists=
+                    /*
+                       حماية إضافية:
+                       المستخدم يجب أن يكون
+                       داخل الغرفة فعليًا.
+                    */
 
-admins.find(
+                    if (
+                        !socket.publicRooms ||
+                        !socket.publicRooms.has(
+                            room.id
+                        )
+                    ) {
 
-a=>
+                        return;
+                    }
 
-a.name.toLowerCase()
 
-===
+                    io.to(
+                        "public:" +
+                        room.id
+                    )
+                    .emit(
+                        "chat message",
+                        {
 
-data.name.toLowerCase()
+                            id:
+                                user.id,
 
-);
+                            username:
+                                user.username,
 
-if(exists){
+                            message:
+                                data.message,
 
-socket.emit(
-"admin exists"
-);
+                            color:
+                                user.color,
 
-return;
+                            reply:
+                                data.reply,
 
-}
+                            roomId:
+                                room.id
 
-admins.push({
+                        }
+                    );
 
-name:data.name,
 
-password:data.password,
+                    return;
+                }
 
-permissions:data.permissions
 
-});
+                /*
+                   FALLBACK
+                   للنسخة القديمة من التطبيق.
 
-saveFile(
-"admins.json",
-admins
-);
+                   إذا app.js الحالي لم يرسل
+                   roomId، يبقى الشات القديم
+                   يعمل بدون أن ينكسر.
+                */
 
-io.emit(
-"admins list",
-admins
-);
+                io.emit(
+                    "chat message",
+                    {
 
-socket.emit(
-"admin added"
-);
+                        id:
+                            user.id,
 
-addLog(
-`👮 تمت إضافة ${data.name}`
-);
+                        username:
+                            user.username,
 
-});
+                        message:
+                            data.message,
 
-/* REMOVE ADMIN */
+                        color:
+                            user.color,
 
-socket.on(
+                        reply:
+                            data.reply
 
-"remove admin",
+                    }
+                );
 
-name=>{
+            }
+        );
 
-if(
-!socket.adminData
-?.permissions
-?.addAdmin
-){
-return;
-}
 
-admins=
+        /* =================================================
+           PRIVATE MESSAGE
+        ================================================= */
 
-admins.filter(
+        socket.on(
+            "private message",
+            data => {
 
-a=>
+                if (
+                    privateLocked &&
+                    !socket.adminData
+                ) {
 
-a.name!==name
+                    return;
+                }
 
-);
 
-saveFile(
-"admins.json",
-admins
-);
+                if (!data) {
+                    return;
+                }
 
-io.emit(
-"admins list",
-admins
-);
 
-addLog(
-`🗑️ تم حذف ${name}`
-);
+                if (!data.to) {
+                    return;
+                }
 
-});
-/* KICK */
 
-socket.on(
+                io.to(
+                    data.to
+                )
+                .emit(
+                    "private message",
+                    data
+                );
 
-"kick user",
+            }
+        );
 
-id=>{
 
-const user=
-users.find(
-u=>u.id===id
-);
+        /* =================================================
+           ADMIN LOGIN
+        ================================================= */
 
-if(!user){
-return;
-}
-
-io.to(id)
-.emit(
-"banned",
-"⚠️ تم طردك"
-);
+        socket.on(
+            "admin panel login",
+            data => {
 
-io.sockets.sockets
-.get(id)
-?.disconnect();
+                const admin =
+                    admins.find(
+                        a =>
+                            a.name ===
+                                data.name &&
+                            a.password ===
+                                data.password
+                    );
 
-});
 
-/* BAN */
+                if (!admin) {
 
-socket.on(
+                    socket.emit(
+                        "admin login failed"
+                    );
 
-"ban user",
+                    return;
+                }
 
-id=>{
 
-const user=
+                socket.adminData =
+                    admin;
 
-users.find(
-u=>u.id===id
-);
 
-if(!user){
-return;
-}
+                socket.emit(
+                    "admin login success",
+                    {
+                        permissions:
+                            admin.permissions
+                    }
+                );
 
-bannedUsers.push({
 
-ip:
-user.ip
+                socket.emit(
+                    "admin online users",
+                    users
+                );
 
-});
 
-saveFile(
-"banned.json",
-bannedUsers
-);
+                socket.emit(
+                    "server stats",
+                    {
 
-io.to(id)
-.emit(
-"banned",
-"🚫 تم حظرك"
-);
+                        onlineUsers:
+                            users.length,
 
-io.sockets.sockets
-.get(id)
-?.disconnect();
+                        bannedUsers:
+                            bannedUsers.length,
 
-});
+                        admins:
+                            admins.length
 
-/* MUTE */
+                    }
+                );
 
-socket.on(
 
-"mute user",
+                /*
+                   إرسال الغرف للأدمن
+                */
 
-id=>{
+                sendRooms(socket);
 
-const user=
+            }
+        );
 
-users.find(
-u=>u.id===id
-);
 
-if(!user){
-return;
-}
+        /* =================================================
+           ADMIN GET ROOMS
+        ================================================= */
 
-mutedUsers.push({
+        socket.on(
+            "admin get rooms",
+            () => {
 
-id:
-user.id,
+                if (!socket.adminData) {
+                    return;
+                }
 
-username:
-user.username
+                sendRooms(socket);
 
-});
+            }
+        );
 
-saveFile(
-"muted.json",
-mutedUsers
-);
 
-});
-    socket.on(
-"give star",
-username=>{
-
-if(
-!socket.adminData?.permissions?.stars
-){
-return;
-}
-
-if(
-!stars.includes(username)
-){
-
-stars.push(
-username
-);
+        /* =================================================
+           CREATE ROOM
+        ================================================= */
 
-saveFile(
-"stars.json",
-stars
-);
+        socket.on(
+            "create room",
+            data => {
 
-addLog(
-`⭐ تم إعطاء نجمة لـ ${username}`
-);
+                if (!socket.adminData) {
+                    return;
+                }
 
-}
 
-});
+                const name =
+                    String(
+                        data?.name || ""
+                    ).trim();
 
-socket.on(
-"remove star",
-username=>{
 
-if(
-!socket.adminData?.permissions?.stars
-){
-return;
-}
+                const description =
+                    String(
+                        data?.description || ""
+                    ).trim();
 
-stars=
-stars.filter(
-u=>u!==username
-);
 
-saveFile(
-"stars.json",
-stars
-);
+                if (!name) {
 
-addLog(
-`⭐❌ تم سحب نجمة من ${username}`
-);
+                    socket.emit(
+                        "room error",
+                        "⚠️ اكتب اسم الغرفة"
+                    );
 
-});
+                    return;
+                }
 
-/* DEVICE BAN */
 
-socket.on(
+                /*
+                   منع اسم غرفة مكرر
+                */
 
-"disconnect user",
+                const exists =
+                    rooms.find(
+                        room =>
+                            room.name
+                                .toLowerCase() ===
+                            name.toLowerCase()
+                    );
 
-id=>{
 
-const user=
+                if (exists) {
 
-users.find(
-u=>u.id===id
-);
+                    socket.emit(
+                        "room error",
+                        "⚠️ هذه الغرفة موجودة بالفعل"
+                    );
 
-if(!user){
-return;
-}
+                    return;
+                }
 
-deviceBannedUsers.push({
 
-device:
-user.device,
+                const room = {
 
-username:
-user.username
+                    id:
+                        generateRoomId(),
 
-});
-    
+                    name,
 
-saveFile(
-"deviceBanned.json",
-deviceBannedUsers
-);
+                    description,
 
-});
-    /* UNBAN USER */
+                    enabled:
+                        true
 
-socket.on(
-"unban user",
-id=>{
+                };
 
-const user=
-users.find(
-u=>u.id===id
-);
 
-if(!user){
-return;
-}
+                rooms.push(room);
 
-bannedUsers=
-bannedUsers.filter(
-b=>b.ip!==user.ip
-);
 
-saveFile(
-"banned.json",
-bannedUsers
-);
+                saveFile(
+                    "rooms.json",
+                    rooms
+                );
 
-addLog(
-`🔓 تم فك حظر ${user.username}`
-);
 
-});
+                /*
+                   إرسال القائمة للجميع
+                */
 
-/* UNMUTE USER */
+                io.emit(
+                    "rooms list",
+                    rooms
+                );
 
-socket.on(
-"unmute user",
-id=>{
 
-const user=
-users.find(
-u=>u.id===id
-);
+                socket.emit(
+                    "room created",
+                    room
+                );
 
-if(!user){
-return;
-}
 
-mutedUsers=
-mutedUsers.filter(
-m=>m.id!==user.id
-);
+                addLog(
+                    `🏠 تم إنشاء غرفة ${name}`
+                );
 
-saveFile(
-"muted.json",
-mutedUsers
-);
+            }
+        );
 
-addLog(
-`🔊 تم فك كتم ${user.username}`
-);
 
-});
-    socket.on(
-"toggle stars mode",
-()=>{
+        /* =================================================
+           EDIT ROOM
+        ================================================= */
 
-starsMode=!starsMode;
+        socket.on(
+            "edit room",
+            data => {
 
-addLog(
-`⭐ وضع النجوم ${starsMode ? "ON" : "OFF"}`
-);
+                if (!socket.adminData) {
+                    return;
+                }
 
-});
 
-/* UNDISCONNECT USER */
+                const room =
+                    getRoom(
+                        data?.id
+                    );
 
-socket.on(
-"undisconnect user",
-id=>{
 
-const user=
-users.find(
-u=>u.id===id
-);
+                if (!room) {
 
-if(!user){
-return;
-}
+                    socket.emit(
+                        "room error",
+                        "❌ الغرفة غير موجودة"
+                    );
 
-deviceBannedUsers=
-deviceBannedUsers.filter(
-d=>d.device!==user.device
-);
+                    return;
+                }
 
-saveFile(
-"deviceBanned.json",
-deviceBannedUsers
-);
 
-addLog(
-`⛔🔓 تم فك فصل ${user.username}`
-);
+                const name =
+                    String(
+                        data?.name || ""
+                    ).trim();
 
-});
-    socket.on(
-"undisconnect device",
-device=>{
-
-deviceBannedUsers=
-deviceBannedUsers.filter(
-d=>d.device!==device
-);
 
-saveFile(
-"deviceBanned.json",
-deviceBannedUsers
-);
+                const description =
+                    String(
+                        data?.description || ""
+                    ).trim();
 
-addLog(
-"⛔🔓 تم فك فصل جهاز"
-);
 
-});
-socket.on(
-"unban ip",
-ip=>{
-
-bannedUsers=
-bannedUsers.filter(
-b=>b.ip!==ip
-);
+                if (!name) {
 
-saveFile(
-"banned.json",
-bannedUsers
-);
+                    socket.emit(
+                        "room error",
+                        "⚠️ اسم الغرفة مطلوب"
+                    );
 
-addLog(
-`🔓 تم فك حظر ${ip}`
-);
+                    return;
+                }
 
-});
-/* UNBAN ALL */
 
-socket.on(
-"unban all",
-()=>{
+                /*
+                   منع اسم مكرر
+                */
 
-bannedUsers=[];
+                const duplicate =
+                    rooms.find(
+                        r =>
+                            r.id !==
+                                room.id &&
+                            r.name
+                                .toLowerCase() ===
+                            name.toLowerCase()
+                    );
 
-saveFile(
-"banned.json",
-bannedUsers
-);
 
-});
+                if (duplicate) {
 
-/* UNMUTE ALL */
+                    socket.emit(
+                        "room error",
+                        "⚠️ اسم الغرفة مستخدم"
+                    );
 
-socket.on(
-"unmute all",
-()=>{
+                    return;
+                }
 
-mutedUsers=[];
 
-saveFile(
-"muted.json",
-mutedUsers
-);
+                room.name =
+                    name;
 
-});
+                room.description =
+                    description;
 
-/* UNDISCONNECT ALL */
 
-socket.on(
-"undisconnect all",
-()=>{
+                saveFile(
+                    "rooms.json",
+                    rooms
+                );
 
-deviceBannedUsers=[];
 
-saveFile(
-"deviceBanned.json",
-deviceBannedUsers
-);
+                io.emit(
+                    "rooms list",
+                    rooms
+                );
 
-});
 
-/* DISCONNECT */
+                socket.emit(
+                    "room edited",
+                    room
+                );
 
-socket.on(
-"disconnect",
-()=>{
 
-users=
-users.filter(
-u=>u.id!==socket.id
-);
+                addLog(
+                    `✏️ تم تعديل غرفة ${name}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           TOGGLE ROOM
+        ================================================= */
+
+        socket.on(
+            "toggle room",
+            roomId => {
+
+                if (!socket.adminData) {
+                    return;
+                }
+
+
+                const room =
+                    getRoom(roomId);
+
+
+                if (!room) {
+
+                    socket.emit(
+                        "room error",
+                        "❌ الغرفة غير موجودة"
+                    );
+
+                    return;
+                }
+
+
+                room.enabled =
+                    !room.enabled;
+
+
+                saveFile(
+                    "rooms.json",
+                    rooms
+                );
+
+
+                /*
+                   إذا تم تعطيل الغرفة،
+                   نخرج جميع المستخدمين
+                   منها.
+                */
+
+                if (!room.enabled) {
+
+                    io.in(
+                        "public:" +
+                        room.id
+                    )
+                    .socketsLeave(
+                        "public:" +
+                        room.id
+                    );
+
+
+                    io.sockets.sockets.forEach(
+                        client => {
+
+                            if (
+                                client.publicRooms
+                            ) {
+
+                                client.publicRooms.delete(
+                                    room.id
+                                );
+
+                            }
+
+                        }
+                    );
+
+                }
+
+
+                io.emit(
+                    "rooms list",
+                    rooms
+                );
+
+
+                socket.emit(
+                    "room toggled",
+                    room
+                );
+
+
+                addLog(
+                    `🔄 غرفة ${room.name} أصبحت ${
+                        room.enabled
+                            ? "مفعلة"
+                            : "معطلة"
+                    }`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           DELETE ROOM
+        ================================================= */
+
+        socket.on(
+            "delete room",
+            roomId => {
+
+                if (!socket.adminData) {
+                    return;
+                }
+
+
+                const room =
+                    getRoom(roomId);
+
+
+                if (!room) {
+
+                    socket.emit(
+                        "room error",
+                        "❌ الغرفة غير موجودة"
+                    );
+
+                    return;
+                }
+
+
+                /*
+                   إخراج المستخدمين
+                */
+
+                io.in(
+                    "public:" +
+                    room.id
+                )
+                .socketsLeave(
+                    "public:" +
+                    room.id
+                );
+
+
+                io.sockets.sockets.forEach(
+                    client => {
+
+                        if (
+                            client.publicRooms
+                        ) {
+
+                            client.publicRooms.delete(
+                                room.id
+                            );
+
+                        }
+
+                    }
+                );
+
+
+                rooms =
+                    rooms.filter(
+                        r =>
+                            r.id !==
+                            room.id
+                    );
+
+
+                saveFile(
+                    "rooms.json",
+                    rooms
+                );
+
+
+                io.emit(
+                    "rooms list",
+                    rooms
+                );
+
+
+                socket.emit(
+                    "room deleted",
+                    {
+                        id:
+                            room.id
+                    }
+                );
+
+
+                addLog(
+                    `🗑️ تم حذف غرفة ${room.name}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           USER INFO
+        ================================================= */
+
+        socket.on(
+            "view user",
+            id => {
+
+                if (
+                    !socket.adminData
+                        ?.permissions
+                        ?.viewUserInfo
+                ) {
+
+                    return;
+                }
+
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                socket.emit(
+                    "user info",
+                    user
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           ADD ADMIN
+        ================================================= */
+
+        socket.on(
+            "add admin",
+            data => {
+
+                if (
+                    !socket.adminData
+                        ?.permissions
+                        ?.addAdmin
+                ) {
+
+                    return;
+                }
+
+
+                const exists =
+                    admins.find(
+                        a =>
+                            a.name
+                                .toLowerCase() ===
+                            data.name
+                                .toLowerCase()
+                    );
+
+
+                if (exists) {
+
+                    socket.emit(
+                        "admin exists"
+                    );
+
+                    return;
+                }
+
+
+                admins.push({
+
+                    name:
+                        data.name,
+
+                    password:
+                        data.password,
+
+                    permissions:
+                        data.permissions
+
+                });
+
+
+                saveFile(
+                    "admins.json",
+                    admins
+                );
+
+
+                io.emit(
+                    "admins list",
+                    admins
+                );
+
+
+                socket.emit(
+                    "admin added"
+                );
+
+
+                addLog(
+                    `👮 تمت إضافة ${data.name}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           REMOVE ADMIN
+        ================================================= */
+
+        socket.on(
+            "remove admin",
+            name => {
+
+                if (
+                    !socket.adminData
+                        ?.permissions
+                        ?.addAdmin
+                ) {
+
+                    return;
+                }
+
+
+                admins =
+                    admins.filter(
+                        a =>
+                            a.name !==
+                            name
+                    );
+
+
+                saveFile(
+                    "admins.json",
+                    admins
+                );
+
+
+                io.emit(
+                    "admins list",
+                    admins
+                );
+
+
+                addLog(
+                    `🗑️ تم حذف ${name}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           KICK
+        ================================================= */
+
+        socket.on(
+            "kick user",
+            id => {
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                io.to(id)
+                    .emit(
+                        "banned",
+                        "⚠️ تم طردك"
+                    );
+
+
+                io.sockets.sockets
+                    .get(id)
+                    ?.disconnect();
+
+            }
+        );
+
+
+        /* =================================================
+           BAN
+        ================================================= */
+
+        socket.on(
+            "ban user",
+            id => {
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                bannedUsers.push({
+
+                    ip:
+                        user.ip
+
+                });
+
+
+                saveFile(
+                    "banned.json",
+                    bannedUsers
+                );
+
+
+                io.to(id)
+                    .emit(
+                        "banned",
+                        "🚫 تم حظرك"
+                    );
+
+
+                io.sockets.sockets
+                    .get(id)
+                    ?.disconnect();
+
+            }
+        );
+
+
+        /* =================================================
+           MUTE
+        ================================================= */
+
+        socket.on(
+            "mute user",
+            id => {
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                mutedUsers.push({
+
+                    id:
+                        user.id,
+
+                    username:
+                        user.username
+
+                });
+
+
+                saveFile(
+                    "muted.json",
+                    mutedUsers
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           GIVE STAR
+        ================================================= */
+
+        socket.on(
+            "give star",
+            username => {
+
+                if (
+                    !socket.adminData
+                        ?.permissions
+                        ?.stars
+                ) {
+
+                    return;
+                }
+
+
+                if (
+                    !stars.includes(
+                        username
+                    )
+                ) {
+
+                    stars.push(
+                        username
+                    );
+
+
+                    saveFile(
+                        "stars.json",
+                        stars
+                    );
+
+
+                    addLog(
+                        `⭐ تم إعطاء نجمة لـ ${username}`
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* =================================================
+           REMOVE STAR
+        ================================================= */
+
+        socket.on(
+            "remove star",
+            username => {
+
+                if (
+                    !socket.adminData
+                        ?.permissions
+                        ?.stars
+                ) {
+
+                    return;
+                }
+
+
+                stars =
+                    stars.filter(
+                        u =>
+                            u !==
+                            username
+                    );
+
+
+                saveFile(
+                    "stars.json",
+                    stars
+                );
+
+
+                addLog(
+                    `⭐❌ تم سحب نجمة من ${username}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           DEVICE BAN
+        ================================================= */
+
+        socket.on(
+            "disconnect user",
+            id => {
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                deviceBannedUsers.push({
+
+                    device:
+                        user.device,
+
+                    username:
+                        user.username
+
+                });
+
+
+                saveFile(
+                    "deviceBanned.json",
+                    deviceBannedUsers
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNBAN USER
+        ================================================= */
+
+        socket.on(
+            "unban user",
+            id => {
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                bannedUsers =
+                    bannedUsers.filter(
+                        b =>
+                            b.ip !==
+                            user.ip
+                    );
+
+
+                saveFile(
+                    "banned.json",
+                    bannedUsers
+                );
+
+
+                addLog(
+                    `🔓 تم فك حظر ${user.username}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNMUTE USER
+        ================================================= */
+
+        socket.on(
+            "unmute user",
+            id => {
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                mutedUsers =
+                    mutedUsers.filter(
+                        m =>
+                            m.id !==
+                            user.id
+                    );
+
+
+                saveFile(
+                    "muted.json",
+                    mutedUsers
+                );
+
+
+                addLog(
+                    `🔊 تم فك كتم ${user.username}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           STARS MODE
+        ================================================= */
+
+        socket.on(
+            "toggle stars mode",
+            () => {
+
+                /*
+                   حماية السيرفر:
+                   فقط أدمن لديه صلاحية النجوم
+                   يستطيع تغيير وضع النجوم.
+                */
+
+                if (
+                    !socket.adminData
+                        ?.permissions
+                        ?.stars
+                ) {
+
+                    return;
+                }
+
+
+                starsMode =
+                    !starsMode;
+
+
+                addLog(
+                    `⭐ وضع النجوم ${
+                        starsMode
+                            ? "ON"
+                            : "OFF"
+                    }`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNDISCONNECT USER
+        ================================================= */
+
+        socket.on(
+            "undisconnect user",
+            id => {
+
+                const user =
+                    users.find(
+                        u =>
+                            u.id ===
+                            id
+                    );
+
+
+                if (!user) {
+                    return;
+                }
+
+
+                deviceBannedUsers =
+                    deviceBannedUsers.filter(
+                        d =>
+                            d.device !==
+                            user.device
+                    );
+
+
+                saveFile(
+                    "deviceBanned.json",
+                    deviceBannedUsers
+                );
+
+
+                addLog(
+                    `⛔🔓 تم فك فصل ${user.username}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNDISCONNECT DEVICE
+        ================================================= */
+
+        socket.on(
+            "undisconnect device",
+            device => {
+
+                deviceBannedUsers =
+                    deviceBannedUsers.filter(
+                        d =>
+                            d.device !==
+                            device
+                    );
+
+
+                saveFile(
+                    "deviceBanned.json",
+                    deviceBannedUsers
+                );
+
+
+                addLog(
+                    "⛔🔓 تم فك فصل جهاز"
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNBAN IP
+        ================================================= */
+
+        socket.on(
+            "unban ip",
+            ip => {
+
+                bannedUsers =
+                    bannedUsers.filter(
+                        b =>
+                            b.ip !==
+                            ip
+                    );
+
+
+                saveFile(
+                    "banned.json",
+                    bannedUsers
+                );
+
+
+                addLog(
+                    `🔓 تم فك حظر ${ip}`
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNBAN ALL
+        ================================================= */
+
+        socket.on(
+            "unban all",
+            () => {
+
+                bannedUsers = [];
+
+
+                saveFile(
+                    "banned.json",
+                    bannedUsers
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNMUTE ALL
+        ================================================= */
+
+        socket.on(
+            "unmute all",
+            () => {
+
+                mutedUsers = [];
+
+
+                saveFile(
+                    "muted.json",
+                    mutedUsers
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           UNDISCONNECT ALL
+        ================================================= */
+
+        socket.on(
+            "undisconnect all",
+            () => {
+
+                deviceBannedUsers = [];
+
+
+                saveFile(
+                    "deviceBanned.json",
+                    deviceBannedUsers
+                );
+
+            }
+        );
+
+
+        /* =================================================
+           DISCONNECT
+        ================================================= */
+
+        socket.on(
+            "disconnect",
+            () => {
+
+                /*
+                   إزالة المستخدم من الغرف
+                   تتم تلقائيًا بواسطة Socket.IO.
+                */
+
+                users =
+                    users.filter(
+                        u =>
+                            u.id !==
+                            socket.id
+                    );
+
+
+                io.emit(
+                    "online users",
+                    users
+                );
+
+
+                if (socket.username) {
+
+                    addLog(
+                        `👋 ${socket.username} خرج`
+                    );
+
+                }
+
+            }
+        );
 
-io.emit(
-"online users",
-users
+    }
 );
 
-});
 
-});
+/* =========================================================
+   SERVER
+========================================================= */
 
 server.listen(
-process.env.PORT||3000,
-()=>{
-console.log("🚀 Server Running");
-});
+    process.env.PORT || 3000,
+    () => {
+
+        console.log(
+            "🚀 Server Running"
+        );
+
+    }
+);
