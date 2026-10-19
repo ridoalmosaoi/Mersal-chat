@@ -56,6 +56,12 @@ addLog(
 "✅ تم تسجيل الدخول"
 );
 
+/* LOAD ROOMS */
+
+socket.emit(
+"get rooms"
+);
+
 });
 
 socket.on(
@@ -145,7 +151,8 @@ buttons+=`
 `;
 
 }
-  /* STARS */
+
+/* STARS */
 
 if(adminPermissions.stars){
 
@@ -317,6 +324,7 @@ id
 );
 
 }
+
 /* CHAT CONTROL */
 
 function unbanAll(){
@@ -374,6 +382,7 @@ socket.emit(
 );
 
 }
+
 function toggleStarsMode(){
 
 socket.emit(
@@ -422,7 +431,8 @@ document.getElementById("permMute").checked,
 
 unmute:
 document.getElementById("permUnmute").checked,
-  stars:
+
+stars:
 document.getElementById("permStars").checked,
 
 disconnect:
@@ -432,8 +442,6 @@ undisconnect:true,
 
 viewUserInfo:
 document.getElementById("permViewUser").checked,
-  stars:
-document.getElementById("permStars").checked,
 
 addAdmin:
 document.getElementById("permAddAdmin").checked
@@ -461,6 +469,8 @@ const box=
 document.getElementById(
 "adminsList"
 );
+
+if(!box)return;
 
 box.innerHTML="";
 
@@ -535,6 +545,9 @@ log.message
 );
 
 });
+
+/* BANNED */
+
 async function loadBannedList(){
 
 const res=
@@ -563,6 +576,7 @@ document.createElement(
 
 div.className=
 "user-card";
+
 div.innerHTML=`
 
 <div>
@@ -575,9 +589,6 @@ div.innerHTML=`
 
 `;
 
-
-
-
 box.appendChild(div);
 
 });
@@ -585,6 +596,7 @@ box.appendChild(div);
 }
 
 loadBannedList();
+
 function unbanIp(ip){
 
 socket.emit(
@@ -593,6 +605,9 @@ ip
 );
 
 }
+
+/* MUTED */
+
 async function loadMutedList(){
 
 const res=
@@ -641,6 +656,9 @@ box.appendChild(div);
 }
 
 loadMutedList();
+
+/* DISCONNECTED */
+
 async function loadDisconnectedList(){
 
 const res=
@@ -703,6 +721,9 @@ loadDisconnectedList,
 }
 
 loadDisconnectedList();
+
+/* STARS */
+
 function giveStar(username){
 
 socket.emit(
@@ -720,3 +741,418 @@ username
 );
 
 }
+
+
+/* ================================================= */
+/* 🏠 ROOM MANAGEMENT */
+/* ================================================= */
+
+let editingRoomId=null;
+
+
+/* LOAD ROOMS */
+
+socket.on(
+"rooms list",
+rooms=>{
+
+renderRooms(rooms);
+
+});
+
+
+/* RENDER ROOMS */
+
+function renderRooms(rooms){
+
+const box=
+document.getElementById(
+"roomsList"
+);
+
+if(!box)return;
+
+box.innerHTML="";
+
+if(!rooms||rooms.length===0){
+
+box.innerHTML=`
+<div class="user-card">
+🏠 لا توجد غرف حاليًا
+</div>
+`;
+
+return;
+
+}
+
+rooms.forEach(room=>{
+
+const div=
+document.createElement(
+"div"
+);
+
+div.className=
+"user-card";
+
+const status=
+room.enabled
+? "🟢 مفعلة"
+: "🔴 معطلة";
+
+div.innerHTML=`
+
+<div>
+
+<strong>
+🏠 ${escapeRoomText(room.name)}
+</strong>
+
+<br>
+
+<small>
+${escapeRoomText(room.description||"بدون وصف")}
+</small>
+
+<br>
+
+<span>
+${status}
+</span>
+
+</div>
+
+<div class="user-actions">
+
+<button
+onclick="editRoom('${room.id}')"
+>
+✏️ تعديل
+</button>
+
+<button
+onclick="toggleRoom('${room.id}')"
+>
+${room.enabled ? "🔴 تعطيل" : "🟢 تفعيل"}
+</button>
+
+<button
+onclick="deleteRoom('${room.id}')"
+>
+🗑️ حذف
+</button>
+
+</div>
+
+`;
+
+box.appendChild(div);
+
+});
+
+}
+
+
+/* ESCAPE TEXT */
+
+function escapeRoomText(text){
+
+return String(text||"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+
+/* CREATE / UPDATE ROOM */
+
+function saveRoom(){
+
+const name=
+document.getElementById(
+"roomName"
+)?.value.trim();
+
+const description=
+document.getElementById(
+"roomDescription"
+)?.value.trim();
+
+if(!name){
+
+alert(
+"❌ اكتب اسم الغرفة"
+);
+
+return;
+
+}
+
+
+/* EDIT */
+
+if(editingRoomId){
+
+socket.emit(
+"edit room",
+{
+id:editingRoomId,
+name,
+description
+}
+);
+
+editingRoomId=null;
+
+}
+
+/* CREATE */
+
+else{
+
+socket.emit(
+"create room",
+{
+name,
+description
+}
+);
+
+}
+
+clearRoomForm();
+
+}
+
+
+/* CLEAR FORM */
+
+function clearRoomForm(){
+
+const name=
+document.getElementById(
+"roomName"
+);
+
+const description=
+document.getElementById(
+"roomDescription"
+);
+
+if(name)
+name.value="";
+
+if(description)
+description.value="";
+
+editingRoomId=null;
+
+const button=
+document.getElementById(
+"createRoomBtn"
+);
+
+if(button)
+button.innerText="➕ إنشاء غرفة";
+
+}
+
+
+/* EDIT ROOM */
+
+function editRoom(id){
+
+socket.emit(
+"get rooms"
+);
+
+socket.once(
+"rooms list",
+rooms=>{
+
+const room=
+rooms.find(
+r=>r.id===id
+);
+
+if(!room)return;
+
+const name=
+document.getElementById(
+"roomName"
+);
+
+const description=
+document.getElementById(
+"roomDescription"
+);
+
+if(name)
+name.value=room.name;
+
+if(description)
+description.value=
+room.description||"";
+
+editingRoomId=id;
+
+const button=
+document.getElementById(
+"createRoomBtn"
+);
+
+if(button)
+button.innerText=
+"💾 حفظ التعديل";
+
+});
+
+}
+
+
+/* TOGGLE ROOM */
+
+function toggleRoom(id){
+
+if(!confirm(
+"هل تريد تغيير حالة هذه الغرفة؟"
+)){
+
+return;
+
+}
+
+socket.emit(
+"toggle room",
+id
+);
+
+}
+
+
+/* DELETE ROOM */
+
+function deleteRoom(id){
+
+if(!confirm(
+"⚠️ هل أنت متأكد من حذف هذه الغرفة؟"
+)){
+
+return;
+
+}
+
+socket.emit(
+"delete room",
+id
+);
+
+}
+
+
+/* ROOM EVENTS */
+
+socket.on(
+"room created",
+data=>{
+
+alert(
+"✅ تم إنشاء الغرفة"
+);
+
+socket.emit(
+"get rooms"
+);
+
+addLog(
+`🏠 تم إنشاء الغرفة ${data.name}`
+);
+
+});
+
+
+socket.on(
+"room edited",
+data=>{
+
+alert(
+"✅ تم تعديل الغرفة"
+);
+
+socket.emit(
+"get rooms"
+);
+
+addLog(
+`✏️ تم تعديل الغرفة ${data.name}`
+);
+
+});
+
+
+socket.on(
+"room toggled",
+data=>{
+
+socket.emit(
+"get rooms"
+);
+
+addLog(
+`🔄 تم تغيير حالة الغرفة ${data.name}`
+);
+
+});
+
+
+socket.on(
+"room deleted",
+data=>{
+
+alert(
+"🗑️ تم حذف الغرفة"
+);
+
+socket.emit(
+"get rooms"
+);
+
+addLog(
+`🗑️ تم حذف الغرفة ${data.name}`
+);
+
+});
+
+
+socket.on(
+"room error",
+message=>{
+
+alert(
+"❌ "+message
+);
+
+});
+
+
+/* AUTO LOAD ROOMS AFTER LOGIN */
+
+socket.on(
+"admin login success",
+()=>{
+
+setTimeout(
+()=>{
+socket.emit("get rooms");
+},
+100
+);
+
+});
+
+
+/* END */
