@@ -63,6 +63,7 @@ onclick="loginAdmin()"
 
 </div>
 
+
 <!-- PANEL -->
 
 <div
@@ -70,6 +71,7 @@ id="adminPanel"
 class="admin-panel"
 style="display:none"
 >
+
 
 <!-- TOP -->
 
@@ -83,6 +85,7 @@ style="display:none"
 
 </div>
 
+
 <!-- STATS -->
 
 <div
@@ -93,6 +96,7 @@ class="stats-box"
 📊 جاري التحميل...
 
 </div>
+
 
 <!-- LOGS -->
 
@@ -113,6 +117,7 @@ class="logs-box"
 
 </div>
 
+
 <!-- USERS -->
 
 <div class="admin-box">
@@ -131,6 +136,7 @@ class="users-container"
 </div>
 
 </div>
+
 
 <!-- CHAT CONTROL -->
 
@@ -151,7 +157,8 @@ class="users-container"
 <button onclick="unmuteAll()">
 🔊 فك الكتم
 </button>
-  <button onclick="undisconnectAll()">
+
+<button onclick="undisconnectAll()">
 ⛔🔓 فك الفصل
 </button>
 
@@ -174,9 +181,73 @@ class="users-container"
 <button onclick="toggleStarsMode()">
 ⭐ وضع النجوم
 </button>
+
 </div>
 
 </div>
+
+
+<!-- ROOMS -->
+
+<div class="admin-box">
+
+<h2>
+
+🏠 إدارة الغرف
+
+</h2>
+
+
+<input
+id="roomName"
+type="text"
+placeholder="اسم الغرفة"
+>
+
+
+<textarea
+id="roomDescription"
+rows="3"
+placeholder="وصف الغرفة"
+></textarea>
+
+
+<button
+id="roomSaveButton"
+class="login-btn"
+onclick="saveRoom()"
+>
+
+➕ إنشاء الغرفة
+
+</button>
+
+
+<button
+onclick="clearRoomForm()"
+>
+
+↩️ إلغاء التعديل
+
+</button>
+
+
+<h3>
+
+📋 الغرف الموجودة
+
+</h3>
+
+
+<div
+id="roomsList"
+class="users-container"
+>
+
+</div>
+
+</div>
+
 
 <!-- ADD ADMIN -->
 
@@ -201,77 +272,93 @@ placeholder="كلمة السر"
 
 <div class="permissions">
 
+
 <label>
 <input id="permKick" type="checkbox">
 ⚠️ طرد
 </label>
+
 
 <label>
 <input id="permBan" type="checkbox">
 🚫 حظر
 </label>
 
+
 <label>
 <input id="permUnban" type="checkbox">
 🔓 فك حظر
 </label>
+
 
 <label>
 <input id="permMute" type="checkbox">
 🔇 كتم
 </label>
 
+
 <label>
 <input id="permUnmute" type="checkbox">
 🔊 فك كتم
 </label>
+
 
 <label>
 <input id="permDisconnect" type="checkbox">
 ⛔ فصل
 </label>
 
+
 <label>
 <input id="permDeleteMessage" type="checkbox">
 🗑 حذف رسالة
 </label>
+
 
 <label>
 <input id="permViewUser" type="checkbox">
 ℹ️ معلومات
 </label>
 
+
 <label>
 <input id="permStars" type="checkbox">
 ⭐ النجوم
 </label>
+
 
 <label>
 <input id="permChatLock" type="checkbox">
 🔒 قفل العام
 </label>
 
+
 <label>
 <input id="permPrivateLock" type="checkbox">
 💬 قفل الخاص
 </label>
+
 
 <label>
 <input id="permMaintenance" type="checkbox">
 🛠️ الصيانة
 </label>
 
+
 <label>
 <input id="permProtection" type="checkbox">
 🛡️ الحماية
 </label>
+
 
 <label>
 <input id="permAddAdmin" type="checkbox">
 👮 إدارة الأدمنية
 </label>
 
+
 </div>
+
 
 <button
 class="login-btn"
@@ -283,46 +370,9 @@ onclick="addAdmin()"
 </button>
 
 </div>
-<div class="admin-box">
 
-<h2>
-🏠 إدارة الغرف
-</h2>
 
-<input
-id="roomName"
-placeholder="اسم الغرفة"
->
-
-<input
-id="roomDescription"
-placeholder="وصف الغرفة (اختياري)"
->
-
-<div class="user-actions">
-
-<button
-id="roomSaveButton"
-onclick="saveRoom()"
->
-➕ إنشاء الغرفة
-</button>
-
-<button
-onclick="clearRoomForm()"
->
-↩️ إلغاء التعديل
-</button>
-
-</div>
-
-<div
-id="roomsList"
-class="users-container"
->
-</div>
-
-</div>
+<!-- BANNED -->
 
 <div class="admin-box">
 
@@ -343,7 +393,11 @@ class="users-container"
 </div>
 
 </div>
-  <div class="admin-box">
+
+
+<!-- MUTED -->
+
+<div class="admin-box">
 
 <h2>
 🔇 المكتومون
@@ -353,10 +407,15 @@ class="users-container"
 id="mutedList"
 class="users-container"
 >
+
 </div>
 
 </div>
-  <div class="admin-box">
+
+
+<!-- DISCONNECTED -->
+
+<div class="admin-box">
 
 <h2>
 ⛔ المفصولون
@@ -366,9 +425,12 @@ class="users-container"
 id="disconnectedList"
 class="users-container"
 >
+
 </div>
 
 </div>
+
+
 <!-- ADMINS LIST -->
 
 <div class="admin-box">
@@ -388,11 +450,14 @@ class="users-container"
 
 </div>
 
+
 </div>
+
 
 <script src="/socket.io/socket.io.js"></script>
 
 <script src="admin.js"></script>
 
 </body>
+
 </html>
