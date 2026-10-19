@@ -1,2692 +1,3000 @@
+/* =========================================================
+   MERSAL CHAT - ADMIN.JS
+   ROOM MANAGEMENT + ADMIN PERMISSIONS
+   ========================================================= */
+
 const socket = io();
 
 /* =========================================================
    GLOBAL
-========================================================= */
+   ========================================================= */
 
+let adminLoggedIn = false;
+let adminData = null;
 let adminPermissions = {};
-let assignedRooms = [];
-let roomPermissions = {};
-let isMasterAdmin = false;
+let adminRooms = [];
 
-let selectedAdminName = null;
-
-
-/* =========================================================
-   ELEMENTS
-========================================================= */
-
-const loginPage =
-    document.getElementById("adminLogin");
-
-const panel =
-    document.getElementById("adminPanel");
-
-const onlineUsers =
-    document.getElementById("onlineUsers");
-
-const logsBox =
-    document.getElementById("logsBox");
+let selectedAdmin = null;
+let selectedRoomId = null;
+let editingRoomId = null;
 
 
 /* =========================================================
-   ADMIN LOGIN
-========================================================= */
+   HELPERS
+   ========================================================= */
 
-function loginAdmin() {
+function $(id){
+  return document.getElementById(id);
+}
 
-    const name =
-        document
-            .getElementById("adminName")
-            ?.value
-            .trim();
 
-    const password =
-        document
-            .getElementById("adminPass")
-            ?.value
-            .trim();
+function escapeHtml(value){
 
-    if (!name || !password) {
+  return String(value ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 
-        alert(
-            "❌ أدخل اسم الأدمن وكلمة السر"
-        );
+}
 
-        return;
-    }
 
-    socket.emit(
-        "admin panel login",
-        {
-            name,
-            password
-        }
-    );
+function showAdminMessage(message){
+
+  if(typeof alert === "function"){
+    alert(message);
+  }
+
 }
 
 
 /* =========================================================
-   LOGIN SUCCESS
-========================================================= */
+   LOGIN
+   ========================================================= */
+
+function adminLogin(){
+
+  const username =
+    $("adminUsername")?.value.trim();
+
+  const password =
+    $("adminPassword")?.value || "";
+
+  if(!username){
+
+    showAdminMessage(
+      "❌ اكتب اسم الأدمن"
+    );
+
+    return;
+
+  }
+
+  if(!password){
+
+    showAdminMessage(
+      "❌ اكتب كلمة المرور"
+    );
+
+    return;
+
+  }
+
+
+  socket.emit(
+    "admin.panel login",
+    {
+      username,
+      password
+    }
+  );
+
+}
+
+window.adminLogin =
+  adminLogin;
+
+
+/* =========================================================
+   ADMIN LOGIN SUCCESS
+   ========================================================= */
 
 socket.on(
-    "admin login success",
-    data => {
+  "admin login success",
+  data => {
 
-        adminPermissions =
-            data?.permissions || {};
+    adminLoggedIn =
+      true;
 
-        assignedRooms =
-            data?.assignedRooms || [];
+    adminData =
+      data || {};
 
-        roomPermissions =
-            data?.roomPermissions || {};
+    adminPermissions =
+      data?.permissions || {};
 
-        isMasterAdmin =
-            data?.isMaster === true;
-
-
-        if (loginPage) {
-
-            loginPage.style.display =
-                "none";
-
-        }
+    adminRooms =
+      Array.isArray(
+        data?.rooms
+      )
+        ? data.rooms
+        : [];
 
 
-        if (panel) {
+    /*
+       إخفاء شاشة الدخول
+    */
 
-            panel.style.display =
-                "flex";
+    const login =
+      $("adminLogin");
 
-        }
-
-
-        addLog(
-            "✅ تم تسجيل الدخول"
-        );
+    const panel =
+      $("adminPanel");
 
 
-        requestRooms();
+    if(login){
 
-        requestAdmins();
+      login.style.display =
+        "none";
 
     }
+
+
+    if(panel){
+
+      panel.style.display =
+        "block";
+
+    }
+
+
+    updateAdminHeader();
+
+    requestRooms();
+
+    requestAdmins();
+
+    requestUsers();
+
+    requestStats();
+
+    requestLogs();
+
+  }
 );
 
 
 /* =========================================================
-   LOGIN FAILED
-========================================================= */
+   LOGIN ERROR
+   ========================================================= */
 
 socket.on(
-    "admin login failed",
-    () => {
+  "admin login error",
+  message => {
 
-        alert(
-            "❌ بيانات تسجيل الدخول غير صحيحة"
+    adminLoggedIn =
+      false;
+
+    showAdminMessage(
+      message ||
+      "❌ بيانات الدخول غير صحيحة"
+    );
+
+  }
+);
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+function updateAdminHeader(){
+
+  const name =
+    adminData?.username ||
+    adminData?.name ||
+    "";
+
+  const role =
+    adminData?.role ||
+    "";
+
+
+  const element =
+    $("adminName");
+
+  if(element){
+
+    element.textContent =
+      `${role === "master" ? "👑" : "🛡️"} ${name}`;
+
+  }
+
+
+  const roleElement =
+    $("adminRole");
+
+  if(roleElement){
+
+    roleElement.textContent =
+      role === "master"
+        ? "Master Admin"
+        : "Moderator";
+
+  }
+
+}
+
+
+/* =========================================================
+   ROOMS
+   ========================================================= */
+
+function requestRooms(){
+
+  if(!adminLoggedIn){
+    return;
+  }
+
+  socket.emit(
+    "get admin rooms"
+  );
+
+}
+
+window.requestRooms =
+  requestRooms;
+
+
+socket.on(
+  "admin rooms",
+  list => {
+
+    adminRooms =
+      Array.isArray(list)
+        ? list
+        : [];
+
+    renderRooms();
+
+    renderRoomSelectors();
+
+  }
+);
+
+
+/* =========================================================
+   ROOM FORM
+   ========================================================= */
+
+function saveRoom(){
+
+  if(
+    !adminData
+  ){
+
+    showAdminMessage(
+      "❌ سجل الدخول أولاً"
+    );
+
+    return;
+
+  }
+
+
+  const name =
+    $("roomName")
+      ?.value
+      ?.trim();
+
+  const description =
+    $("roomDescription")
+      ?.value
+      ?.trim();
+
+
+  if(!name){
+
+    showAdminMessage(
+      "❌ اكتب اسم الغرفة"
+    );
+
+    return;
+
+  }
+
+
+  if(editingRoomId){
+
+    socket.emit(
+      "update room",
+      {
+
+        id:
+          editingRoomId,
+
+        name:
+          name,
+
+        description:
+          description
+
+      }
+    );
+
+  }else{
+
+    socket.emit(
+      "create room",
+      {
+
+        name:
+          name,
+
+        description:
+          description
+
+      }
+    );
+
+  }
+
+
+  clearRoomForm();
+
+}
+
+window.saveRoom =
+  saveRoom;
+
+
+/* =========================================================
+   EDIT ROOM
+   ========================================================= */
+
+function editRoom(
+  id,
+  name,
+  description
+){
+
+  editingRoomId =
+    id;
+
+  const nameInput =
+    $("roomName");
+
+  const descriptionInput =
+    $("roomDescription");
+
+  const button =
+    $("roomSaveButton");
+
+
+  if(nameInput){
+
+    nameInput.value =
+      name || "";
+
+  }
+
+
+  if(descriptionInput){
+
+    descriptionInput.value =
+      description || "";
+
+  }
+
+
+  if(button){
+
+    button.innerText =
+      "💾 حفظ التعديل";
+
+  }
+
+
+  nameInput?.focus();
+
+}
+
+window.editRoom =
+  editRoom;
+
+
+/* =========================================================
+   CLEAR ROOM FORM
+   ========================================================= */
+
+function clearRoomForm(){
+
+  editingRoomId =
+    null;
+
+  const nameInput =
+    $("roomName");
+
+  const descriptionInput =
+    $("roomDescription");
+
+  const button =
+    $("roomSaveButton");
+
+
+  if(nameInput){
+
+    nameInput.value =
+      "";
+
+  }
+
+
+  if(descriptionInput){
+
+    descriptionInput.value =
+      "";
+
+  }
+
+
+  if(button){
+
+    button.innerText =
+      "➕ إنشاء الغرفة";
+
+  }
+
+}
+
+window.clearRoomForm =
+  clearRoomForm;
+
+
+/* =========================================================
+   TOGGLE ROOM
+   ========================================================= */
+
+function toggleRoom(
+  roomId
+){
+
+  socket.emit(
+    "toggle room",
+    roomId
+  );
+
+}
+
+window.toggleRoom =
+  toggleRoom;
+
+
+/* =========================================================
+   DELETE ROOM
+   ========================================================= */
+
+function deleteRoom(
+  roomId
+){
+
+  if(
+    !confirm(
+      "⚠️ هل تريد حذف هذه الغرفة؟"
+    )
+  ){
+
+    return;
+
+  }
+
+
+  socket.emit(
+    "delete room",
+    roomId
+  );
+
+}
+
+window.deleteRoom =
+  deleteRoom;
+
+
+/* =========================================================
+   RENDER ROOMS
+   ========================================================= */
+
+function renderRooms(){
+
+  const box =
+    $("roomsList");
+
+  if(!box){
+    return;
+  }
+
+
+  box.innerHTML =
+    "";
+
+
+  if(!adminRooms.length){
+
+    box.innerHTML = `
+      <div style="
+        padding:20px;
+        text-align:center;
+        color:#999;
+      ">
+        لا توجد غرف
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  adminRooms.forEach(
+    room => {
+
+      const card =
+        document.createElement(
+          "div"
         );
 
+      card.className =
+        "user-card";
+
+
+      const enabled =
+        room.enabled !== false;
+
+
+      card.innerHTML = `
+
+        <div>
+
+          <div style="
+            font-size:17px;
+            font-weight:bold;
+          ">
+            🏠 ${escapeHtml(
+              room.name
+            )}
+          </div>
+
+          <div style="
+            color:#999;
+            margin-top:5px;
+          ">
+            ${escapeHtml(
+              room.description ||
+              "بدون وصف"
+            )}
+          </div>
+
+          <div style="
+            margin-top:7px;
+            color:${
+              enabled
+                ? "#7dffb2"
+                : "#ff8080"
+            };
+          ">
+            ${
+              enabled
+                ? "🟢 مفعلة"
+                : "🔴 معطلة"
+            }
+          </div>
+
+        </div>
+
+        <div class="user-actions">
+
+          <button
+            onclick="editRoom(
+              '${escapeAttr(room.id)}',
+              '${escapeAttr(room.name)}',
+              '${escapeAttr(room.description || "")}'
+            )"
+          >
+            ✏️ تعديل
+          </button>
+
+          <button
+            onclick="toggleRoom(
+              '${escapeAttr(room.id)}'
+            )"
+          >
+            ${
+              enabled
+                ? "🔴 تعطيل"
+                : "🟢 تفعيل"
+            }
+          </button>
+
+          <button
+            onclick="deleteRoom(
+              '${escapeAttr(room.id)}'
+            )"
+          >
+            🗑️ حذف
+          </button>
+
+        </div>
+
+      `;
+
+
+      box.appendChild(
+        card
+      );
+
     }
+  );
+
+}
+
+
+/* =========================================================
+   ESCAPE ATTR
+   ========================================================= */
+
+function escapeAttr(value){
+
+  return String(
+    value ?? ""
+  )
+    .replaceAll(
+      "\\",
+      "\\\\"
+    )
+    .replaceAll(
+      "'",
+      "\\'"
+    )
+    .replaceAll(
+      "\n",
+      "\\n"
+    )
+    .replaceAll(
+      "\r",
+      "\\r"
+    );
+
+}
+
+
+/* =========================================================
+   ROOM SELECTORS
+   ========================================================= */
+
+function renderRoomSelectors(){
+
+  const selectors =
+    document.querySelectorAll(
+      ".admin-room-selector"
+    );
+
+
+  selectors.forEach(
+    select => {
+
+      const previous =
+        select.value;
+
+      select.innerHTML =
+        `
+          <option value="">
+            اختر الغرفة
+          </option>
+        `;
+
+
+      adminRooms.forEach(
+        room => {
+
+          const option =
+            document.createElement(
+              "option"
+            );
+
+          option.value =
+            room.id;
+
+          option.textContent =
+            `🏠 ${room.name}`;
+
+          select.appendChild(
+            option
+          );
+
+        }
+      );
+
+
+      if(previous){
+
+        select.value =
+          previous;
+
+      }
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   ROOM ASSIGNMENT
+   ========================================================= */
+
+function assignAdminToRooms(){
+
+  if(
+    !selectedAdmin
+  ){
+
+    showAdminMessage(
+      "❌ اختر أدمن أولاً"
+    );
+
+    return;
+
+  }
+
+
+  const selected =
+    Array.from(
+      document.querySelectorAll(
+        ".assign-room-checkbox:checked"
+      )
+    ).map(
+      checkbox =>
+        checkbox.value
+    );
+
+
+  socket.emit(
+    "update admin rooms",
+    {
+
+      admin:
+        selectedAdmin,
+
+      rooms:
+        selected
+
+    }
+  );
+
+}
+
+window.assignAdminToRooms =
+  assignAdminToRooms;
+
+
+/* =========================================================
+   REQUEST ADMINS
+   ========================================================= */
+
+function requestAdmins(){
+
+  socket.emit(
+    "get admins"
+  );
+
+}
+
+window.requestAdmins =
+  requestAdmins;
+
+
+socket.on(
+  "admins list",
+  list => {
+
+    renderAdmins(
+      Array.isArray(list)
+        ? list
+        : []
+    );
+
+  }
+);
+
+
+/* =========================================================
+   RENDER ADMINS
+   ========================================================= */
+
+function renderAdmins(
+  admins
+){
+
+  const box =
+    $("adminsList");
+
+  if(!box){
+    return;
+  }
+
+
+  box.innerHTML =
+    "";
+
+
+  admins.forEach(
+    admin => {
+
+      const card =
+        document.createElement(
+          "div"
+        );
+
+      card.className =
+        "user-card";
+
+
+      const rooms =
+        Array.isArray(
+          admin.rooms
+        )
+          ? admin.rooms
+          : [];
+
+
+      const isMaster =
+        admin.master === true ||
+        admin.role === "master";
+
+
+      card.innerHTML = `
+
+        <div>
+
+          <div style="
+            font-size:17px;
+            font-weight:bold;
+          ">
+            ${
+              isMaster
+                ? "👑"
+                : "🛡️"
+            }
+            ${escapeHtml(
+              admin.name ||
+              admin.username ||
+              ""
+            )}
+          </div>
+
+          <div style="
+            color:#aaa;
+            margin-top:5px;
+          ">
+            ${
+              isMaster
+                ? "Master Admin"
+                : "Moderator"
+            }
+          </div>
+
+          <div style="
+            color:#999;
+            margin-top:5px;
+          ">
+            🏠 ${rooms.length}
+            غرفة
+          </div>
+
+        </div>
+
+        <div class="user-actions">
+
+          <button
+            onclick="selectAdminForRooms(
+              '${escapeAttr(
+                admin.name ||
+                admin.username ||
+                ""
+              )}'
+            )"
+          >
+            🏠 الغرف
+          </button>
+
+          <button
+            onclick="editAdminPermissions(
+              '${escapeAttr(
+                admin.name ||
+                admin.username ||
+                ""
+              )}'
+            )"
+          >
+            ⚙️ الصلاحيات
+          </button>
+
+          <button
+            onclick="removeAdmin(
+              '${escapeAttr(
+                admin.name ||
+                admin.username ||
+                ""
+              )}'
+            )"
+          >
+            🗑️ حذف
+          </button>
+
+        </div>
+
+      `;
+
+
+      box.appendChild(
+        card
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   SELECT ADMIN FOR ROOMS
+   ========================================================= */
+
+function selectAdminForRooms(
+  username
+){
+
+  selectedAdmin =
+    username;
+
+
+  const container =
+    $("adminRoomAssignment");
+
+  if(!container){
+
+    showAdminMessage(
+      `الأدمن المحدد: ${username}`
+    );
+
+    return;
+
+  }
+
+
+  container.style.display =
+    "block";
+
+
+  const title =
+    $("selectedAdminName");
+
+  if(title){
+
+    title.textContent =
+      `🏠 غرف ${username}`;
+
+  }
+
+
+  socket.emit(
+    "get admin rooms",
+    username
+  );
+
+}
+
+window.selectAdminForRooms =
+  selectAdminForRooms;
+
+
+/* =========================================================
+   ADMIN ROOM ASSIGNMENT RESULT
+   ========================================================= */
+
+socket.on(
+  "admin room assignment",
+  data => {
+
+    if(!data){
+      return;
+    }
+
+
+    selectedAdmin =
+      data.admin ||
+      selectedAdmin;
+
+
+    const roomsForAdmin =
+      Array.isArray(
+        data.rooms
+      )
+        ? data.rooms
+        : [];
+
+
+    document
+      .querySelectorAll(
+        ".assign-room-checkbox"
+      )
+      .forEach(
+        checkbox => {
+
+          checkbox.checked =
+            roomsForAdmin.includes(
+              checkbox.value
+            );
+
+        }
+      );
+
+  }
+);
+
+
+/* =========================================================
+   CREATE ADMIN ROOM CHECKBOXES
+   ========================================================= */
+
+function renderAdminRoomCheckboxes(
+  assignedRooms = []
+){
+
+  const box =
+    $("adminRoomCheckboxes");
+
+  if(!box){
+    return;
+  }
+
+
+  box.innerHTML =
+    "";
+
+
+  adminRooms.forEach(
+    room => {
+
+      const label =
+        document.createElement(
+          "label"
+        );
+
+      label.style.cssText = `
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding:8px;
+        cursor:pointer;
+      `;
+
+
+      const checkbox =
+        document.createElement(
+          "input"
+        );
+
+      checkbox.type =
+        "checkbox";
+
+      checkbox.className =
+        "assign-room-checkbox";
+
+      checkbox.value =
+        room.id;
+
+      checkbox.checked =
+        assignedRooms.includes(
+          room.id
+        );
+
+
+      const text =
+        document.createElement(
+          "span"
+        );
+
+      text.textContent =
+        `🏠 ${room.name}`;
+
+
+      label.append(
+        checkbox,
+        text
+      );
+
+      box.appendChild(
+        label
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   ADMIN PERMISSIONS
+   ========================================================= */
+
+function editAdminPermissions(
+  username
+){
+
+  selectedAdmin =
+    username;
+
+
+  socket.emit(
+    "get admin permissions",
+    username
+  );
+
+}
+
+window.editAdminPermissions =
+  editAdminPermissions;
+
+
+socket.on(
+  "admin permissions data",
+  data => {
+
+    if(!data){
+      return;
+    }
+
+
+    selectedAdmin =
+      data.admin ||
+      selectedAdmin;
+
+
+    const permissions =
+      data.permissions ||
+      {};
+
+
+    /*
+       أسماء الصلاحيات المدعومة
+    */
+
+    const names = [
+
+      "viewUserInfo",
+
+      "kick",
+
+      "ban",
+
+      "unban",
+
+      "mute",
+
+      "unmute",
+
+      "disconnect",
+
+      "undisconnect",
+
+      "stars",
+
+      "chatLock",
+
+      "maintenance",
+
+      "protection",
+
+      "deleteMessage",
+
+      "manageRooms",
+
+      "addAdmin"
+
+    ];
+
+
+    names.forEach(
+      name => {
+
+        const checkbox =
+          document.querySelector(
+            `[data-permission="${name}"]`
+          );
+
+        if(checkbox){
+
+          checkbox.checked =
+            permissions[name] ===
+            true;
+
+        }
+
+      }
+    );
+
+
+    const box =
+      $("adminPermissionsBox");
+
+    if(box){
+
+      box.style.display =
+        "block";
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   SAVE ADMIN PERMISSIONS
+   ========================================================= */
+
+function saveAdminPermissions(){
+
+  if(!selectedAdmin){
+
+    showAdminMessage(
+      "❌ اختر أدمن"
+    );
+
+    return;
+
+  }
+
+
+  const permissions = {};
+
+
+  document
+    .querySelectorAll(
+      "[data-permission]"
+    )
+    .forEach(
+      checkbox => {
+
+        permissions[
+          checkbox.dataset.permission
+        ] =
+          checkbox.checked;
+
+      }
+    );
+
+
+  socket.emit(
+    "update admin permissions",
+    {
+
+      admin:
+        selectedAdmin,
+
+      permissions:
+        permissions
+
+    }
+  );
+
+}
+
+window.saveAdminPermissions =
+  saveAdminPermissions;
+
+
+/* =========================================================
+   REMOVE ADMIN
+   ========================================================= */
+
+function removeAdmin(
+  username
+){
+
+  if(
+    !confirm(
+      `⚠️ حذف الأدمن ${username}؟`
+    )
+  ){
+
+    return;
+
+  }
+
+
+  socket.emit(
+    "remove admin",
+    username
+  );
+
+}
+
+window.removeAdmin =
+  removeAdmin;
+
+
+/* =========================================================
+   USERS
+   ========================================================= */
+
+function requestUsers(){
+
+  socket.emit(
+    "get online users"
+  );
+
+}
+
+
+socket.on(
+  "online users",
+  users => {
+
+    renderOnlineUsers(
+      Array.isArray(users)
+        ? users
+        : []
+    );
+
+  }
+);
+
+
+socket.on(
+  "admin online users",
+  users => {
+
+    renderOnlineUsers(
+      Array.isArray(users)
+        ? users
+        : []
+    );
+
+  }
+);
+
+
+/* =========================================================
+   ONLINE USERS RENDER
+   ========================================================= */
+
+function renderOnlineUsers(
+  users
+){
+
+  const box =
+    $("onlineUsers");
+
+  if(!box){
+    return;
+  }
+
+
+  box.innerHTML =
+    "";
+
+
+  users.forEach(
+    user => {
+
+      const div =
+        document.createElement(
+          "div"
+        );
+
+      div.className =
+        "user-card";
+
+
+      div.innerHTML = `
+
+        <div>
+
+          <strong>
+            ${
+              user.role ||
+              ""
+            }
+            ${escapeHtml(
+              user.username ||
+              ""
+            )}
+          </strong>
+
+          ${
+            user.roomName
+              ? `
+                <div style="
+                  color:#999;
+                  margin-top:4px;
+                ">
+                  🏠 ${escapeHtml(
+                    user.roomName
+                  )}
+                </div>
+              `
+              : ""
+          }
+
+        </div>
+
+        <div class="user-actions">
+
+          <button
+            onclick="viewUser(
+              '${escapeAttr(
+                user.id
+              )}'
+            )"
+          >
+            👁️ معلومات
+          </button>
+
+          <button
+            onclick="kickUser(
+              '${escapeAttr(
+                user.id
+              )}'
+            )"
+          >
+            👢 طرد
+          </button>
+
+          <button
+            onclick="muteUser(
+              '${escapeAttr(
+                user.id
+              )}'
+            )"
+          >
+            🔇 كتم
+          </button>
+
+        </div>
+
+      `;
+
+
+      box.appendChild(
+        div
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   VIEW USER
+   ========================================================= */
+
+function viewUser(
+  userId
+){
+
+  socket.emit(
+    "view user",
+    userId
+  );
+
+}
+
+window.viewUser =
+  viewUser;
+
+
+socket.on(
+  "user info",
+  data => {
+
+    const box =
+      $("userInfo");
+
+    if(!box){
+
+      showAdminMessage(
+        JSON.stringify(
+          data,
+          null,
+          2
+        )
+      );
+
+      return;
+
+    }
+
+
+    box.innerHTML = `
+
+      <h3>👤 معلومات المستخدم</h3>
+
+      <p>
+        الاسم:
+        <strong>
+          ${escapeHtml(
+            data.username ||
+            ""
+          )}
+        </strong>
+      </p>
+
+      <p>
+        IP:
+        ${escapeHtml(
+          data.ip ||
+          "غير متاح"
+        )}
+      </p>
+
+      <p>
+        الجهاز:
+        ${escapeHtml(
+          data.device ||
+          "غير متاح"
+        )}
+      </p>
+
+      <p>
+        الغرفة:
+        ${escapeHtml(
+          data.roomName ||
+          "لا توجد"
+        )}
+      </p>
+
+    `;
+
+  }
+);
+
+
+/* =========================================================
+   MODERATION HELPERS
+   ========================================================= */
+
+function getCurrentRoomId(){
+
+  return selectedRoomId ||
+    $("moderationRoom")?.value ||
+    null;
+
+}
+
+
+function moderationPayload(
+  userId
+){
+
+  return {
+
+    id:
+      userId,
+
+    roomId:
+      getCurrentRoomId()
+
+  };
+
+}
+
+
+/* =========================================================
+   KICK
+   ========================================================= */
+
+function kickUser(
+  userId
+){
+
+  socket.emit(
+    "kick user",
+    moderationPayload(
+      userId
+    )
+  );
+
+}
+
+window.kickUser =
+  kickUser;
+
+
+/* =========================================================
+   BAN
+   ========================================================= */
+
+function banUser(
+  userId
+){
+
+  socket.emit(
+    "ban user",
+    moderationPayload(
+      userId
+    )
+  );
+
+}
+
+window.banUser =
+  banUser;
+
+
+/* =========================================================
+   MUTE
+   ========================================================= */
+
+function muteUser(
+  userId
+){
+
+  socket.emit(
+    "mute user",
+    moderationPayload(
+      userId
+    )
+  );
+
+}
+
+window.muteUser =
+  muteUser;
+
+
+/* =========================================================
+   DISCONNECT
+   ========================================================= */
+
+function disconnectUser(
+  userId
+){
+
+  socket.emit(
+    "disconnect user",
+    moderationPayload(
+      userId
+    )
+  );
+
+}
+
+window.disconnectUser =
+  disconnectUser;
+
+
+/* =========================================================
+   UNBAN
+   ========================================================= */
+
+function unbanUser(
+  username
+){
+
+  socket.emit(
+    "unban user",
+    {
+
+      username:
+        username,
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.unbanUser =
+  unbanUser;
+
+
+/* =========================================================
+   UNMUTE
+   ========================================================= */
+
+function unmuteUser(
+  username
+){
+
+  socket.emit(
+    "unmute user",
+    {
+
+      username:
+        username,
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.unmuteUser =
+  unmuteUser;
+
+
+/* =========================================================
+   UNDISCONNECT
+   ========================================================= */
+
+function undisconnectUser(
+  username
+){
+
+  socket.emit(
+    "undisconnect user",
+    {
+
+      username:
+        username,
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.undisconnectUser =
+  undisconnectUser;
+
+
+/* =========================================================
+   STARS
+   ========================================================= */
+
+function giveStar(
+  username
+){
+
+  socket.emit(
+    "give star",
+    {
+
+      username:
+        username,
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.giveStar =
+  giveStar;
+
+
+function removeStar(
+  username
+){
+
+  socket.emit(
+    "remove star",
+    {
+
+      username:
+        username,
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.removeStar =
+  removeStar;
+
+
+/* =========================================================
+   ROOM SETTINGS
+   ========================================================= */
+
+function toggleStarsMode(){
+
+  socket.emit(
+    "toggle stars mode",
+    {
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.toggleStarsMode =
+  toggleStarsMode;
+
+
+function toggleChatLock(){
+
+  socket.emit(
+    "toggle chat lock",
+    {
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.toggleChatLock =
+  toggleChatLock;
+
+
+function toggleMaintenance(){
+
+  socket.emit(
+    "maintenance mode",
+    {
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.toggleMaintenance =
+  toggleMaintenance;
+
+
+function toggleProtection(){
+
+  socket.emit(
+    "toggle protection",
+    {
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.toggleProtection =
+  toggleProtection;
+
+
+/* =========================================================
+   DELETE MESSAGE
+   ========================================================= */
+
+function deleteMessage(
+  messageId
+){
+
+  socket.emit(
+    "delete message",
+    {
+
+      messageId:
+        messageId,
+
+      roomId:
+        getCurrentRoomId()
+
+    }
+  );
+
+}
+
+window.deleteMessage =
+  deleteMessage;
+
+
+/* =========================================================
+   MODERATION DATA
+   ========================================================= */
+
+function requestRoomModeration(
+  roomId
+){
+
+  selectedRoomId =
+    roomId;
+
+
+  socket.emit(
+    "get room moderation",
+    roomId
+  );
+
+}
+
+window.requestRoomModeration =
+  requestRoomModeration;
+
+
+socket.on(
+  "room moderation data",
+  data => {
+
+    if(!data){
+      return;
+    }
+
+
+    renderModerationList(
+      "bannedUsers",
+      data.banned
+    );
+
+    renderModerationList(
+      "mutedUsers",
+      data.muted
+    );
+
+    renderModerationList(
+      "disconnectedUsers",
+      data.disconnected
+    );
+
+    renderModerationList(
+      "starUsers",
+      data.stars
+    );
+
+  }
+);
+
+
+/* =========================================================
+   MODERATION LIST
+   ========================================================= */
+
+function renderModerationList(
+  elementId,
+  list
+){
+
+  const box =
+    $(elementId);
+
+  if(!box){
+    return;
+  }
+
+
+  box.innerHTML =
+    "";
+
+
+  if(
+    !Array.isArray(list) ||
+    !list.length
+  ){
+
+    box.innerHTML = `
+      <div style="
+        color:#888;
+        padding:10px;
+      ">
+        لا يوجد
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  list.forEach(
+    item => {
+
+      const username =
+        typeof item ===
+        "string"
+          ? item
+          : (
+              item.username ||
+              item.name ||
+              ""
+            );
+
+
+      const div =
+        document.createElement(
+          "div"
+        );
+
+      div.className =
+        "user-card";
+
+
+      div.innerHTML = `
+
+        <span>
+          ${escapeHtml(
+            username
+          )}
+        </span>
+
+      `;
+
+
+      box.appendChild(
+        div
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   STATS
+   ========================================================= */
+
+function requestStats(){
+
+  socket.emit(
+    "get stats"
+  );
+
+}
+
+
+socket.on(
+  "stats",
+  data => {
+
+    if(!data){
+      return;
+    }
+
+
+    setText(
+      "totalUsers",
+      data.totalUsers
+    );
+
+    setText(
+      "onlineCount",
+      data.online
+    );
+
+    setText(
+      "roomCount",
+      data.rooms
+    );
+
+    setText(
+      "adminCount",
+      data.admins
+    );
+
+  }
+);
+
+
+function setText(
+  id,
+  value
+){
+
+  const element =
+    $(id);
+
+  if(element){
+
+    element.textContent =
+      value ??
+      "0";
+
+  }
+
+}
+
+
+/* =========================================================
+   LOGS
+   ========================================================= */
+
+function requestLogs(){
+
+  socket.emit(
+    "get logs"
+  );
+
+}
+
+
+socket.on(
+  "logs",
+  logs => {
+
+    const box =
+      $("logs");
+
+    if(!box){
+      return;
+    }
+
+
+    box.innerHTML =
+      "";
+
+
+    if(
+      !Array.isArray(logs)
+    ){
+
+      return;
+
+    }
+
+
+    logs
+      .slice()
+      .reverse()
+      .forEach(
+        log => {
+
+          const div =
+            document.createElement(
+              "div"
+            );
+
+          div.className =
+            "log-item";
+
+          div.textContent =
+            typeof log ===
+            "string"
+              ? log
+              : (
+                  log.message ||
+                  JSON.stringify(
+                    log
+                  )
+                );
+
+          box.appendChild(
+            div
+          );
+
+        }
+      );
+
+  }
+);
+
+
+/* =========================================================
+   BANNED / MUTED LEGACY LISTS
+   ========================================================= */
+
+async function loadLegacyLists(){
+
+  /*
+     هذه القوائم تبقى متوافقة
+     مع ملفات السيرفر القديمة.
+  */
+
+  try{
+
+    const banned =
+      await fetch(
+        "/banned.json",
+        {
+          cache:"no-store"
+        }
+      );
+
+    if(banned.ok){
+
+      const data =
+        await banned.json();
+
+      renderModerationList(
+        "bannedUsers",
+        data
+      );
+
+    }
+
+  }catch{}
+
+  try{
+
+    const muted =
+      await fetch(
+        "/muted.json",
+        {
+          cache:"no-store"
+        }
+      );
+
+    if(muted.ok){
+
+      const data =
+        await muted.json();
+
+      renderModerationList(
+        "mutedUsers",
+        data
+      );
+
+    }
+
+  }catch{}
+
+}
+
+
+/* =========================================================
+   ADMIN CHAT CONTROLS
+   ========================================================= */
+
+function sendAdminAction(
+  eventName,
+  payload
+){
+
+  if(
+    !adminLoggedIn
+  ){
+
+    showAdminMessage(
+      "❌ سجل الدخول أولاً"
+    );
+
+    return;
+
+  }
+
+
+  socket.emit(
+    eventName,
+    payload
+  );
+
+}
+
+
+/* =========================================================
+   GENERIC ROOM ACTIONS
+   ========================================================= */
+
+function roomAction(
+  eventName,
+  roomId
+){
+
+  sendAdminAction(
+    eventName,
+    {
+      roomId:
+        roomId
+    }
+  );
+
+}
+
+window.roomAction =
+  roomAction;
+
+
+/* =========================================================
+   SOCKET FEEDBACK
+   ========================================================= */
+
+socket.on(
+  "admin action success",
+  message => {
+
+    if(message){
+
+      showAdminMessage(
+        "✅ " + message
+      );
+
+    }
+
+    requestRooms();
+
+    requestAdmins();
+
+  }
+);
+
+
+socket.on(
+  "admin action error",
+  message => {
+
+    showAdminMessage(
+      "❌ " +
+      (
+        message ||
+        "تعذر تنفيذ العملية"
+      )
+    );
+
+  }
+);
+
+
+/* =========================================================
+   ROOM CREATED
+   ========================================================= */
+
+socket.on(
+  "room created",
+  room => {
+
+    if(room){
+
+      showAdminMessage(
+        `✅ تم إنشاء غرفة ${room.name}`
+      );
+
+    }
+
+    requestRooms();
+
+  }
+);
+
+
+/* =========================================================
+   ROOM UPDATED
+   ========================================================= */
+
+socket.on(
+  "room updated",
+  room => {
+
+    if(room){
+
+      showAdminMessage(
+        `✅ تم تحديث غرفة ${room.name}`
+      );
+
+    }
+
+    requestRooms();
+
+  }
+);
+
+
+/* =========================================================
+   ROOM TOGGLED
+   ========================================================= */
+
+socket.on(
+  "room toggled",
+  room => {
+
+    if(room){
+
+      showAdminMessage(
+        room.enabled !== false
+          ? "🟢 تم تفعيل الغرفة"
+          : "🔴 تم تعطيل الغرفة"
+      );
+
+    }
+
+    requestRooms();
+
+  }
+);
+
+
+/* =========================================================
+   ROOM DELETED
+   ========================================================= */
+
+socket.on(
+  "room deleted",
+  roomId => {
+
+    showAdminMessage(
+      "🗑️ تم حذف الغرفة"
+    );
+
+    requestRooms();
+
+  }
+);
+
+
+/* =========================================================
+   ROOM STATE
+   ========================================================= */
+
+socket.on(
+  "room state",
+  state => {
+
+    if(!state){
+      return;
+    }
+
+
+    selectedRoomId =
+      state.roomId ||
+      selectedRoomId;
+
+
+    /*
+       تحديث عناصر الحالة
+    */
+
+    setToggleText(
+      "starsModeStatus",
+      state.settings?.starsMode
+    );
+
+    setToggleText(
+      "chatLockStatus",
+      state.settings?.chatLocked
+    );
+
+    setToggleText(
+      "maintenanceStatus",
+      state.settings?.maintenance
+    );
+
+    setToggleText(
+      "protectionStatus",
+      state.settings?.protection
+    );
+
+  }
+);
+
+
+function setToggleText(
+  id,
+  enabled
+){
+
+  const element =
+    $(id);
+
+  if(!element){
+    return;
+  }
+
+  element.textContent =
+    enabled
+      ? "ON"
+      : "OFF";
+
+}
+
+
+/* =========================================================
+   ADMIN ROOM SELECT CHANGE
+   ========================================================= */
+
+document.addEventListener(
+  "change",
+  e => {
+
+    if(
+      e.target &&
+      e.target.classList &&
+      e.target.classList.contains(
+        "admin-room-selector"
+      )
+    ){
+
+      selectedRoomId =
+        e.target.value ||
+        null;
+
+
+      if(selectedRoomId){
+
+        requestRoomModeration(
+          selectedRoomId
+        );
+
+      }
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   ADMIN PERMISSION CHECKBOXES
+   ========================================================= */
+
+function createPermissionCheckboxes(){
+
+  const box =
+    $("adminPermissionsBox");
+
+  if(!box){
+    return;
+  }
+
+
+  if(
+    box.dataset.ready ===
+    "1"
+  ){
+
+    return;
+
+  }
+
+
+  box.dataset.ready =
+    "1";
+
+
+  const permissions = [
+
+    [
+      "viewUserInfo",
+      "👁️ مشاهدة معلومات المستخدم"
+    ],
+
+    [
+      "kick",
+      "👢 الطرد"
+    ],
+
+    [
+      "ban",
+      "🚫 الحظر"
+    ],
+
+    [
+      "unban",
+      "🔓 فك الحظر"
+    ],
+
+    [
+      "mute",
+      "🔇 الكتم"
+    ],
+
+    [
+      "unmute",
+      "🔊 فك الكتم"
+    ],
+
+    [
+      "disconnect",
+      "⛔ الفصل"
+    ],
+
+    [
+      "undisconnect",
+      "🔌 فك الفصل"
+    ],
+
+    [
+      "stars",
+      "⭐ النجوم"
+    ],
+
+    [
+      "chatLock",
+      "🔒 قفل الدردشة"
+    ],
+
+    [
+      "maintenance",
+      "🛠️ الصيانة"
+    ],
+
+    [
+      "protection",
+      "🛡️ الحماية"
+    ],
+
+    [
+      "deleteMessage",
+      "🗑️ حذف الرسائل"
+    ],
+
+    [
+      "manageRooms",
+      "🏠 إدارة الغرف"
+    ],
+
+    [
+      "addAdmin",
+      "👑 إدارة الأدمن"
+    ]
+
+  ];
+
+
+  const wrapper =
+    document.createElement(
+      "div"
+    );
+
+
+  permissions.forEach(
+    item => {
+
+      const label =
+        document.createElement(
+          "label"
+        );
+
+      label.style.cssText = `
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding:7px 0;
+      `;
+
+
+      const checkbox =
+        document.createElement(
+          "input"
+        );
+
+      checkbox.type =
+        "checkbox";
+
+      checkbox.dataset.permission =
+        item[0];
+
+
+      const text =
+        document.createElement(
+          "span"
+        );
+
+      text.textContent =
+        item[1];
+
+
+      label.append(
+        checkbox,
+        text
+      );
+
+
+      wrapper.appendChild(
+        label
+      );
+
+    }
+  );
+
+
+  box.appendChild(
+    wrapper
+  );
+
+
+  const save =
+    document.createElement(
+      "button"
+    );
+
+  save.textContent =
+    "💾 حفظ الصلاحيات";
+
+  save.onclick =
+    saveAdminPermissions;
+
+
+  box.appendChild(
+    save
+  );
+
+}
+
+
+/* =========================================================
+   ADMIN ROOM ASSIGNMENT UI
+   ========================================================= */
+
+function createAssignmentUI(){
+
+  const box =
+    $("adminRoomAssignment");
+
+  if(!box){
+    return;
+  }
+
+
+  if(
+    box.dataset.ready ===
+    "1"
+  ){
+
+    return;
+
+  }
+
+
+  box.dataset.ready =
+    "1";
+
+
+  const title =
+    document.createElement(
+      "h3"
+    );
+
+  title.id =
+    "selectedAdminName";
+
+  title.textContent =
+    "🏠 غرف الأدمن";
+
+
+  const roomsBox =
+    document.createElement(
+      "div"
+    );
+
+  roomsBox.id =
+    "adminRoomCheckboxes";
+
+
+  const save =
+    document.createElement(
+      "button"
+    );
+
+  save.textContent =
+    "💾 حفظ الغرف";
+
+  save.onclick =
+    assignAdminToRooms;
+
+
+  box.append(
+    title,
+    roomsBox,
+    save
+  );
+
+}
+
+
+/* =========================================================
+   INITIALIZE
+   ========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
+
+    createPermissionCheckboxes();
+
+    createAssignmentUI();
+
+    renderRoomSelectors();
+
+    loadLegacyLists();
+
+  }
+);
+
+
+/* =========================================================
+   SOCKET CONNECT
+   ========================================================= */
+
+socket.on(
+  "connect",
+  () => {
+
+    /*
+       لا نرسل login تلقائياً.
+       تسجيل الدخول من زر اللوحة.
+    */
+
+  }
+);
+
+
+/* =========================================================
+   ROOM ASSIGNMENT REFRESH
+   ========================================================= */
+
+socket.on(
+  "admin rooms updated",
+  data => {
+
+    if(data){
+
+      adminRooms =
+        Array.isArray(
+          data.rooms
+        )
+          ? data.rooms
+          : adminRooms;
+
+    }
+
+
+    requestRooms();
+
+    requestAdmins();
+
+
+    if(
+      selectedAdmin
+    ){
+
+      socket.emit(
+        "get admin rooms",
+        selectedAdmin
+      );
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   MASTER / ROLE
+   ========================================================= */
+
+socket.on(
+  "admin role",
+  data => {
+
+    if(!adminData){
+      adminData = {};
+    }
+
+
+    adminData.role =
+      data?.role ||
+      adminData.role;
+
+
+    adminData.master =
+      data?.master === true ||
+      adminData.master === true;
+
+
+    updateAdminHeader();
+
+  }
 );
 
 
 /* =========================================================
    ROOM PERMISSIONS
-========================================================= */
+   ========================================================= */
 
 socket.on(
-    "admin room permissions",
-    data => {
+  "room permissions",
+  data => {
 
-        assignedRooms =
-            data?.assignedRooms || [];
-
-        roomPermissions =
-            data?.roomPermissions || {};
-
-        isMasterAdmin =
-            data?.isMaster === true;
-
-
-        renderRoomPermissions();
-
+    if(!data){
+      return;
     }
+
+
+    adminPermissions =
+      data.permissions ||
+      adminPermissions;
+
+
+    renderRooms();
+
+  }
 );
 
 
 /* =========================================================
-   USERS
-========================================================= */
+   REFRESH EVERYTHING
+   ========================================================= */
 
-socket.on(
-    "admin online users",
-    users => {
+function refreshAdmin(){
 
-        if (!onlineUsers) {
-            return;
-        }
+  if(!adminLoggedIn){
+    return;
+  }
 
 
-        onlineUsers.innerHTML = "";
+  requestRooms();
 
+  requestAdmins();
 
-        users.forEach(
-            user => {
+  requestUsers();
 
-                const div =
-                    document.createElement(
-                        "div"
-                    );
+  requestStats();
 
+  requestLogs();
 
-                div.className =
-                    "user-card";
+  loadLegacyLists();
 
+}
 
-                let buttons = "";
-
-
-                /* INFO */
-
-                if (
-                    adminPermissions
-                        .viewUserInfo
-                ) {
-
-                    buttons += `
-<button onclick="viewUser('${escapeAttr(user.id)}')">
-ℹ️ معلومات
-</button>
-`;
-
-                }
-
-
-                /*
-                   KICK
-                   Room ID is selected
-                   from admin room selector.
-                */
-
-                if (
-                    adminPermissions.kick
-                ) {
-
-                    buttons += `
-<button onclick="kickUser('${escapeAttr(user.id)}')">
-👢 طرد
-</button>
-`;
-
-                }
-
-
-                /* BAN */
-
-                if (
-                    adminPermissions.ban
-                ) {
-
-                    buttons += `
-<button onclick="banUser('${escapeAttr(user.id)}')">
-🚫 حظر
-</button>
-`;
-
-                }
-
-
-                /* UNBAN */
-
-                if (
-                    adminPermissions.unban
-                ) {
-
-                    buttons += `
-<button onclick="unbanUser('${escapeAttr(user.id)}')">
-🔓 فك حظر
-</button>
-`;
-
-                }
-
-
-                /* MUTE */
-
-                if (
-                    adminPermissions.mute
-                ) {
-
-                    buttons += `
-<button onclick="muteUser('${escapeAttr(user.id)}')">
-🔇 كتم
-</button>
-`;
-
-                }
-
-
-                /* UNMUTE */
-
-                if (
-                    adminPermissions.unmute
-                ) {
-
-                    buttons += `
-<button onclick="unmuteUser('${escapeAttr(user.id)}')">
-🔊 فك كتم
-</button>
-`;
-
-                }
-
-
-                /* STARS */
-
-                if (
-                    adminPermissions.stars
-                ) {
-
-                    buttons += `
-<button onclick="giveStar('${escapeAttr(user.username)}')">
-⭐ نجمة
-</button>
-`;
-
-                    buttons += `
-<button onclick="removeStar('${escapeAttr(user.username)}')">
-⭐❌ سحب
-</button>
-`;
-
-                }
-
-
-                /* DISCONNECT */
-
-                if (
-                    adminPermissions.disconnect
-                ) {
-
-                    buttons += `
-<button onclick="disconnectUser('${escapeAttr(user.id)}')">
-⛔ فصل
-</button>
-`;
-
-                }
-
-
-                /* UNDISCONNECT */
-
-                if (
-                    adminPermissions.undisconnect
-                ) {
-
-                    buttons += `
-<button onclick="undisconnectUser('${escapeAttr(user.id)}')">
-⛔🔓 فك فصل
-</button>
-`;
-
-                }
-
-
-                div.innerHTML = `
-
-<div>
-👤 <strong>${escapeHtml(user.username)}</strong>
-</div>
-
-<div class="user-actions">
-
-${buttons}
-
-</div>
-
-`;
-
-
-                onlineUsers.appendChild(
-                    div
-                );
-
-            }
-        );
-
-    }
-);
+window.refreshAdmin =
+  refreshAdmin;
 
 
 /* =========================================================
-   USER INFO
-========================================================= */
+   LOGOUT
+   ========================================================= */
 
-function viewUser(id) {
+function adminLogout(){
 
-    socket.emit(
-        "view user",
-        id
-    );
-
-}
+  socket.emit(
+    "admin.panel logout"
+  );
 
 
-socket.on(
-    "user info",
-    user => {
+  adminLoggedIn =
+    false;
 
-        alert(
+  adminData =
+    null;
 
-`👤 ${user.username}
+  adminPermissions =
+    {};
 
-🌐 ${user.ip}
-
-📱 ${user.device}
-
-🎨 ${user.color}
-
-🆔 ${user.id}`
-
-        );
-
-    }
-);
+  adminRooms =
+    [];
 
 
-/* =========================================================
-   CURRENT SELECTED ROOM
-========================================================= */
+  const panel =
+    $("adminPanel");
 
-function getSelectedRoomId() {
-
-    const select =
-        document.getElementById(
-            "adminRoomSelect"
-        );
+  const login =
+    $("adminLogin");
 
 
-    if (
-        select &&
-        select.value
-    ) {
+  if(panel){
 
-        return String(
-            select.value
-        );
+    panel.style.display =
+      "none";
 
-    }
+  }
 
 
-    /*
-       If there is only one room,
-       use it automatically.
-    */
+  if(login){
 
-    if (
-        assignedRooms.length === 1
-    ) {
+    login.style.display =
+      "block";
 
-        return String(
-            assignedRooms[0]
-        );
-
-    }
-
-
-    return null;
-}
-
-
-/* =========================================================
-   ACTIONS
-========================================================= */
-
-function kickUser(id) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "kick user",
-        {
-            id,
-            roomId
-        }
-    );
+  }
 
 }
 
-
-function banUser(id) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "ban user",
-        {
-            id,
-            roomId
-        }
-    );
-
-}
-
-
-function unbanUser(id) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "unban user",
-        {
-            id,
-            roomId
-        }
-    );
-
-}
-
-
-function muteUser(id) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "mute user",
-        {
-            id,
-            roomId
-        }
-    );
-
-}
-
-
-function unmuteUser(id) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "unmute user",
-        {
-            id,
-            roomId
-        }
-    );
-
-
-    setTimeout(
-        loadMutedList,
-        500
-    );
-
-}
-
-
-function disconnectUser(id) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "disconnect user",
-        {
-            id,
-            roomId
-        }
-    );
-
-}
-
-
-function undisconnectUser(id) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "undisconnect user",
-        {
-            id,
-            roomId
-        }
-    );
-
-}
-
-
-/* =========================================================
-   STARS
-========================================================= */
-
-function giveStar(
-    username
-) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "give star",
-        {
-            username,
-            roomId
-        }
-    );
-
-}
-
-
-function removeStar(
-    username
-) {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "remove star",
-        {
-            username,
-            roomId
-        }
-    );
-
-}
-
-
-/* =========================================================
-   CHAT CONTROL
-========================================================= */
-
-function unbanAll() {
-
-    socket.emit(
-        "unban all"
-    );
-
-}
-
-
-function unmuteAll() {
-
-    socket.emit(
-        "unmute all"
-    );
-
-}
-
-
-function undisconnectAll() {
-
-    socket.emit(
-        "undisconnect all"
-    );
-
-}
-
-
-function clearChat() {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (roomId) {
-
-        socket.emit(
-            "clear chat",
-            {
-                roomId
-            }
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "clear chat"
-    );
-
-}
-
-
-function toggleChatLock() {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (roomId) {
-
-        socket.emit(
-            "toggle room chat lock",
-            roomId
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "toggle chat lock"
-    );
-
-}
-
-
-function togglePrivateLock() {
-
-    socket.emit(
-        "toggle private lock"
-    );
-
-}
-
-
-function toggleMaintenance() {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (roomId) {
-
-        socket.emit(
-            "toggle room maintenance",
-            roomId
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "maintenance mode"
-    );
-
-}
-
-
-function toggleStarsMode() {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "toggle room stars",
-        roomId
-    );
-
-}
-
-
-function toggleProtection() {
-
-    const roomId =
-        getSelectedRoomId();
-
-
-    if (!roomId) {
-
-        alert(
-            "⚠️ اختر الغرفة أولًا"
-        );
-
-        return;
-    }
-
-
-    socket.emit(
-        "toggle room protection",
-        roomId
-    );
-
-}
-
-
-/* =========================================================
-   ADD ADMIN
-========================================================= */
-
-function addAdmin() {
-
-    const name =
-        document
-            .getElementById(
-                "newAdminName"
-            )
-            ?.value
-            .trim();
-
-
-    const password =
-        document
-            .getElementById(
-                "newAdminPassword"
-            )
-            ?.value
-            .trim();
-
-
-    if (
-        !name ||
-        !password
-    ) {
-
-        alert(
-            "❌ أدخل اسم الأدمن وكلمة السر"
-        );
-
-        return;
-
-    }
-
-
-    const permissions = {
-
-        kick:
-            getChecked(
-                "permKick"
-            ),
-
-        ban:
-            getChecked(
-                "permBan"
-            ),
-
-        unban:
-            getChecked(
-                "permUnban"
-            ),
-
-        mute:
-            getChecked(
-                "permMute"
-            ),
-
-        unmute:
-            getChecked(
-                "permUnmute"
-            ),
-
-        stars:
-            getChecked(
-                "permStars"
-            ),
-
-        disconnect:
-            getChecked(
-                "permDisconnect"
-            ),
-
-        undisconnect:
-            true,
-
-        viewUserInfo:
-            getChecked(
-                "permViewUser"
-            ),
-
-        addAdmin:
-            getChecked(
-                "permAddAdmin"
-            ),
-
-        chatLock:
-            getChecked(
-                "permChatLock"
-            ),
-
-        maintenance:
-            getChecked(
-                "permMaintenance"
-            ),
-
-        protection:
-            getChecked(
-                "permProtection"
-            ),
-
-        deleteMessage:
-            getChecked(
-                "permDeleteMessage"
-            )
-
-    };
-
-
-    const selected =
-        getSelectedAssignedRooms();
-
-
-    const permissionsPerRoom =
-        buildRoomPermissions();
-
-
-    socket.emit(
-        "add admin",
-        {
-
-            name,
-
-            password,
-
-            permissions,
-
-            assignedRooms:
-                selected,
-
-            roomPermissions:
-                permissionsPerRoom
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   GET CHECKBOX
-========================================================= */
-
-function getChecked(id) {
-
-    const el =
-        document.getElementById(
-            id
-        );
-
-    return !!el?.checked;
-
-}
-
-
-/* =========================================================
-   ADMINS LIST
-========================================================= */
-
-function requestAdmins() {
-
-    /*
-       Current server sends admins list
-       after login/add/remove.
-       Requesting is harmless.
-    */
-
-    socket.emit(
-        "request admins"
-    );
-
-}
-
-
-socket.on(
-    "admins list",
-    admins => {
-
-        const box =
-            document.getElementById(
-                "adminsList"
-            );
-
-
-        if (!box) {
-            return;
-        }
-
-
-        box.innerHTML = "";
-
-
-        admins.forEach(
-            admin => {
-
-                const div =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                div.className =
-                    "user-card";
-
-
-                const rooms =
-                    Array.isArray(
-                        admin.assignedRooms
-                    )
-                        ? admin.assignedRooms
-                        : [];
-
-
-                div.innerHTML = `
-
-<div>
-
-👮 <strong>
-${escapeHtml(admin.name)}
-</strong>
-
-<br>
-
-<small>
-🏠 ${rooms.length} غرفة
-</small>
-
-</div>
-
-<div class="user-actions">
-
-<button onclick="selectAdminRooms('${escapeAttr(admin.name)}')">
-🏠 الغرف والصلاحيات
-</button>
-
-<button onclick="removeAdmin('${escapeAttr(admin.name)}')">
-🗑️ إزالة
-</button>
-
-</div>
-
-`;
-
-
-                box.appendChild(
-                    div
-                );
-
-            }
-        );
-
-    }
-);
-
-
-/* =========================================================
-   SELECT ADMIN
-========================================================= */
-
-function selectAdminRooms(
-    name
-) {
-
-    selectedAdminName =
-        name;
-
-
-    const admin =
-        window.__mersalAdmins?.find(
-            item =>
-                item.name ===
-                name
-        );
-
-
-    if (!admin) {
-
-        alert(
-            "❌ لم يتم العثور على الأدمن"
-        );
-
-        return;
-    }
-
-
-    showAdminRoomEditor(
-        admin
-    );
-
-}
-
-
-/* =========================================================
-   STORE ADMINS
-========================================================= */
-
-socket.on(
-    "admins list",
-    admins => {
-
-        window.__mersalAdmins =
-            admins;
-
-    }
-);
-
-
-/* =========================================================
-   ROOM LIST
-========================================================= */
-
-function requestRooms() {
-
-    socket.emit(
-        "get admin rooms"
-    );
-
-}
-
-
-socket.on(
-    "admin rooms",
-    rooms => {
-
-        window.__mersalRooms =
-            rooms;
-
-
-        renderAdminRoomSelect(
-            rooms
-        );
-
-
-        renderRoomEditorRooms(
-            rooms
-        );
-
-    }
-);
-
-
-/* =========================================================
-   ROOM SELECT
-========================================================= */
-
-function renderAdminRoomSelect(
-    rooms
-) {
-
-    let select =
-        document.getElementById(
-            "adminRoomSelect"
-        );
-
-
-    if (!select) {
-
-        /*
-           Create selector without
-           changing existing admin.html.
-        */
-
-        const container =
-            document.createElement(
-                "div"
-            );
-
-
-        container.className =
-            "admin-box";
-
-
-        container.innerHTML = `
-
-<h3>
-🏠 الغرفة التي تريد إدارتها
-</h3>
-
-<select id="adminRoomSelect">
-<option value="">
--- اختر الغرفة --
-</option>
-</select>
-
-`;
-
-
-        panel?.prepend(
-            container
-        );
-
-
-        select =
-            document.getElementById(
-                "adminRoomSelect"
-            );
-
-    }
-
-
-    if (!select) {
-        return;
-    }
-
-
-    select.innerHTML = `
-
-<option value="">
--- اختر الغرفة --
-</option>
-
-`;
-
-
-    rooms.forEach(
-        room => {
-
-            if (
-                !isMasterAdmin &&
-                !assignedRooms.includes(
-                    String(room.id)
-                )
-            ) {
-
-                return;
-
-            }
-
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
-
-            option.value =
-                room.id;
-
-
-            option.textContent =
-                `🏠 ${room.name}`;
-
-
-            select.appendChild(
-                option
-            );
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   ROOM EDITOR
-========================================================= */
-
-function showAdminRoomEditor(
-    admin
-) {
-
-    let box =
-        document.getElementById(
-            "adminRoomEditor"
-        );
-
-
-    if (!box) {
-
-        box =
-            document.createElement(
-                "div"
-            );
-
-
-        box.id =
-            "adminRoomEditor";
-
-
-        box.className =
-            "admin-box";
-
-
-        panel?.prepend(
-            box
-        );
-
-    }
-
-
-    box.style.display =
-        "block";
-
-
-    box.innerHTML = `
-
-<h2>
-🛡️ إدارة غرف ${escapeHtml(admin.name)}
-</h2>
-
-<div id="adminRoomEditorRooms"></div>
-
-<button
-onclick="saveAdminRoomAssignment()"
-class="login-btn">
-
-💾 حفظ الغرف والصلاحيات
-
-</button>
-
-<button
-onclick="closeAdminRoomEditor()">
-
-❌ إغلاق
-
-</button>
-
-`;
-
-
-    renderRoomEditorRooms(
-        window.__mersalRooms ||
-        []
-    );
-
-}
-
-
-/* =========================================================
-   RENDER ADMIN ROOM EDITOR
-========================================================= */
-
-function renderRoomEditorRooms(
-    rooms
-) {
-
-    const box =
-        document.getElementById(
-            "adminRoomEditorRooms"
-        );
-
-
-    if (!box) {
-        return;
-    }
-
-
-    box.innerHTML = "";
-
-
-    if (
-        !selectedAdminName
-    ) {
-
-        box.innerHTML =
-            "<p>اختر أدمن أولًا.</p>";
-
-        return;
-
-    }
-
-
-    const admin =
-        window.__mersalAdmins?.find(
-            item =>
-                item.name ===
-                selectedAdminName
-        );
-
-
-    if (!admin) {
-        return;
-    }
-
-
-    const assigned =
-        Array.isArray(
-            admin.assignedRooms
-        )
-            ? admin.assignedRooms.map(
-                String
-            )
-            : [];
-
-
-    rooms.forEach(
-        room => {
-
-            const roomId =
-                String(
-                    room.id
-                );
-
-
-            const checked =
-                assigned.includes(
-                    roomId
-                );
-
-
-            const current =
-                admin.roomPermissions &&
-                admin.roomPermissions[
-                    roomId
-                ]
-                    ? admin.roomPermissions[
-                        roomId
-                    ]
-                    : {};
-
-
-            const div =
-                document.createElement(
-                    "div"
-                );
-
-
-            div.className =
-                "user-card";
-
-
-            div.innerHTML = `
-
-<div>
-
-<label>
-
-<input
-type="checkbox"
-class="assigned-room"
-data-room="${escapeAttr(roomId)}"
-${checked ? "checked" : ""}>
-
-<strong>
-🏠 ${escapeHtml(room.name)}
-</strong>
-
-</label>
-
-</div>
-
-<div class="room-permission-grid">
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="kick"
-${current.kick ? "checked" : ""}>
-
-👢 طرد
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="ban"
-${current.ban ? "checked" : ""}>
-
-🚫 حظر
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="unban"
-${current.unban ? "checked" : ""}>
-
-🔓 فك حظر
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="mute"
-${current.mute ? "checked" : ""}>
-
-🔇 كتم
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="unmute"
-${current.unmute ? "checked" : ""}>
-
-🔊 فك كتم
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="disconnect"
-${current.disconnect ? "checked" : ""}>
-
-⛔ فصل
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="undisconnect"
-${current.undisconnect ? "checked" : ""}>
-
-⛔🔓 فك فصل
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="stars"
-${current.stars ? "checked" : ""}>
-
-⭐ النجوم
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="chatLock"
-${current.chatLock ? "checked" : ""}>
-
-🔒 قفل الدردشة
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="maintenance"
-${current.maintenance ? "checked" : ""}>
-
-🛠️ صيانة
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="protection"
-${current.protection ? "checked" : ""}>
-
-🛡️ حماية
-</label>
-
-<label>
-<input
-type="checkbox"
-class="room-perm"
-data-room="${escapeAttr(roomId)}"
-data-perm="deleteMessage"
-${current.deleteMessage ? "checked" : ""}>
-
-🗑️ حذف الرسائل
-</label>
-
-</div>
-
-`;
-
-
-            box.appendChild(
-                div
-            );
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   GET SELECTED ASSIGNED ROOMS
-========================================================= */
-
-function getSelectedAssignedRooms() {
-
-    return [
-        ...document.querySelectorAll(
-            ".assigned-room:checked"
-        )
-    ].map(
-        element =>
-            String(
-                element.dataset.room
-            )
-    );
-
-}
-
-
-/* =========================================================
-   BUILD ROOM PERMISSIONS
-========================================================= */
-
-function buildRoomPermissions() {
-
-    const result = {};
-
-
-    document
-        .querySelectorAll(
-            ".room-perm"
-        )
-        .forEach(
-            checkbox => {
-
-                const roomId =
-                    String(
-                        checkbox.dataset.room
-                    );
-
-
-                const permission =
-                    checkbox.dataset.perm;
-
-
-                if (
-                    !result[roomId]
-                ) {
-
-                    result[roomId] = {};
-
-                }
-
-
-                result[
-                    roomId
-                ][permission] =
-                    checkbox.checked;
-
-            }
-        );
-
-
-    return result;
-
-}
-
-
-/* =========================================================
-   SAVE ADMIN ROOM ASSIGNMENT
-========================================================= */
-
-function saveAdminRoomAssignment() {
-
-    if (
-        !selectedAdminName
-    ) {
-
-        alert(
-            "❌ اختر الأدمن أولًا"
-        );
-
-        return;
-    }
-
-
-    const assigned =
-        getSelectedAssignedRooms();
-
-
-    const permissions =
-        buildRoomPermissions();
-
-
-    socket.emit(
-        "update admin rooms",
-        {
-
-            name:
-                selectedAdminName,
-
-            assignedRooms:
-                assigned,
-
-            roomPermissions:
-                permissions
-
-        }
-    );
-
-
-    alert(
-        "✅ تم حفظ غرف وصلاحيات الأدمن"
-    );
-
-}
-
-
-/* =========================================================
-   CLOSE EDITOR
-========================================================= */
-
-function closeAdminRoomEditor() {
-
-    const box =
-        document.getElementById(
-            "adminRoomEditor"
-        );
-
-
-    if (box) {
-
-        box.style.display =
-            "none";
-
-    }
-
-
-    selectedAdminName =
-        null;
-
-}
-
-
-/* =========================================================
-   ROOM MANAGEMENT
-========================================================= */
-
-const roomNameInput =
-    document.getElementById(
-        "roomName"
-    );
-
-
-const roomDescriptionInput =
-    document.getElementById(
-        "roomDescription"
-    );
-
-
-let editingRoomId = null;
-
-
-/* =========================================================
-   REQUEST ROOMS
-========================================================= */
-
-function requestRooms() {
-
-    socket.emit(
-        "get admin rooms"
-    );
-
-}
-
-
-/* =========================================================
-   ADMIN ROOMS
-========================================================= */
-
-socket.on(
-    "admin rooms",
-    rooms => {
-
-        window.__mersalRooms =
-            rooms;
-
-
-        renderRoomsList(
-            rooms
-        );
-
-
-        renderAdminRoomSelect(
-            rooms
-        );
-
-
-        if (
-            selectedAdminName
-        ) {
-
-            renderRoomEditorRooms(
-                rooms
-            );
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   RENDER ROOMS LIST
-========================================================= */
-
-function renderRoomsList(
-    rooms
-) {
-
-    const box =
-        document.getElementById(
-            "roomsList"
-        );
-
-
-    if (!box) {
-        return;
-    }
-
-
-    box.innerHTML = "";
-
-
-    rooms.forEach(
-        room => {
-
-            const div =
-                document.createElement(
-                    "div"
-                );
-
-
-            div.className =
-                "user-card";
-
-
-            const status =
-                room.enabled !== false
-                    ? "🟢 مفعلة"
-                    : "🔴 معطلة";
-
-
-            div.innerHTML = `
-
-<div>
-
-🏠 <strong>
-${escapeHtml(room.name)}
-</strong>
-
-<br>
-
-<small>
-${escapeHtml(
-    room.description ||
-    "بدون وصف"
-)}
-</small>
-
-<br>
-
-${status}
-
-</div>
-
-<div class="user-actions">
-
-<button onclick="editRoom(
-'${escapeAttr(room.id)}',
-'${escapeAttr(room.name)}',
-'${escapeAttr(room.description || "")}'
-)">
-✏️ تعديل
-</button>
-
-<button onclick="toggleRoom(
-'${escapeAttr(room.id)}'
-)">
-${room.enabled !== false
-    ? "🔴 تعطيل"
-    : "🟢 تفعيل"}
-</button>
-
-<button onclick="deleteRoom(
-'${escapeAttr(room.id)}'
-)">
-🗑️ حذف
-</button>
-
-</div>
-
-`;
-
-            box.appendChild(
-                div
-            );
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   SAVE ROOM
-========================================================= */
-
-function saveRoom() {
-
-    const name =
-        roomNameInput
-            ?.value
-            .trim();
-
-
-    const description =
-        roomDescriptionInput
-            ?.value
-            .trim();
-
-
-    if (!name) {
-
-        alert(
-            "❌ اكتب اسم الغرفة"
-        );
-
-        return;
-    }
-
-
-    if (editingRoomId) {
-
-        socket.emit(
-            "update room",
-            {
-
-                id:
-                    editingRoomId,
-
-                name,
-
-                description
-
-            }
-        );
-
-    } else {
-
-        socket.emit(
-            "create room",
-            {
-
-                name,
-
-                description
-
-            }
-        );
-
-    }
-
-
-    clearRoomForm();
-
-}
-
-
-/* =========================================================
-   EDIT ROOM
-========================================================= */
-
-function editRoom(
-    id,
-    name,
-    description
-) {
-
-    editingRoomId =
-        id;
-
-
-    if (
-        roomNameInput
-    ) {
-
-        roomNameInput.value =
-            name;
-
-    }
-
-
-    if (
-        roomDescriptionInput
-    ) {
-
-        roomDescriptionInput.value =
-            description;
-
-    }
-
-
-    const button =
-        document.getElementById(
-            "roomSaveButton"
-        );
-
-
-    if (button) {
-
-        button.innerText =
-            "💾 حفظ التعديل";
-
-    }
-
-
-    roomNameInput?.focus();
-
-}
-
-
-/* =========================================================
-   CLEAR ROOM FORM
-========================================================= */
-
-function clearRoomForm() {
-
-    editingRoomId =
-        null;
-
-
-    if (
-        roomNameInput
-    ) {
-
-        roomNameInput.value =
-            "";
-
-    }
-
-
-    if (
-        roomDescriptionInput
-    ) {
-
-        roomDescriptionInput.value =
-            "";
-
-    }
-
-
-    const button =
-        document.getElementById(
-            "roomSaveButton"
-        );
-
-
-    if (button) {
-
-        button.innerText =
-            "➕ إنشاء الغرفة";
-
-    }
-
-}
-
-
-/* =========================================================
-   TOGGLE ROOM
-========================================================= */
-
-function toggleRoom(
-    id
-) {
-
-    socket.emit(
-        "toggle room",
-        id
-    );
-
-}
-
-
-/* =========================================================
-   DELETE ROOM
-========================================================= */
-
-function deleteRoom(
-    id
-) {
-
-    if (
-        !confirm(
-            "هل تريد حذف هذه الغرفة؟"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    socket.emit(
-        "delete room",
-        id
-    );
-
-}
-
-
-/* =========================================================
-   ROOM ERROR
-========================================================= */
-
-socket.on(
-    "room error",
-    message => {
-
-        alert(
-            message
-        );
-
-    }
-);
-
-
-/* =========================================================
-   ROOM NOTICE
-========================================================= */
-
-socket.on(
-    "room notice",
-    data => {
-
-        addLog(
-            data.message
-        );
-
-    }
-);
-
-
-/* =========================================================
-   LOGS
-========================================================= */
-
-function addLog(
-    text
-) {
-
-    if (!logsBox) {
-        return;
-    }
-
-
-    const div =
-        document.createElement(
-            "div"
-        );
-
-
-    div.className =
-        "log-item";
-
-
-    div.innerText =
-        text;
-
-
-    logsBox.prepend(
-        div
-    );
-
-}
-
-
-socket.on(
-    "new log",
-    log => {
-
-        addLog(
-            log.message
-        );
-
-    }
-);
-
-
-/* =========================================================
-   BANNED LIST
-========================================================= */
-
-async function loadBannedList() {
-
-    try {
-
-        const res =
-            await fetch(
-                "/banned.json"
-            );
-
-
-        const data =
-            await res.json();
-
-
-        const box =
-            document.getElementById(
-                "bannedList"
-            );
-
-
-        if (!box) {
-            return;
-        }
-
-
-        box.innerHTML =
-            "";
-
-
-        data.forEach(
-            ban => {
-
-                const div =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                div.className =
-                    "user-card";
-
-
-                div.innerHTML = `
-
-<div>
-🚫 ${escapeHtml(
-    ban.ip
-)}
-</div>
-
-<button onclick="unbanIp(
-'${escapeAttr(ban.ip)}'
-)">
-🔓 فك
-</button>
-
-`;
-
-
-                box.appendChild(
-                    div
-                );
-
-            }
-        );
-
-    } catch (
-        error
-    ) {
-
-        console.log(
-            error
-        );
-
-    }
-
-}
-
-
-function unbanIp(
-    ip
-) {
-
-    socket.emit(
-        "unban ip",
-        ip
-    );
-
-
-    setTimeout(
-        loadBannedList,
-        500
-    );
-
-}
-
-
-loadBannedList();
-
-
-/* =========================================================
-   MUTED LIST
-========================================================= */
-
-async function loadMutedList() {
-
-    try {
-
-        const res =
-            await fetch(
-                "/muted.json"
-            );
-
-
-        const data =
-            await res.json();
-
-
-        const box =
-            document.getElementById(
-                "mutedList"
-            );
-
-
-        if (!box) {
-            return;
-        }
-
-
-        box.innerHTML =
-            "";
-
-
-        data.forEach(
-            user => {
-
-                const div =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                div.className =
-                    "user-card";
-
-
-                div.innerHTML = `
-
-<div>
-🔇 ${escapeHtml(
-    user.username
-)}
-</div>
-
-<button onclick="unmuteUser(
-'${escapeAttr(user.id)}'
-)">
-🔊 فك
-</button>
-
-`;
-
-
-                box.appendChild(
-                    div
-                );
-
-            }
-        );
-
-    } catch (
-        error
-    ) {
-
-        console.log(
-            error
-        );
-
-    }
-
-}
-
-
-loadMutedList();
-
-
-/* =========================================================
-   DISCONNECTED LIST
-========================================================= */
-
-async function loadDisconnectedList() {
-
-    try {
-
-        const res =
-            await fetch(
-                "/deviceBanned.json"
-            );
-
-
-        const data =
-            await res.json();
-
-
-        const box =
-            document.getElementById(
-                "disconnectedList"
-            );
-
-
-        if (!box) {
-            return;
-        }
-
-
-        box.innerHTML =
-            "";
-
-
-        data.forEach(
-            user => {
-
-                const div =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                div.className =
-                    "user-card";
-
-
-                div.innerHTML = `
-
-<div>
-⛔ ${escapeHtml(
-    user.username
-)}
-</div>
-
-<button onclick="undisconnectDevice(
-'${escapeAttr(user.device)}'
-)">
-🔓 فك
-</button>
-
-`;
-
-
-                box.appendChild(
-                    div
-                );
-
-            }
-        );
-
-    } catch (
-        error
-    ) {
-
-        console.log(
-            error
-        );
-
-    }
-
-}
-
-
-function undisconnectDevice(
-    device
-) {
-
-    /*
-       Legacy endpoint compatibility.
-    */
-
-    socket.emit(
-        "undisconnect device",
-        device
-    );
-
-
-    setTimeout(
-        loadDisconnectedList,
-        500
-    );
-
-}
-
-
-loadDisconnectedList();
-
-
-/* =========================================================
-   UTILITIES
-========================================================= */
-
-function escapeHtml(
-    value
-) {
-
-    return String(
-        value ?? ""
-    )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
-}
-
-
-function escapeAttr(
-    value
-) {
-
-    return String(
-        value ?? ""
-    )
-        .replace(
-            /\\/g,
-            "\\\\"
-        )
-        .replace(
-            /'/g,
-            "\\'"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        );
-
-}
-
-
-/* =========================================================
-   AUTO ROOM PERMISSION UI
-========================================================= */
-
-function renderRoomPermissions() {
-
-    /*
-       This function is intentionally
-       lightweight because the main
-       room editor is generated when
-       selecting an admin.
-    */
-
-    const select =
-        document.getElementById(
-            "adminRoomSelect"
-        );
-
-
-    if (!select) {
-        return;
-    }
-
-
-    [...select.options]
-        .forEach(
-            option => {
-
-                if (
-                    !option.value
-                ) {
-                    return;
-                }
-
-
-                const allowed =
-                    isMasterAdmin ||
-                    assignedRooms.includes(
-                        String(
-                            option.value
-                        )
-                    );
-
-
-                option.disabled =
-                    !allowed;
-
-            }
-        );
-
-}
-
-
-/* =========================================================
-   SOCKET RECONNECT
-========================================================= */
-
-socket.on(
-    "connect",
-    () => {
-
-        /*
-           If the admin is already
-           logged in, ask server for
-           fresh room information.
-        */
-
-        if (
-            panel &&
-            panel.style.display !==
-            "none"
-        ) {
-
-            requestRooms();
-
-        }
-
-    }
-);
+window.adminLogout =
+  adminLogout;
