@@ -5155,8 +5155,8 @@ io.on("connection", socket => {
       }
     );
   });
-      /* =======================================================
-     SOCKET DISCONNECT
+    /* =======================================================
+     USER DISCONNECT
   ======================================================= */
 
   socket.on("disconnect", reason => {
@@ -5168,25 +5168,18 @@ io.on("connection", socket => {
       return;
     }
 
-    const roomId =
-      user.roomId || null;
-
     const username =
-      user.name || user.username || "";
+      user.name ||
+      user.username ||
+      "";
+
+    const roomId =
+      user.roomId ||
+      null;
 
     /*
-       إزالة المستخدم من قائمة المتصلين
-    */
-
-    users =
-      users.filter(
-        item =>
-          item.socketId !==
-          socket.id
-      );
-
-    /*
-       إرسال إشعار خروج للغرفة
+       إذا كان داخل غرفة
+       نرسل إشعار مغادرته
     */
 
     if (roomId) {
@@ -5206,18 +5199,34 @@ io.on("connection", socket => {
               `👋 غادر ${username} الغرفة`
           }
         );
-      }
 
-      broadcastRoomUsers(roomId);
+        broadcastRoomUsers(
+          room.id
+        );
+      }
     }
 
     /*
-       تحديث جميع قوائم المستخدمين
+       حذف المستخدم من القائمة
+    */
+
+    users =
+      users.filter(
+        item =>
+          item.socketId !== socket.id &&
+          item.id !== socket.id
+      );
+
+    /*
+       تحديث المستخدمين
     */
 
     broadcastOnlineUsers();
+
     broadcastAdminOnlineUsers();
+
     broadcastServerStats();
+
     broadcastRooms();
 
     /*
@@ -5238,7 +5247,7 @@ io.on("connection", socket => {
 
 
 /* =========================================================
-   BASIC ROUTES
+   BASIC HTTP ROUTES
 ========================================================= */
 
 app.get("/", (req, res) => {
@@ -5250,43 +5259,63 @@ app.get("/", (req, res) => {
       "index.html"
     )
   );
+
 });
 
 
 app.get("/health", (req, res) => {
 
   res.json({
+
     ok: true,
-    service: "Mersal Chat",
-    onlineUsers: users.length,
-    rooms: rooms.length
+
+    service:
+      "Mersal Chat",
+
+    onlineUsers:
+      users.length,
+
+    rooms:
+      rooms.length
+
   });
+
 });
 
 
 /* =========================================================
-   SERVER START
+   START SERVER
 ========================================================= */
 
-const PORT =
-  process.env.PORT || 3000;
+/*
+   لا نعرّف PORT هنا مرة ثانية.
+   نستخدم PORT مباشرة من Render.
+*/
 
 server.listen(
-  PORT,
+  process.env.PORT || 3000,
   "0.0.0.0",
   () => {
 
     console.log(
-      `🚀 Mersal Chat running on port ${PORT}`
+      "🚀 Mersal Chat server started"
     );
 
     console.log(
-      `🏠 Rooms: ${rooms.length}`
+      "🌐 Port:",
+      process.env.PORT || 3000
     );
 
     console.log(
-      `👥 Online users: ${users.length}`
+      "🏠 Rooms:",
+      rooms.length
     );
+
+    console.log(
+      "👥 Online users:",
+      users.length
+    );
+
   }
 );
-    
+  
