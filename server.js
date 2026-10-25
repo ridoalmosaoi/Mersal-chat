@@ -5,4697 +5,5288 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-
 const server = http.createServer(app);
 
 const io = socketIO(server, {
-    cors: {
-        origin: "*"
-    }
+  cors: {
+    origin: "*"
+  }
 });
 
-/* =========================================================
-   STATIC FILES
-   ========================================================= */
+app.use(express.static(path.join(__dirname, "public")));
 
-app.use(
-    express.static(
-        path.join(__dirname, "public")
-    )
-);
+const PORT = process.env.PORT || 3000;
+
+/* =========================================================
+   FILES
+========================================================= */
+
+const DATA_DIR = path.join(__dirname, "data");
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const FILES = {
+  admins: path.join(DATA_DIR, "admins.json"),
+  rooms: path.join(DATA_DIR, "rooms.json"),
+  banned: path.join(DATA_DIR, "banned.json"),
+  muted: path.join(DATA_DIR, "muted.json"),
+  deviceBanned: path.join(DATA_DIR, "deviceBanned.json"),
+  stars: path.join(DATA_DIR, "stars.json"),
+  logs: path.join(DATA_DIR, "logs.json")
+};
+
+/* =========================================================
+   DEFAULT DATA
+========================================================= */
+
+function loadJSON(file, fallback) {
+  try {
+    if (!fs.existsSync(file)) {
+      fs.writeFileSync(
+        file,
+        JSON.stringify(fallback, null, 2),
+        "utf8"
+      );
+
+      return fallback;
+    }
+
+    const data = fs.readFileSync(file, "utf8");
+
+    if (!data.trim()) {
+      return fallback;
+    }
+
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("JSON LOAD ERROR:", file, error);
+    return fallback;
+  }
+}
+
+function saveJSON(file, data) {
+  try {
+    fs.writeFileSync(
+      file,
+      JSON.stringify(data, null, 2),
+      "utf8"
+    );
+  } catch (error) {
+    console.error("JSON SAVE ERROR:", file, error);
+  }
+}
 
 /* =========================================================
    DATA
-   ========================================================= */
+========================================================= */
+
+let admins = loadJSON(FILES.admins, [
+  {
+    name: "a",
+    password: "a",
+    permissions: {
+      kick: true,
+      ban: true,
+      disconnect: true,
+      unban: true,
+      mute: true,
+      unmute: true,
+      clear: true,
+      maintenance: true,
+      chatLock: true,
+      privateLock: true,
+      deleteMessage: true,
+      addAdmin: true,
+      removeAdmin: true,
+      viewIP: true,
+      viewUserInfo: true,
+      stars: true,
+      rooms: true,
+      roomSettings: true
+    }
+  }
+]);
+
+let rooms = loadJSON(FILES.rooms, []);
+
+let bannedUsers = loadJSON(FILES.banned, []);
+let mutedUsers = loadJSON(FILES.muted, []);
+let deviceBannedUsers = loadJSON(FILES.deviceBanned, []);
+let stars = loadJSON(FILES.stars, []);
+let logs = loadJSON(FILES.logs, []);
+
+/* =========================================================
+   ONLINE USERS
+========================================================= */
 
 let users = [];
 
 /*
-|--------------------------------------------------------------------------
-| OLD GLOBAL SETTINGS
-|--------------------------------------------------------------------------
-| نحتفظ بها حتى لا ينكسر الشات الحالي.
+  users:
+  {
+    socketId,
+    name,
+    username,
+    ip,
+    userAgent,
+    device,
+    roomId,
+    loggedIn,
+    connectedAt
+  }
 */
 
+/* =========================================================
+   GLOBAL SETTINGS
+========================================================= */
+
+let maintenanceMode = false;
 let chatLocked = false;
 let privateLocked = false;
-let maintenanceMode = false;
-let starsMode = false;
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN / MODERATION DATA
-|--------------------------------------------------------------------------
-*/
-
-let admins = [];
-let bannedUsers = [];
-let mutedUsers = [];
-let deviceBannedUsers = [];
-let stars = [];
-let logs = [];
-
-/*
-|--------------------------------------------------------------------------
-| ROOMS
-|--------------------------------------------------------------------------
-*/
-
-let rooms = [];
-
-/*
-|--------------------------------------------------------------------------
-| ROOM MODERATION
-|--------------------------------------------------------------------------
-|
-| {
-|   roomId: {
-|      banned: [],
-|      muted: [],
-|      disconnected: [],
-|      stars: []
-|   }
-| }
-|
-*/
-
-let roomModeration = {};
-
-/*
-|--------------------------------------------------------------------------
-| ROOM MESSAGES
-|--------------------------------------------------------------------------
-|
-| محفوظة في الذاكرة أثناء تشغيل السيرفر.
-| سنضيف الحفظ لاحقًا إذا احتجناه.
-|
-*/
-
-const roomMessages = new Map();
-
-/*
-|--------------------------------------------------------------------------
-| MAX OPEN ROOMS
-|--------------------------------------------------------------------------
-*/
-
-const MAX_OPEN_ROOMS = 3;
 
 /* =========================================================
-   FILE SYSTEM
-   ========================================================= */
+   ROOM ID
+========================================================= */
 
-function loadFile(file, def = []) {
-
-    try {
-
-        if (!fs.existsSync(file)) {
-
-            fs.writeFileSync(
-                file,
-                JSON.stringify(
-                    def,
-                    null,
-                    2
-                )
-            );
-
-            return def;
-        }
-
-        return JSON.parse(
-            fs.readFileSync(
-                file,
-                "utf8"
-            )
-        );
-
-    } catch (error) {
-
-        console.error(
-            `Error loading ${file}:`,
-            error
-        );
-
-        return def;
-    }
-}
-
-
-function saveFile(file, data) {
-
-    try {
-
-        fs.writeFileSync(
-            file,
-            JSON.stringify(
-                data,
-                null,
-                2
-            )
-        );
-
-    } catch (error) {
-
-        console.error(
-            `Error saving ${file}:`,
-            error
-        );
-    }
+function createId(prefix = "id") {
+  return (
+    prefix +
+    "_" +
+    Date.now().toString(36) +
+    "_" +
+    Math.random().toString(36).slice(2, 8)
+  );
 }
 
 /* =========================================================
-   LOAD DATA
-   ========================================================= */
+   NORMALIZE ROOM
+========================================================= */
 
-admins =
-    loadFile(
-        "admins.json",
-        []
-    );
+function normalizeRoom(room) {
+  if (!room || typeof room !== "object") {
+    return null;
+  }
 
-stars =
-    loadFile(
-        "stars.json",
-        []
-    );
+  if (!room.id) {
+    room.id = createId("room");
+  }
 
-bannedUsers =
-    loadFile(
-        "banned.json",
-        []
-    );
+  if (!room.name) {
+    room.name = "غرفة";
+  }
 
-mutedUsers =
-    loadFile(
-        "muted.json",
-        []
-    );
+  if (!room.description) {
+    room.description = "";
+  }
 
-deviceBannedUsers =
-    loadFile(
-        "deviceBanned.json",
-        []
-    );
+  if (typeof room.enabled !== "boolean") {
+    room.enabled = true;
+  }
 
-logs =
-    loadFile(
-        "logs.json",
-        []
-    );
+  if (!Array.isArray(room.messages)) {
+    room.messages = [];
+  }
 
-rooms =
-    loadFile(
-        "rooms.json",
-        []
-    );
+  if (!room.admins || typeof room.admins !== "object") {
+    room.admins = {};
+  }
 
-roomModeration =
-    loadFile(
-        "roomModeration.json",
-        {}
-    );
+  if (!room.permissions || typeof room.permissions !== "object") {
+    room.permissions = {};
+  }
 
-/* =========================================================
-   ROOM NORMALIZATION
-   ========================================================= */
+  if (!room.settings || typeof room.settings !== "object") {
+    room.settings = {};
+  }
 
-function normalizeRooms() {
+  if (typeof room.settings.chatLock !== "boolean") {
+    room.settings.chatLock = false;
+  }
 
-    let changed = false;
+  if (typeof room.settings.maintenance !== "boolean") {
+    room.settings.maintenance = false;
+  }
 
-    rooms = (Array.isArray(rooms) ? rooms : [])
-        .map(room => {
+  if (typeof room.settings.stars !== "boolean") {
+    room.settings.stars = false;
+  }
 
-            if (!room || typeof room !== "object") {
-                changed = true;
-                return null;
-            }
+  if (typeof room.settings.protection !== "boolean") {
+    room.settings.protection = false;
+  }
 
-            if (!room.id) {
-
-                room.id =
-                    "room_" +
-                    Date.now() +
-                    "_" +
-                    Math.random()
-                        .toString(36)
-                        .slice(2, 8);
-
-                changed = true;
-            }
-
-            if (!room.name) {
-
-                room.name = "غرفة";
-
-                changed = true;
-            }
-
-            if (
-                typeof room.description !==
-                "string"
-            ) {
-
-                room.description = "";
-
-                changed = true;
-            }
-
-            if (
-                typeof room.enabled !==
-                "boolean"
-            ) {
-
-                room.enabled = true;
-
-                changed = true;
-            }
-
-            if (
-                !room.settings ||
-                typeof room.settings !== "object"
-            ) {
-
-                room.settings = {};
-
-                changed = true;
-            }
-
-            if (
-                typeof room.settings.starsMode !==
-                "boolean"
-            ) {
-
-                room.settings.starsMode = false;
-
-                changed = true;
-            }
-
-            if (
-                typeof room.settings.chatLocked !==
-                "boolean"
-            ) {
-
-                room.settings.chatLocked = false;
-
-                changed = true;
-            }
-
-            if (
-                typeof room.settings.maintenance !==
-                "boolean"
-            ) {
-
-                room.settings.maintenance = false;
-
-                changed = true;
-            }
-
-            if (
-                typeof room.settings.protection !==
-                "boolean"
-            ) {
-
-                room.settings.protection = false;
-
-                changed = true;
-            }
-
-            return room;
-
-        })
-        .filter(Boolean);
-
-    if (changed) {
-
-        saveFile(
-            "rooms.json",
-            rooms
-        );
-    }
+  return room;
 }
 
-normalizeRooms();
+rooms = rooms
+  .map(normalizeRoom)
+  .filter(Boolean);
+
+saveJSON(FILES.rooms, rooms);
 
 /* =========================================================
-   ROOM MODERATION NORMALIZATION
-   ========================================================= */
+   USER HELPERS
+========================================================= */
 
-function ensureRoomModeration(roomId) {
-
-    if (
-        !roomModeration[roomId] ||
-        typeof roomModeration[roomId] !== "object"
-    ) {
-
-        roomModeration[roomId] = {
-
-            banned: [],
-
-            muted: [],
-
-            disconnected: [],
-
-            stars: []
-
-        };
-
-        saveFile(
-            "roomModeration.json",
-            roomModeration
-        );
-    }
-
-    if (
-        !Array.isArray(
-            roomModeration[roomId].banned
-        )
-    ) {
-
-        roomModeration[roomId].banned = [];
-    }
-
-    if (
-        !Array.isArray(
-            roomModeration[roomId].muted
-        )
-    ) {
-
-        roomModeration[roomId].muted = [];
-    }
-
-    if (
-        !Array.isArray(
-            roomModeration[roomId].disconnected
-        )
-    ) {
-
-        roomModeration[roomId].disconnected = [];
-    }
-
-    if (
-        !Array.isArray(
-            roomModeration[roomId].stars
-        )
-    ) {
-
-        roomModeration[roomId].stars = [];
-    }
-
-    return roomModeration[roomId];
+function getUserBySocket(socketId) {
+  return users.find(user => user.socketId === socketId);
 }
 
+function getUserByName(name) {
+  if (!name) return null;
 
-/* Create moderation data for existing rooms */
+  const wanted = String(name).trim().toLowerCase();
 
-rooms.forEach(
-    room => ensureRoomModeration(room.id)
-);
+  return users.find(user => {
+    return String(user.name || "")
+      .trim()
+      .toLowerCase() === wanted;
+  }) || null;
+}
 
-/* =========================================================
-   LOGGING
-   ========================================================= */
+function getSocketByUserName(name) {
+  const user = getUserByName(name);
 
-function addLog(message, roomId = null) {
+  if (!user) {
+    return null;
+  }
 
-    const log = {
-
-        time:
-            new Date()
-                .toLocaleString(),
-
-        message,
-
-        roomId
-
-    };
-
-    logs.unshift(log);
-
-    /*
-       Prevent unlimited log growth.
-    */
-
-    if (logs.length > 1000) {
-
-        logs =
-            logs.slice(0, 1000);
-    }
-
-    saveFile(
-        "logs.json",
-        logs
-    );
-
-    io.emit(
-        "new log",
-        log
-    );
-
-    console.log(
-        message
-    );
+  return io.sockets.sockets.get(user.socketId) || null;
 }
 
 /* =========================================================
-   BASIC HELPERS
-   ========================================================= */
+   IP
+========================================================= */
 
-function getUserBySocket(socket) {
+function getIP(socket) {
+  if (!socket) return "";
 
-    return users.find(
-        user =>
-            user.id === socket.id
-    );
+  const forwarded = socket.handshake?.headers?.["x-forwarded-for"];
+
+  if (forwarded) {
+    return String(forwarded)
+      .split(",")[0]
+      .trim();
+  }
+
+  return (
+    socket.handshake?.address ||
+    socket.conn?.remoteAddress ||
+    ""
+  );
 }
 
+/* =========================================================
+   DEVICE / USER AGENT
+========================================================= */
 
-function getUserById(id) {
-
-    return users.find(
-        user =>
-            user.id === id
-    );
+function getUserAgent(socket) {
+  return socket?.handshake?.headers?.["user-agent"] || "";
 }
 
+function getDeviceFromUserAgent(userAgent) {
+  const ua = String(userAgent || "").toLowerCase();
+
+  if (ua.includes("iphone")) {
+    return "iPhone";
+  }
+
+  if (ua.includes("ipad")) {
+    return "iPad";
+  }
+
+  if (ua.includes("android")) {
+    return "Android";
+  }
+
+  if (ua.includes("windows")) {
+    return "Windows";
+  }
+
+  if (ua.includes("macintosh")) {
+    return "Mac";
+  }
+
+  if (ua.includes("linux")) {
+    return "Linux";
+  }
+
+  return "Unknown";
+}
+
+/* =========================================================
+   ADMIN HELPERS
+========================================================= */
+
+function findAdmin(name) {
+  if (!name) return null;
+
+  const wanted = String(name)
+    .trim()
+    .toLowerCase();
+
+  return admins.find(admin => {
+    return String(admin.name || "")
+      .trim()
+      .toLowerCase() === wanted;
+  }) || null;
+}
+
+function isAdmin(name) {
+  return !!findAdmin(name);
+}
+
+function getAdminPermissions(name) {
+  const admin = findAdmin(name);
+
+  if (!admin) {
+    return {};
+  }
+
+  return admin.permissions || {};
+}
+
+function hasPermission(adminName, permission) {
+  const permissions = getAdminPermissions(adminName);
+
+  return permissions[permission] === true;
+}
+
+/* =========================================================
+   MASTER ADMIN
+========================================================= */
+
+function isMasterAdmin(name) {
+  const admin = findAdmin(name);
+
+  if (!admin) {
+    return false;
+  }
+
+  /*
+    أول أدمن في admins يعتبر Master Admin
+    ويمكن لاحقًا إضافة role: "master"
+  */
+
+  if (admin.role === "master") {
+    return true;
+  }
+
+  if (admins.length > 0 && admins[0].name === admin.name) {
+    return true;
+  }
+
+  return false;
+}
+
+/* =========================================================
+   ROOM HELPERS
+========================================================= */
 
 function getRoom(roomId) {
+  if (!roomId) return null;
 
-    return rooms.find(
-        room =>
-            room.id === roomId
-    );
+  return rooms.find(room => {
+    return String(room.id) === String(roomId);
+  }) || null;
 }
 
+function getRoomByName(name) {
+  if (!name) return null;
 
-function isMasterAdmin(admin) {
+  const wanted = String(name)
+    .trim()
+    .toLowerCase();
 
-    if (!admin) {
-        return false;
+  return rooms.find(room => {
+    return String(room.name || "")
+      .trim()
+      .toLowerCase() === wanted;
+  }) || null;
+}
+
+function saveRooms() {
+  saveJSON(FILES.rooms, rooms);
+}
+
+/* =========================================================
+   ROOM ADMIN
+========================================================= */
+
+function isRoomAdmin(adminName, roomId) {
+  if (!adminName || !roomId) {
+    return false;
+  }
+
+  if (isMasterAdmin(adminName)) {
+    return true;
+  }
+
+  const room = getRoom(roomId);
+
+  if (!room) {
+    return false;
+  }
+
+  return !!room.admins?.[adminName];
+}
+
+/* =========================================================
+   ROOM PERMISSION
+========================================================= */
+
+function hasRoomPermission(adminName, roomId, permission) {
+  if (!isAdmin(adminName)) {
+    return false;
+  }
+
+  if (isMasterAdmin(adminName)) {
+    return true;
+  }
+
+  if (!isRoomAdmin(adminName, roomId)) {
+    return false;
+  }
+
+  const room = getRoom(roomId);
+
+  if (!room) {
+    return false;
+  }
+
+  /*
+    إذا لم توجد صلاحيات خاصة للغرفة،
+    نستخدم صلاحيات الأدمن الأساسية.
+  */
+
+  if (
+    room.permissions &&
+    room.permissions[adminName] &&
+    typeof room.permissions[adminName] === "object"
+  ) {
+    return room.permissions[adminName][permission] === true;
+  }
+
+  return hasPermission(adminName, permission);
+}
+
+/* =========================================================
+   USER SERIALIZER
+========================================================= */
+
+function publicUser(user) {
+  if (!user) return null;
+
+  return {
+    name: user.name,
+    username: user.username || user.name,
+    roomId: user.roomId || null
+  };
+}
+
+function adminUser(user) {
+  if (!user) return null;
+
+  return {
+    name: user.name,
+    username: user.username || user.name,
+    roomId: user.roomId || null,
+    ip: user.ip || "",
+    device: user.device || "",
+    userAgent: user.userAgent || "",
+    socketId: user.socketId || "",
+    connectedAt: user.connectedAt || null
+  };
+}
+
+/* =========================================================
+   BROADCAST ONLINE USERS
+========================================================= */
+
+function broadcastOnlineUsers() {
+  io.emit(
+    "online users",
+    users
+      .filter(user => user.loggedIn)
+      .map(publicUser)
+  );
+}
+
+function broadcastAdminOnlineUsers() {
+  io.emit(
+    "admin online users",
+    users
+      .filter(user => user.loggedIn)
+      .map(adminUser)
+  );
+}
+
+/* =========================================================
+   SERVER STATS
+========================================================= */
+
+function broadcastServerStats() {
+  io.emit("server stats", {
+    onlineUsers: users.filter(user => user.loggedIn).length,
+    bannedUsers: bannedUsers.length,
+    admins: admins.length,
+    rooms: rooms.length
+  });
+}
+
+/* =========================================================
+   LOG
+========================================================= */
+
+function addLog(type, data = {}) {
+  logs.push({
+    id: createId("log"),
+    type,
+    data,
+    time: new Date().toISOString()
+  });
+
+  if (logs.length > 5000) {
+    logs = logs.slice(-5000);
+  }
+
+  saveJSON(FILES.logs, logs);
+}
+/* =========================================================
+   BAN HELPERS
+========================================================= */
+
+function isUserBanned(name, ip) {
+  const wantedName = String(name || "")
+    .trim()
+    .toLowerCase();
+
+  const wantedIP = String(ip || "").trim();
+
+  return bannedUsers.some(item => {
+    if (!item) return false;
+
+    if (typeof item === "string") {
+      return (
+        item.trim().toLowerCase() === wantedName ||
+        item.trim() === wantedIP
+      );
+    }
+
+    const itemName = String(
+      item.name ||
+      item.username ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+    const itemIP = String(
+      item.ip ||
+      ""
+    ).trim();
+
+    return (
+      (itemName && itemName === wantedName) ||
+      (itemIP && itemIP === wantedIP)
+    );
+  });
+}
+
+function isDeviceBanned(deviceId, userAgent) {
+  const wantedDevice = String(deviceId || "").trim();
+  const wantedUA = String(userAgent || "").trim();
+
+  return deviceBannedUsers.some(item => {
+    if (!item) return false;
+
+    if (typeof item === "string") {
+      return (
+        item === wantedDevice ||
+        item === wantedUA
+      );
     }
 
     return (
-        admin.master === true ||
-        admin.role === "master" ||
-        admin.role === "owner"
+      (
+        item.deviceId &&
+        String(item.deviceId) === wantedDevice
+      ) ||
+      (
+        item.userAgent &&
+        String(item.userAgent) === wantedUA
+      )
     );
+  });
 }
 
+function isUserMuted(name, roomId) {
+  const wantedName = String(name || "")
+    .trim()
+    .toLowerCase();
 
-/*
-|--------------------------------------------------------------------------
-| MASTER COMPATIBILITY
-|--------------------------------------------------------------------------
-|
-| الأدمن الحالي عندك اسمه "a".
-| إذا كان عنده addAdmin نعتبره إداريًا كامل الصلاحيات
-| حتى لا نخسر النظام القديم.
-|
-*/
+  return mutedUsers.some(item => {
+    if (!item) return false;
 
-function isFullAdmin(admin) {
-
-    if (!admin) {
-        return false;
+    if (typeof item === "string") {
+      return item.trim().toLowerCase() === wantedName;
     }
 
-    if (isMasterAdmin(admin)) {
-        return true;
+    const itemName = String(
+      item.name ||
+      item.username ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+    if (itemName !== wantedName) {
+      return false;
     }
 
-    if (
-        admin.permissions &&
-        admin.permissions.addAdmin === true
-    ) {
+    /*
+      إذا كان الكتم مرتبطًا بغرفة،
+      يجب أن تكون الغرفة نفسها.
+    */
 
-        return true;
+    if (item.roomId) {
+      return String(item.roomId) === String(roomId);
     }
 
-    return false;
+    return true;
+  });
 }
-
 
 /* =========================================================
-   ROOM ADMIN PERMISSION
-   ========================================================= */
+   ROOM BAN
+========================================================= */
 
-function adminHasPermission(
-    admin,
-    roomId,
-    permission
-) {
+function isBannedFromRoom(name, roomId, ip) {
+  const room = getRoom(roomId);
 
-    if (!admin) {
-        return false;
+  if (!room) {
+    return false;
+  }
+
+  if (!Array.isArray(room.bannedUsers)) {
+    room.bannedUsers = [];
+  }
+
+  const wantedName = String(name || "")
+    .trim()
+    .toLowerCase();
+
+  const wantedIP = String(ip || "").trim();
+
+  return room.bannedUsers.some(item => {
+    if (!item) return false;
+
+    if (typeof item === "string") {
+      return (
+        item.trim().toLowerCase() === wantedName ||
+        item.trim() === wantedIP
+      );
     }
 
-    /*
-       Master / full admin:
-       كل الغرف.
-    */
+    const itemName = String(
+      item.name ||
+      item.username ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
 
-    if (
-        isMasterAdmin(admin) ||
-        isFullAdmin(admin)
-    ) {
+    const itemIP = String(
+      item.ip ||
+      ""
+    ).trim();
 
-        return true;
-    }
-
-    /*
-       If admin has assigned rooms.
-    */
-
-    if (
-        Array.isArray(admin.rooms) &&
-        !admin.rooms.includes(roomId)
-    ) {
-
-        return false;
-    }
-
-    /*
-       Room-specific permissions.
-    */
-
-    if (
-        admin.roomPermissions &&
-        admin.roomPermissions[roomId] &&
-        typeof
-            admin.roomPermissions[roomId][permission]
-            === "boolean"
-    ) {
-
-        return (
-            admin.roomPermissions[roomId][permission]
-        );
-    }
-
-    /*
-       Global permission fallback.
-    */
-
-    return !!(
-        admin.permissions &&
-        admin.permissions[permission]
+    return (
+      (itemName && itemName === wantedName) ||
+      (itemIP && itemIP === wantedIP)
     );
+  });
 }
 
+function isMutedFromRoom(name, roomId) {
+  const room = getRoom(roomId);
 
-/* =========================================================
-   USER ROLE
-   ========================================================= */
-
-function getUserRolePrefix(user) {
-
-    if (!user) {
-        return "";
-    }
-
-    if (
-        user.adminRole === "master"
-    ) {
-
-        return "&";
-    }
-
-    if (
-        user.adminRole === "moderator"
-    ) {
-
-        return "@";
-    }
-
-    return "";
-}
-
-
-/* =========================================================
-   RESERVED USERNAME PROTECTION
-   ========================================================= */
-
-function isReservedUsername(username) {
-
-    const value =
-        String(username || "")
-            .trim();
-
-    if (!value) {
-        return true;
-    }
-
-    /*
-       لا نسمح للمستخدم العادي بتقليد
-       رموز الإدارة.
-    */
-
-    if (
-        value.startsWith("&") ||
-        value.startsWith("@")
-    ) {
-
-        return true;
-    }
-
-    /*
-       أيضًا نمنع بعض الصيغ الواضحة
-       لتقليد الإدارة.
-    */
-
-    if (
-        /^(&|@)?admin$/i.test(value) ||
-        /^(&|@)?moderator$/i.test(value) ||
-        /^(&|@)?owner$/i.test(value) ||
-        /^(&|@)?master$/i.test(value)
-    ) {
-
-        return true;
-    }
-
+  if (!room) {
     return false;
-}
+  }
 
+  if (!Array.isArray(room.mutedUsers)) {
+    room.mutedUsers = [];
+  }
+
+  const wantedName = String(name || "")
+    .trim()
+    .toLowerCase();
+
+  return room.mutedUsers.some(item => {
+    if (!item) return false;
+
+    if (typeof item === "string") {
+      return item.trim().toLowerCase() === wantedName;
+    }
+
+    const itemName = String(
+      item.name ||
+      item.username ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+    return itemName === wantedName;
+  });
+}
 
 /* =========================================================
-   ROOM USERS
-   ========================================================= */
+   ROOM MESSAGE HELPERS
+========================================================= */
 
-function getRoomUsers(roomId) {
+function addRoomMessage(roomId, message) {
+  const room = getRoom(roomId);
 
-    return users
-        .filter(
-            user =>
-                user.roomIds &&
-                user.roomIds.includes(roomId)
-        )
-        .map(user => ({
-            id: user.id,
-            username: user.username,
-            color: user.color,
-            isAdmin: user.isAdmin,
-            adminRole: user.adminRole,
-            prefix:
-                getUserRolePrefix(user)
-        }));
+  if (!room) {
+    return false;
+  }
+
+  if (!Array.isArray(room.messages)) {
+    room.messages = [];
+  }
+
+  room.messages.push(message);
+
+  /*
+    لا نترك سجل الغرفة يكبر بلا حدود.
+  */
+
+  if (room.messages.length > 500) {
+    room.messages = room.messages.slice(-500);
+  }
+
+  saveRooms();
+
+  return true;
 }
 
+function getRoomMessages(roomId) {
+  const room = getRoom(roomId);
+
+  if (!room) {
+    return [];
+  }
+
+  if (!Array.isArray(room.messages)) {
+    room.messages = [];
+    saveRooms();
+  }
+
+  return room.messages;
+}
 
 /* =========================================================
    ROOM PUBLIC DATA
-   ========================================================= */
+========================================================= */
 
 function publicRoom(room) {
+  if (!room) return null;
 
-    if (!room) {
-        return null;
+  return {
+    id: room.id,
+    name: room.name,
+    description: room.description || "",
+    enabled: room.enabled !== false,
+    usersCount: users.filter(
+      user =>
+        user.loggedIn &&
+        String(user.roomId || "") === String(room.id)
+    ).length,
+
+    settings: {
+      chatLock: !!room.settings?.chatLock,
+      maintenance: !!room.settings?.maintenance,
+      stars: !!room.settings?.stars,
+      protection: !!room.settings?.protection
     }
-
-    return {
-
-        id: room.id,
-
-        name: room.name,
-
-        description:
-            room.description || "",
-
-        enabled:
-            room.enabled !== false,
-
-        settings: {
-
-            starsMode:
-                !!room.settings?.starsMode,
-
-            chatLocked:
-                !!room.settings?.chatLocked,
-
-            maintenance:
-                !!room.settings?.maintenance,
-
-            protection:
-                !!room.settings?.protection
-
-        }
-
-    };
+  };
 }
-
 
 function getPublicRooms() {
-
-    return rooms
-        .filter(
-            room =>
-                room.enabled !== false
-        )
-        .map(publicRoom);
+  return rooms
+    .filter(room => room && room.enabled !== false)
+    .map(publicRoom);
 }
 
+/* =========================================================
+   ROOM BROADCAST
+========================================================= */
+
+function broadcastRooms() {
+  io.emit(
+    "rooms updated",
+    getPublicRooms()
+  );
+
+  io.emit(
+    "admin rooms",
+    rooms.map(publicRoom)
+  );
+
+  broadcastServerStats();
+}
 
 /* =========================================================
-   ROOM MESSAGE STORAGE
-   ========================================================= */
+   ROOM USERS
+========================================================= */
 
-function getRoomMessages(roomId) {
+function getRoomUsers(roomId) {
+  return users
+    .filter(user => {
+      return (
+        user.loggedIn &&
+        String(user.roomId || "") === String(roomId)
+      );
+    })
+    .map(publicUser);
+}
+
+function broadcastRoomUsers(roomId) {
+  const room = getRoom(roomId);
+
+  if (!room) {
+    return;
+  }
+
+  io.to(`room:${room.id}`).emit(
+    "room users",
+    getRoomUsers(room.id)
+  );
+}
+
+/* =========================================================
+   ROOM NOTIFICATION
+========================================================= */
+
+function roomNotification(roomId, message) {
+  if (!roomId || !message) {
+    return;
+  }
+
+  io.to(`room:${roomId}`).emit(
+    "room notification",
+    {
+      roomId,
+      message,
+      time: new Date().toISOString()
+    }
+  );
+}
+
+/* =========================================================
+   FIND USER IN ROOM
+========================================================= */
+
+function getUserInRoom(name, roomId) {
+  const wanted = String(name || "")
+    .trim()
+    .toLowerCase();
+
+  return users.find(user => {
+    return (
+      user.loggedIn &&
+      String(user.name || "")
+        .trim()
+        .toLowerCase() === wanted &&
+      String(user.roomId || "") === String(roomId)
+    );
+  }) || null;
+}
+
+/* =========================================================
+   REMOVE USER FROM ROOM
+========================================================= */
+
+function leaveRoomSocket(socket, reason = "") {
+  const user = getUserBySocket(socket.id);
+
+  if (!user) {
+    return;
+  }
+
+  const oldRoomId = user.roomId;
+
+  if (oldRoomId) {
+    socket.leave(`room:${oldRoomId}`);
+  }
+
+  user.roomId = null;
+
+  if (oldRoomId) {
+    broadcastRoomUsers(oldRoomId);
+    broadcastRooms();
+  }
+
+  if (reason) {
+    socket.emit(
+      "room left",
+      {
+        roomId: oldRoomId,
+        reason
+      }
+    );
+  }
+}
+
+/* =========================================================
+   CHANGE ROOM
+========================================================= */
+
+function changeUserRoom(socket, roomId) {
+  const user = getUserBySocket(socket.id);
+
+  if (!user) {
+    return {
+      ok: false,
+      error: "يجب تسجيل الدخول أولًا"
+    };
+  }
+
+  const room = getRoom(roomId);
+
+  if (!room) {
+    return {
+      ok: false,
+      error: "الغرفة غير موجودة"
+    };
+  }
+
+  if (room.enabled === false) {
+    return {
+      ok: false,
+      error: "هذه الغرفة غير متاحة حاليًا"
+    };
+  }
+
+  if (
+    isUserBanned(user.name, user.ip) ||
+    isBannedFromRoom(user.name, room.id, user.ip)
+  ) {
+    return {
+      ok: false,
+      error: "🚫 أنت محظور من هذه الغرفة"
+    };
+  }
+
+  const oldRoomId = user.roomId;
+
+  if (
+    oldRoomId &&
+    String(oldRoomId) === String(room.id)
+  ) {
+    return {
+      ok: true,
+      room
+    };
+  }
+
+  if (oldRoomId) {
+    socket.leave(`room:${oldRoomId}`);
+    broadcastRoomUsers(oldRoomId);
+  }
+
+  user.roomId = room.id;
+
+  socket.join(`room:${room.id}`);
+
+  broadcastRoomUsers(room.id);
+  broadcastRooms();
+
+  return {
+    ok: true,
+    room
+  };
+}
+
+/* =========================================================
+   USERNAME VALIDATION
+========================================================= */
+
+function isValidUsername(name) {
+  if (!name) {
+    return false;
+  }
+
+  const value = String(name).trim();
+
+  if (value.length < 2 || value.length > 30) {
+    return false;
+  }
+
+  /*
+    منع الأسماء التي تحاول تقليد الرتب.
+  */
+
+  if (
+    value.startsWith("&") ||
+    value.startsWith("@")
+  ) {
+    return false;
+  }
+
+  const lower = value.toLowerCase();
+
+  const reserved = [
+    "admin",
+    "administrator",
+    "master",
+    "moderator",
+    "mod",
+    "owner",
+    "system",
+    "server"
+  ];
+
+  if (reserved.includes(lower)) {
+    return false;
+  }
+
+  /*
+    منع اسم أدمن موجود.
+  */
+
+  if (isAdmin(value)) {
+    return false;
+  }
+
+  return true;
+}
+
+/* =========================================================
+   UNIQUE USERNAME
+========================================================= */
+
+function isUsernameTaken(name) {
+  const wanted = String(name || "")
+    .trim()
+    .toLowerCase();
+
+  return users.some(user => {
+    return (
+      user.loggedIn &&
+      String(user.name || "")
+        .trim()
+        .toLowerCase() === wanted
+    );
+  });
+}
+
+/* =========================================================
+   ADMIN ROLE LABEL
+========================================================= */
+
+function getUserRole(name) {
+  if (isMasterAdmin(name)) {
+    return "&";
+  }
+
+  if (isAdmin(name)) {
+    return "@";
+  }
+
+  return "";
+}
+
+/* =========================================================
+   ADMIN LOGIN DATA
+========================================================= */
+
+function getAdminLoginData(name) {
+  const admin = findAdmin(name);
+
+  if (!admin) {
+    return null;
+  }
+
+  return {
+    name: admin.name,
+    role: isMasterAdmin(admin.name)
+      ? "master"
+      : "admin",
+    prefix: isMasterAdmin(admin.name)
+      ? "&"
+      : "@",
+    permissions: admin.permissions || {}
+  };
+}
+/* =========================================================
+   SOCKET CONNECTION
+========================================================= */
+
+io.on("connection", socket => {
+
+  const ip = getIP(socket);
+  const userAgent = getUserAgent(socket);
+  const device = getDeviceFromUserAgent(userAgent);
+
+  const sessionUser = {
+    socketId: socket.id,
+    name: "",
+    username: "",
+    ip,
+    userAgent,
+    device,
+    roomId: null,
+    loggedIn: false,
+    connectedAt: new Date().toISOString()
+  };
+
+  users.push(sessionUser);
+
+  /* =======================================================
+     SEND INITIAL DATA
+  ======================================================= */
+
+  socket.emit(
+    "rooms updated",
+    getPublicRooms()
+  );
+
+  socket.emit(
+    "admin rooms",
+    rooms.map(publicRoom)
+  );
+
+  socket.emit(
+    "server stats",
+    {
+      onlineUsers: users.filter(
+        user => user.loggedIn
+      ).length,
+
+      bannedUsers: bannedUsers.length,
+
+      admins: admins.length,
+
+      rooms: rooms.length
+    }
+  );
+
+  /* =======================================================
+     LOGIN
+  ======================================================= */
+
+  socket.on("login", data => {
+
+    const name = String(
+      data?.name ||
+      data?.username ||
+      ""
+    ).trim();
+
+    if (!name) {
+      socket.emit(
+        "login failed",
+        "❌ اكتب اسم المستخدم"
+      );
+
+      return;
+    }
+
+    if (!isValidUsername(name)) {
+      socket.emit(
+        "login failed",
+        "❌ هذا الاسم غير مسموح به"
+      );
+
+      return;
+    }
+
+    if (isUsernameTaken(name)) {
+      socket.emit(
+        "login failed",
+        "❌ هذا الاسم مستخدم حاليًا"
+      );
+
+      return;
+    }
 
     if (
-        !roomMessages.has(roomId)
+      isUserBanned(
+        name,
+        ip
+      )
     ) {
+      socket.emit(
+        "login failed",
+        "🚫 أنت محظور من دخول الشات"
+      );
 
-        roomMessages.set(
-            roomId,
-            []
-        );
+      return;
     }
 
-    return roomMessages.get(
-        roomId
-    );
-}
+    if (
+      isDeviceBanned(
+        device,
+        userAgent
+      )
+    ) {
+      socket.emit(
+        "login failed",
+        "🚫 هذا الجهاز محظور"
+      );
 
+      return;
+    }
 
-function addRoomMessage(
-    roomId,
-    message
-) {
-
-    const messages =
-        getRoomMessages(roomId);
-
-    messages.push(message);
+    sessionUser.name = name;
+    sessionUser.username = name;
+    sessionUser.loggedIn = true;
 
     /*
-       Keep the latest 300 messages
-       in memory.
+      إذا كان هناك اسم أدمن مطابق،
+      لا نمنحه رتبة أدمن تلقائيًا.
+      تسجيل الأدمن يتم من لوحة الإدارة.
     */
 
-    if (messages.length > 300) {
+    addLog(
+      "login",
+      {
+        name,
+        ip,
+        device
+      }
+    );
 
-        messages.splice(
-            0,
-            messages.length - 300
-        );
+    socket.emit(
+      "login success",
+      {
+        name,
+        username: name,
+        role: getUserRole(name),
+        rooms: getPublicRooms()
+      }
+    );
+
+    broadcastOnlineUsers();
+    broadcastAdminOnlineUsers();
+    broadcastServerStats();
+  });
+
+  /* =======================================================
+     LOGOUT
+  ======================================================= */
+
+  socket.on("logout", () => {
+
+    const user = getUserBySocket(socket.id);
+
+    if (!user) {
+      return;
     }
-}
 
+    if (user.roomId) {
+      socket.leave(
+        `room:${user.roomId}`
+      );
+    }
 
-/* =========================================================
-   ROOM ACCESS CHECKS
-   ========================================================= */
-
-function roomBanEntry(
-    roomId,
-    user
-) {
-
-    const moderation =
-        ensureRoomModeration(
-            roomId
-        );
-
-    return moderation.banned.find(
-        item =>
-            (
-                item.username &&
-                item.username.toLowerCase() ===
-                user.username.toLowerCase()
-            )
-            ||
-            (
-                item.ip &&
-                item.ip === user.ip
-            )
+    addLog(
+      "logout",
+      {
+        name: user.name,
+        ip: user.ip
+      }
     );
-}
 
+    user.loggedIn = false;
+    user.roomId = null;
 
-function roomMuteEntry(
-    roomId,
-    user
-) {
+    broadcastOnlineUsers();
+    broadcastAdminOnlineUsers();
+    broadcastServerStats();
+  });
 
-    const moderation =
-        ensureRoomModeration(
-            roomId
-        );
+  /* =======================================================
+     GET ROOMS
+  ======================================================= */
 
-    return moderation.muted.find(
-        item =>
-            (
-                item.username &&
-                item.username.toLowerCase() ===
-                user.username.toLowerCase()
-            )
+  socket.on("get rooms", () => {
+
+    socket.emit(
+      "rooms updated",
+      getPublicRooms()
     );
-}
 
-
-function roomDisconnectEntry(
-    roomId,
-    user
-) {
-
-    const moderation =
-        ensureRoomModeration(
-            roomId
-        );
-
-    return moderation.disconnected.find(
-        item =>
-            (
-                item.username &&
-                item.username.toLowerCase() ===
-                user.username.toLowerCase()
-            )
-            ||
-            (
-                item.device &&
-                item.device === user.device
-            )
+    socket.emit(
+      "admin rooms",
+      rooms.map(publicRoom)
     );
-}
+  });
 
+  /* =======================================================
+     JOIN ROOM
+  ======================================================= */
 
-function roomHasStar(
-    roomId,
-    username
-) {
+  socket.on("join room", data => {
 
-    const moderation =
-        ensureRoomModeration(
-            roomId
-        );
+    const roomId =
+      typeof data === "string"
+        ? data
+        : data?.roomId;
 
-    return moderation.stars
-        .some(
-            name =>
-                String(name).toLowerCase()
-                ===
-                String(username).toLowerCase()
-        );
-}
+    const result =
+      changeUserRoom(
+        socket,
+        roomId
+      );
 
+    if (!result.ok) {
 
-/* =========================================================
-   ROOM JOIN / LEAVE
-   ========================================================= */
+      socket.emit(
+        "room error",
+        result.error
+      );
 
-function joinSocketRoom(
-    socket,
-    roomId
-) {
+      return;
+    }
 
-    const room =
-        getRoom(roomId);
+    const room = result.room;
+
+    socket.emit(
+      "room joined",
+      {
+        room: publicRoom(room),
+        messages: getRoomMessages(room.id),
+        users: getRoomUsers(room.id)
+      }
+    );
+
+    roomNotification(
+      room.id,
+      `👋 ${sessionUser.name} دخل الغرفة`
+    );
+
+    addLog(
+      "join_room",
+      {
+        name: sessionUser.name,
+        roomId: room.id,
+        roomName: room.name
+      }
+    );
+
+    broadcastRoomUsers(room.id);
+    broadcastRooms();
+  });
+
+  /* =======================================================
+     LEAVE ROOM
+  ======================================================= */
+
+  socket.on("leave room", () => {
+
+    const user = getUserBySocket(socket.id);
+
+    if (!user || !user.roomId) {
+      return;
+    }
+
+    const roomId = user.roomId;
+    const room = getRoom(roomId);
+
+    const name = user.name;
+
+    socket.leave(
+      `room:${roomId}`
+    );
+
+    user.roomId = null;
+
+    if (room) {
+      roomNotification(
+        room.id,
+        `👋 ${name} غادر الغرفة`
+      );
+    }
+
+    broadcastRoomUsers(roomId);
+    broadcastRooms();
+  });
+
+  /* =======================================================
+     ROOM HISTORY
+  ======================================================= */
+
+  socket.on("get room messages", data => {
+
+    const roomId =
+      typeof data === "string"
+        ? data
+        : data?.roomId;
+
+    const room = getRoom(roomId);
 
     if (!room) {
 
-        return {
-            ok: false,
-            error:
-                "❌ الغرفة غير موجودة"
-        };
+      socket.emit(
+        "room error",
+        "❌ الغرفة غير موجودة"
+      );
+
+      return;
     }
 
-    if (
-        room.enabled === false
-    ) {
+    socket.emit(
+      "room messages",
+      {
+        roomId: room.id,
+        messages: getRoomMessages(room.id)
+      }
+    );
+  });
 
-        return {
-            ok: false,
-            error:
-                "🚫 هذه الغرفة غير متاحة حاليًا"
-        };
+  /* =======================================================
+     ROOM USERS
+  ======================================================= */
+
+  socket.on("get room users", data => {
+
+    const roomId =
+      typeof data === "string"
+        ? data
+        : data?.roomId;
+
+    const room = getRoom(roomId);
+
+    if (!room) {
+      return;
     }
+
+    socket.emit(
+      "room users",
+      getRoomUsers(room.id)
+    );
+  });
+
+  /* =======================================================
+     ROOM CHAT MESSAGE
+  ======================================================= */
+
+  socket.on("chat message", data => {
 
     const user =
-        getUserBySocket(socket);
+      getUserBySocket(socket.id);
 
-    if (!user) {
-
-        return {
-            ok: false,
-            error:
-                "❌ يجب تسجيل الدخول أولًا"
-        };
+    if (
+      !user ||
+      !user.loggedIn
+    ) {
+      return;
     }
 
-    if (!socket.openRooms) {
+    const message =
+      String(
+        data?.message ||
+        data?.text ||
+        ""
+      ).trim();
 
-        socket.openRooms =
-            new Set();
+    if (!message) {
+      return;
+    }
+
+    const requestedRoomId =
+      data?.roomId ||
+      user.roomId;
+
+    const room =
+      getRoom(requestedRoomId);
+
+    if (!room) {
+
+      socket.emit(
+        "room error",
+        "❌ اختر غرفة أولًا"
+      );
+
+      return;
     }
 
     /*
-       Already open.
+      التأكد أن المستخدم داخل نفس الغرفة.
     */
 
     if (
-        socket.openRooms.has(roomId)
+      String(user.roomId || "") !==
+      String(room.id)
     ) {
 
-        socket.join(roomId);
+      socket.emit(
+        "room error",
+        "❌ يجب دخول الغرفة أولًا"
+      );
 
-        if (!user.roomIds) {
-            user.roomIds = [];
+      return;
+    }
+
+    /*
+      قفل المحادثة.
+    */
+
+    if (
+      room.settings?.chatLock === true &&
+      !isAdmin(user.name)
+    ) {
+
+      socket.emit(
+        "chat error",
+        "🔒 الدردشة مقفلة حاليًا"
+      );
+
+      return;
+    }
+
+    /*
+      الصيانة الخاصة بالغرفة.
+    */
+
+    if (
+      room.settings?.maintenance === true &&
+      !isAdmin(user.name)
+    ) {
+
+      socket.emit(
+        "chat error",
+        "🛠️ الغرفة في وضع الصيانة"
+      );
+
+      return;
+    }
+
+    /*
+      الكتم.
+    */
+
+    if (
+      isMutedFromRoom(
+        user.name,
+        room.id
+      ) ||
+      isUserMuted(
+        user.name,
+        room.id
+      )
+    ) {
+
+      socket.emit(
+        "chat error",
+        "🔇 أنت مكتوم في هذه الغرفة"
+      );
+
+      return;
+    }
+
+    const messageObject = {
+      id: createId("msg"),
+      roomId: room.id,
+      name: user.name,
+      username: user.name,
+      role: getUserRole(user.name),
+      message,
+      text: message,
+      reply: data?.reply || null,
+      time: new Date().toISOString()
+    };
+
+    addRoomMessage(
+      room.id,
+      messageObject
+    );
+
+    /*
+      نرسل الرسالة إلى جميع الموجودين
+      داخل نفس الغرفة فقط.
+    */
+
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "chat message",
+      messageObject
+    );
+
+    addLog(
+      "chat_message",
+      {
+        name: user.name,
+        roomId: room.id,
+        messageId: messageObject.id
+      }
+    );
+  });
+
+  /* =======================================================
+     CLEAR ROOM CHAT
+  ======================================================= */
+
+  socket.on("clear room chat", data => {
+
+    const user =
+      getUserBySocket(socket.id);
+
+    if (!user || !user.loggedIn) {
+      return;
+    }
+
+    const roomId =
+      typeof data === "string"
+        ? data
+        : data?.roomId || user.roomId;
+
+    const room =
+      getRoom(roomId);
+
+    if (!room) {
+
+      socket.emit(
+        "room error",
+        "❌ الغرفة غير موجودة"
+      );
+
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        user.name,
+        room.id,
+        "clear"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية مسح رسائل هذه الغرفة"
+      );
+
+      return;
+    }
+
+    room.messages = [];
+
+    saveRooms();
+
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "room chat cleared",
+      {
+        roomId: room.id
+      }
+    );
+
+    addLog(
+      "clear_room_chat",
+      {
+        admin: user.name,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     DELETE ROOM MESSAGE
+  ======================================================= */
+
+  socket.on("delete room message", data => {
+
+    const user =
+      getUserBySocket(socket.id);
+
+    if (!user || !user.loggedIn) {
+      return;
+    }
+
+    const roomId =
+      data?.roomId ||
+      user.roomId;
+
+    const messageId =
+      data?.messageId;
+
+    if (!messageId) {
+      return;
+    }
+
+    const room =
+      getRoom(roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        user.name,
+        room.id,
+        "deleteMessage"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية حذف الرسائل"
+      );
+
+      return;
+    }
+
+    const oldLength =
+      room.messages.length;
+
+    room.messages =
+      room.messages.filter(
+        message =>
+          String(message.id) !==
+          String(messageId)
+      );
+
+    if (
+      room.messages.length !==
+      oldLength
+    ) {
+
+      saveRooms();
+
+      io.to(
+        `room:${room.id}`
+      ).emit(
+        "room message deleted",
+        {
+          roomId: room.id,
+          messageId
+        }
+      );
+
+      addLog(
+        "delete_room_message",
+        {
+          admin: user.name,
+          roomId: room.id,
+          messageId
+        }
+      );
+    }
+  });
+      /* =======================================================
+     PRIVATE MESSAGE
+  ======================================================= */
+
+  socket.on("private message", data => {
+
+    const sender =
+      getUserBySocket(socket.id);
+
+    if (!sender || !sender.loggedIn) {
+      return;
+    }
+
+    if (privateLocked && !isAdmin(sender.name)) {
+
+      socket.emit(
+        "private error",
+        "🔒 المحادثات الخاصة مقفلة حاليًا"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.to ||
+        data?.name ||
+        data?.target ||
+        ""
+      ).trim();
+
+    const message =
+      String(
+        data?.message ||
+        data?.text ||
+        ""
+      ).trim();
+
+    if (!targetName || !message) {
+      return;
+    }
+
+    const target =
+      getUserByName(targetName);
+
+    if (!target || !target.loggedIn) {
+
+      socket.emit(
+        "private error",
+        "❌ المستخدم غير متصل"
+      );
+
+      return;
+    }
+
+    const privateMessage = {
+      id: createId("pm"),
+      from: sender.name,
+      sender: sender.name,
+      to: target.name,
+      receiver: target.name,
+      message,
+      text: message,
+      time: new Date().toISOString()
+    };
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.emit(
+        "private message",
+        privateMessage
+      );
+    }
+
+    /*
+      نرسل الرسالة أيضًا للمرسل حتى تظهر عنده.
+    */
+
+    socket.emit(
+      "private message",
+      privateMessage
+    );
+
+    addLog(
+      "private_message",
+      {
+        from: sender.name,
+        to: target.name
+      }
+    );
+  });
+
+  /* =======================================================
+     GET ONLINE USERS
+  ======================================================= */
+
+  socket.on("get online users", () => {
+
+    socket.emit(
+      "online users",
+      users
+        .filter(user => user.loggedIn)
+        .map(publicUser)
+    );
+  });
+
+  /* =======================================================
+     ADMIN PANEL LOGIN
+  ======================================================= */
+
+  socket.on("admin panel login", data => {
+
+    const name =
+      String(
+        data?.name ||
+        ""
+      ).trim();
+
+    const password =
+      String(
+        data?.password ||
+        ""
+      );
+
+    const admin =
+      findAdmin(name);
+
+    if (
+      !admin ||
+      String(admin.password) !== password
+    ) {
+
+      socket.emit(
+        "admin login failed"
+      );
+
+      return;
+    }
+
+    const loginData =
+      getAdminLoginData(
+        admin.name
+      );
+
+    socket.emit(
+      "admin login success",
+      loginData
+    );
+
+    socket.emit(
+      "admin online users",
+      users
+        .filter(user => user.loggedIn)
+        .map(adminUser)
+    );
+
+    socket.emit(
+      "admin rooms",
+      rooms.map(publicRoom)
+    );
+
+    socket.emit(
+      "server stats",
+      {
+        onlineUsers:
+          users.filter(
+            user => user.loggedIn
+          ).length,
+
+        bannedUsers:
+          bannedUsers.length,
+
+        admins:
+          admins.length,
+
+        rooms:
+          rooms.length
+      }
+    );
+
+    socket.emit(
+      "logs",
+      logs
+    );
+  });
+
+  /* =======================================================
+     GET ADMIN USERS
+  ======================================================= */
+
+  socket.on("get admin users", () => {
+
+    socket.emit(
+      "admin online users",
+      users
+        .filter(user => user.loggedIn)
+        .map(adminUser)
+    );
+
+    socket.emit(
+      "server stats",
+      {
+        onlineUsers:
+          users.filter(
+            user => user.loggedIn
+          ).length,
+
+        bannedUsers:
+          bannedUsers.length,
+
+        admins:
+          admins.length,
+
+        rooms:
+          rooms.length
+      }
+    );
+  });
+
+  /* =======================================================
+     GET ADMINS
+  ======================================================= */
+
+  socket.on("get admins", () => {
+
+    const list =
+      admins.map(admin => ({
+        name: admin.name,
+        role: isMasterAdmin(admin.name)
+          ? "master"
+          : "admin",
+        permissions:
+          admin.permissions || {}
+      }));
+
+    socket.emit(
+      "admins list",
+      list
+    );
+  });
+
+  /* =======================================================
+     GET LOGS
+  ======================================================= */
+
+  socket.on("get logs", () => {
+
+    socket.emit(
+      "logs",
+      logs
+    );
+  });
+
+  /* =======================================================
+     VIEW USER
+  ======================================================= */
+
+  socket.on("view user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !isAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ هذا الأمر للأدمن فقط"
+      );
+
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "viewUserInfo"
+      ) &&
+      !hasPermission(
+        requester.name,
+        "viewIP"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية عرض معلومات المستخدم"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserByName(targetName);
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود"
+      );
+
+      return;
+    }
+
+    socket.emit(
+      "user info",
+      {
+        name: target.name,
+
+        ip:
+          hasPermission(
+            requester.name,
+            "viewIP"
+          ) ||
+          isMasterAdmin(requester.name)
+            ? target.ip
+            : "مخفي",
+
+        device:
+          target.device || "",
+
+        userAgent:
+          target.userAgent || "",
+
+        roomId:
+          target.roomId || null,
+
+        role:
+          getUserRole(target.name)
+      }
+    );
+  });
+
+  /* =======================================================
+     CREATE ROOM
+  ======================================================= */
+
+  socket.on("create room", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !isAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ الأدمن فقط يستطيع إنشاء الغرف"
+      );
+
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(
+        requester.name,
+        "rooms"
+      ) &&
+      !hasPermission(
+        requester.name,
+        "addAdmin"
+      )
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ لا تملك صلاحية إنشاء الغرف"
+      );
+
+      return;
+    }
+
+    const name =
+      String(
+        data?.name ||
+        ""
+      ).trim();
+
+    const description =
+      String(
+        data?.description ||
+        ""
+      ).trim();
+
+    if (!name) {
+
+      socket.emit(
+        "room error",
+        "❌ اكتب اسم الغرفة"
+      );
+
+      return;
+    }
+
+    if (name.length > 50) {
+
+      socket.emit(
+        "room error",
+        "❌ اسم الغرفة طويل جدًا"
+      );
+
+      return;
+    }
+
+    if (getRoomByName(name)) {
+
+      socket.emit(
+        "room error",
+        "❌ هذه الغرفة موجودة مسبقًا"
+      );
+
+      return;
+    }
+
+    const room = {
+      id: createId("room"),
+
+      name,
+
+      description,
+
+      enabled: true,
+
+      messages: [],
+
+      bannedUsers: [],
+
+      mutedUsers: [],
+
+      admins: {},
+
+      permissions: {},
+
+      settings: {
+        chatLock: false,
+        maintenance: false,
+        stars: false,
+        protection: false
+      },
+
+      createdBy:
+        requester.name,
+
+      createdAt:
+        new Date().toISOString()
+    };
+
+    rooms.push(room);
+
+    saveRooms();
+
+    socket.emit(
+      "room created",
+      publicRoom(room)
+    );
+
+    broadcastRooms();
+
+    addLog(
+      "create_room",
+      {
+        admin: requester.name,
+        roomId: room.id,
+        roomName: room.name
+      }
+    );
+  });
+
+  /* =======================================================
+     DELETE ROOM
+  ======================================================= */
+
+  socket.on("delete room", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const roomId =
+      data?.roomId;
+
+    const room =
+      getRoom(roomId);
+
+    if (!room) {
+
+      socket.emit(
+        "room error",
+        "❌ الغرفة غير موجودة"
+      );
+
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "rooms"
+      ) &&
+      !hasPermission(
+        requester.name,
+        "rooms"
+      )
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ لا تملك صلاحية حذف هذه الغرفة"
+      );
+
+      return;
+    }
+
+    /*
+      إخراج جميع المستخدمين من الغرفة.
+    */
+
+    users.forEach(user => {
+
+      if (
+        String(user.roomId || "") ===
+        String(room.id)
+      ) {
+
+        const targetSocket =
+          io.sockets.sockets.get(
+            user.socketId
+          );
+
+        if (targetSocket) {
+
+          targetSocket.leave(
+            `room:${room.id}`
+          );
+
+          targetSocket.emit(
+            "room deleted",
+            {
+              roomId: room.id,
+              message:
+                "🗑️ تم حذف هذه الغرفة"
+            }
+          );
+        }
+
+        user.roomId = null;
+      }
+    });
+
+    rooms =
+      rooms.filter(
+        item =>
+          String(item.id) !==
+          String(room.id)
+      );
+
+    saveRooms();
+
+    socket.emit(
+      "room deleted",
+      {
+        roomId: room.id
+      }
+    );
+
+    broadcastRooms();
+    broadcastOnlineUsers();
+
+    addLog(
+      "delete_room",
+      {
+        admin: requester.name,
+        roomId: room.id,
+        roomName: room.name
+      }
+    );
+  });
+
+  /* =======================================================
+     EDIT ROOM
+  ======================================================= */
+
+  socket.on("edit room", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+
+      socket.emit(
+        "room error",
+        "❌ الغرفة غير موجودة"
+      );
+
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(
+        requester.name,
+        "rooms"
+      ) &&
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "rooms"
+      )
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ لا تملك صلاحية تعديل هذه الغرفة"
+      );
+
+      return;
+    }
+
+    const newName =
+      String(
+        data?.name ??
+        room.name
+      ).trim();
+
+    const newDescription =
+      String(
+        data?.description ??
+        room.description ??
+        ""
+      ).trim();
+
+    if (!newName) {
+
+      socket.emit(
+        "room error",
+        "❌ اسم الغرفة لا يمكن أن يكون فارغًا"
+      );
+
+      return;
+    }
+
+    const duplicate =
+      rooms.find(item => {
+
+        return (
+          String(item.id) !==
+          String(room.id) &&
+          String(item.name)
+            .trim()
+            .toLowerCase() ===
+          newName.toLowerCase()
+        );
+      });
+
+    if (duplicate) {
+
+      socket.emit(
+        "room error",
+        "❌ اسم الغرفة مستخدم مسبقًا"
+      );
+
+      return;
+    }
+
+    room.name =
+      newName;
+
+    room.description =
+      newDescription;
+
+    saveRooms();
+
+    socket.emit(
+      "room updated",
+      publicRoom(room)
+    );
+
+    broadcastRooms();
+
+    addLog(
+      "edit_room",
+      {
+        admin: requester.name,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     UPDATE ROOM
+     Alias للتوافق
+  ======================================================= */
+
+  socket.on("update room", data => {
+
+    socket.emit(
+      "admin error",
+      "⚠️ استخدم تعديل الغرفة من لوحة الإدارة"
+    );
+  });
+      /* =======================================================
+     ENABLE / DISABLE ROOM
+  ======================================================= */
+
+  socket.on("toggle room", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+
+      socket.emit(
+        "room error",
+        "❌ الغرفة غير موجودة"
+      );
+
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(requester.name, "rooms")
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ لا تملك صلاحية تشغيل أو إيقاف الغرفة"
+      );
+
+      return;
+    }
+
+    room.enabled =
+      typeof data?.enabled === "boolean"
+        ? data.enabled
+        : !room.enabled;
+
+    saveRooms();
+
+    io.emit(
+      "room status changed",
+      {
+        roomId: room.id,
+        enabled: room.enabled
+      }
+    );
+
+    broadcastRooms();
+
+    addLog(
+      "toggle_room",
+      {
+        admin: requester.name,
+        roomId: room.id,
+        enabled: room.enabled
+      }
+    );
+  });
+
+  /* =======================================================
+     ASSIGN ADMIN TO ROOM
+  ======================================================= */
+
+  socket.on("assign room admin", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+
+      socket.emit(
+        "room error",
+        "❌ الغرفة غير موجودة"
+      );
+
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(requester.name, "addAdmin")
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ فقط الأدمن الرئيسي يستطيع تعيين أدمن للغرفة"
+      );
+
+      return;
+    }
+
+    const adminName =
+      String(
+        data?.adminName ||
+        data?.name ||
+        ""
+      ).trim();
+
+    const admin =
+      findAdmin(adminName);
+
+    if (!admin) {
+
+      socket.emit(
+        "room error",
+        "❌ الأدمن غير موجود"
+      );
+
+      return;
+    }
+
+    if (!room.admins) {
+      room.admins = {};
+    }
+
+    room.admins[admin.name] = true;
+
+    saveRooms();
+
+    socket.emit(
+      "room admin assigned",
+      {
+        roomId: room.id,
+        adminName: admin.name
+      }
+    );
+
+    broadcastRooms();
+
+    addLog(
+      "assign_room_admin",
+      {
+        master: requester.name,
+        admin: admin.name,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     REMOVE ADMIN FROM ROOM
+  ======================================================= */
+
+  socket.on("remove room admin", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(requester.name, "removeAdmin")
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ لا تملك صلاحية إزالة أدمن من الغرفة"
+      );
+
+      return;
+    }
+
+    const adminName =
+      String(
+        data?.adminName ||
+        data?.name ||
+        ""
+      ).trim();
+
+    if (room.admins) {
+      delete room.admins[adminName];
+    }
+
+    if (room.permissions) {
+      delete room.permissions[adminName];
+    }
+
+    saveRooms();
+
+    socket.emit(
+      "room admin removed",
+      {
+        roomId: room.id,
+        adminName
+      }
+    );
+
+    broadcastRooms();
+
+    addLog(
+      "remove_room_admin",
+      {
+        master: requester.name,
+        admin: adminName,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     ROOM SETTING
+  ======================================================= */
+
+  socket.on("room setting", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+
+      socket.emit(
+        "room error",
+        "❌ الغرفة غير موجودة"
+      );
+
+      return;
+    }
+
+    const setting =
+      String(
+        data?.setting ||
+        data?.type ||
+        ""
+      ).trim();
+
+    const allowedSettings = [
+      "chatLock",
+      "maintenance",
+      "stars",
+      "protection"
+    ];
+
+    if (
+      !allowedSettings.includes(setting)
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ إعداد الغرفة غير معروف"
+      );
+
+      return;
+    }
+
+    /*
+      Master يستطيع تعديل كل شيء.
+      الأدمن العادي يحتاج صلاحية إعداد الغرفة.
+    */
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "roomSettings"
+      )
+    ) {
+
+      socket.emit(
+        "room error",
+        "❌ لا تملك صلاحية تعديل إعدادات هذه الغرفة"
+      );
+
+      return;
+    }
+
+    const value =
+      typeof data?.value === "boolean"
+        ? data.value
+        : !Boolean(room.settings?.[setting]);
+
+    if (!room.settings) {
+      room.settings = {};
+    }
+
+    room.settings[setting] = value;
+
+    saveRooms();
+
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "room setting changed",
+      {
+        roomId: room.id,
+        setting,
+        value
+      }
+    );
+
+    broadcastRooms();
+
+    addLog(
+      "room_setting",
+      {
+        admin: requester.name,
+        roomId: room.id,
+        setting,
+        value
+      }
+    );
+  });
+
+  /* =======================================================
+     TOGGLE CHAT LOCK
+  ======================================================= */
+
+  socket.on("toggle room chat lock", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "chatLock"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية قفل الدردشة"
+      );
+
+      return;
+    }
+
+    if (!room.settings) {
+      room.settings = {};
+    }
+
+    room.settings.chatLock =
+      !Boolean(room.settings.chatLock);
+
+    saveRooms();
+
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "room setting changed",
+      {
+        roomId: room.id,
+        setting: "chatLock",
+        value: room.settings.chatLock
+      }
+    );
+
+    broadcastRooms();
+  });
+
+  /* =======================================================
+     TOGGLE ROOM MAINTENANCE
+  ======================================================= */
+
+  socket.on("toggle room maintenance", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "maintenance"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية وضع الغرفة في الصيانة"
+      );
+
+      return;
+    }
+
+    if (!room.settings) {
+      room.settings = {};
+    }
+
+    room.settings.maintenance =
+      !Boolean(room.settings.maintenance);
+
+    saveRooms();
+
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "room setting changed",
+      {
+        roomId: room.id,
+        setting: "maintenance",
+        value: room.settings.maintenance
+      }
+    );
+
+    broadcastRooms();
+  });
+
+  /* =======================================================
+     ROOM STARS
+  ======================================================= */
+
+  socket.on("toggle room stars", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const roomId =
+      typeof data === "string"
+        ? data
+        : data?.roomId;
+
+    const room =
+      getRoom(
+        roomId ||
+        requester.roomId
+      );
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "stars"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية النجوم لهذه الغرفة"
+      );
+
+      return;
+    }
+
+    if (!room.settings) {
+      room.settings = {};
+    }
+
+    room.settings.stars =
+      !Boolean(room.settings.stars);
+
+    saveRooms();
+
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "room setting changed",
+      {
+        roomId: room.id,
+        setting: "stars",
+        value: room.settings.stars
+      }
+    );
+
+    broadcastRooms();
+
+    addLog(
+      "toggle_room_stars",
+      {
+        admin: requester.name,
+        roomId: room.id,
+        enabled: room.settings.stars
+      }
+    );
+  });
+
+  /* =======================================================
+     GIVE STAR
+  ======================================================= */
+
+  socket.on("give room star", data => {
+
+    const giver =
+      getUserBySocket(socket.id);
+
+    if (!giver || !giver.loggedIn) {
+      return;
+    }
+
+    const roomId =
+      data?.roomId ||
+      giver.roomId;
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.target ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const room =
+      getRoom(roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      room.settings?.stars !== true
+    ) {
+
+      socket.emit(
+        "star error",
+        "⭐ النجوم غير مفعلة في هذه الغرفة"
+      );
+
+      return;
+    }
+
+    const target =
+      getUserInRoom(
+        targetName,
+        room.id
+      );
+
+    if (!target) {
+
+      socket.emit(
+        "star error",
+        "❌ المستخدم غير موجود في الغرفة"
+      );
+
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        giver.name,
+        room.id,
+        "stars"
+      ) &&
+      !isAdmin(giver.name)
+    ) {
+
+      /*
+        المستخدم العادي يستطيع إعطاء نجمة.
+        لا نرفضه هنا.
+      */
+    }
+
+    const starObject = {
+      id: createId("star"),
+      roomId: room.id,
+      from: giver.name,
+      to: target.name,
+      time: new Date().toISOString()
+    };
+
+    stars.push(starObject);
+
+    if (stars.length > 5000) {
+      stars = stars.slice(-5000);
+    }
+
+    saveJSON(FILES.stars, stars);
+
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "star given",
+      starObject
+    );
+  });
+
+  /* =======================================================
+     REMOVE STAR
+  ======================================================= */
+
+  socket.on("remove room star", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const roomId =
+      data?.roomId ||
+      requester.roomId;
+
+    const room =
+      getRoom(roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "stars"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية حذف النجوم"
+      );
+
+      return;
+    }
+
+    const starId =
+      data?.starId;
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.target ||
+        ""
+      ).trim();
+
+    const oldLength =
+      stars.length;
+
+    stars =
+      stars.filter(star => {
+
+        if (
+          String(star.roomId) !==
+          String(room.id)
+        ) {
+          return true;
         }
 
         if (
-            !user.roomIds.includes(roomId)
+          starId &&
+          String(star.id) ===
+          String(starId)
         ) {
-
-            user.roomIds.push(roomId);
+          return false;
         }
 
-        return {
-            ok: true,
-            room
-        };
+        if (
+          targetName &&
+          String(star.to || "")
+            .toLowerCase() ===
+          targetName.toLowerCase()
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+
+    if (stars.length !== oldLength) {
+      saveJSON(
+        FILES.stars,
+        stars
+      );
     }
 
-    /*
-       Maximum 3 rooms.
-    */
+    io.to(
+      `room:${room.id}`
+    ).emit(
+      "stars updated",
+      {
+        roomId: room.id,
+        stars: stars.filter(
+          star =>
+            String(star.roomId) ===
+            String(room.id)
+        )
+      }
+    );
+  });
+
+  /* =======================================================
+     BAN USER FROM ROOM
+  ======================================================= */
+
+  socket.on("ban room user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
 
     if (
-        socket.openRooms.size >=
-        MAX_OPEN_ROOMS
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "ban"
+      )
     ) {
 
-        return {
-            ok: false,
-            error:
-                "⚠️ يمكنك فتح 3 غرف فقط في نفس الوقت"
-        };
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية الحظر في هذه الغرفة"
+      );
+
+      return;
     }
 
-    /*
-       Room ban.
-    */
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
 
-    const banned =
-        roomBanEntry(
-            roomId,
-            user
-        );
+    const target =
+      getUserInRoom(
+        targetName,
+        room.id
+      );
 
-    if (banned) {
+    if (!target) {
 
-        return {
-            ok: false,
-            error:
-                "🚫 أنت محظور من هذه الغرفة"
-        };
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود في الغرفة"
+      );
+
+      return;
     }
 
-    /*
-       Device disconnect.
-    */
-
-    const disconnected =
-        roomDisconnectEntry(
-            roomId,
-            user
-        );
-
-    if (disconnected) {
-
-        return {
-            ok: false,
-            error:
-                "⛔ تم فصل جهازك من هذه الغرفة"
-        };
+    if (!Array.isArray(room.bannedUsers)) {
+      room.bannedUsers = [];
     }
 
-    socket.join(roomId);
+    const alreadyBanned =
+      isBannedFromRoom(
+        target.name,
+        room.id,
+        target.ip
+      );
 
-    socket.openRooms.add(
-        roomId
+    if (!alreadyBanned) {
+
+      room.bannedUsers.push({
+        name: target.name,
+        ip: target.ip,
+        time: new Date().toISOString(),
+        by: requester.name
+      });
+    }
+
+    saveRooms();
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.leave(
+        `room:${room.id}`
+      );
+
+      targetSocket.emit(
+        "room banned",
+        {
+          roomId: room.id,
+          message:
+            "🚫 تم حظرك من هذه الغرفة"
+        }
+      );
+    }
+
+    target.roomId = null;
+
+    roomNotification(
+      room.id,
+      `🚫 تم حظر ${target.name} من الغرفة`
     );
 
-    if (!user.roomIds) {
+    broadcastRoomUsers(room.id);
+    broadcastRooms();
 
-        user.roomIds = [];
+    addLog(
+      "room_ban",
+      {
+        admin: requester.name,
+        target: target.name,
+        roomId: room.id
+      }
+    );
+  });
+      /* =======================================================
+     UNBAN USER FROM ROOM
+  ======================================================= */
+
+  socket.on("unban room user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
     }
 
     if (
-        !user.roomIds.includes(roomId)
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "unban"
+      )
     ) {
 
-        user.roomIds.push(
-            roomId
-        );
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية فك الحظر في هذه الغرفة"
+      );
+
+      return;
     }
 
-    return {
-        ok: true,
-        room
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    if (!Array.isArray(room.bannedUsers)) {
+      room.bannedUsers = [];
+    }
+
+    const oldLength =
+      room.bannedUsers.length;
+
+    room.bannedUsers =
+      room.bannedUsers.filter(item => {
+
+        const itemName =
+          typeof item === "string"
+            ? item
+            : (
+                item?.name ||
+                item?.username ||
+                ""
+              );
+
+        return (
+          String(itemName)
+            .trim()
+            .toLowerCase() !==
+          targetName.toLowerCase()
+        );
+      });
+
+    if (
+      room.bannedUsers.length ===
+      oldLength
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود في قائمة الحظر"
+      );
+
+      return;
+    }
+
+    saveRooms();
+
+    roomNotification(
+      room.id,
+      `🔓 تم فك حظر ${targetName}`
+    );
+
+    socket.emit(
+      "room unbanned",
+      {
+        roomId: room.id,
+        name: targetName
+      }
+    );
+
+    addLog(
+      "room_unban",
+      {
+        admin: requester.name,
+        target: targetName,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     MUTE USER FROM ROOM
+  ======================================================= */
+
+  socket.on("mute room user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "mute"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية الكتم في هذه الغرفة"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserInRoom(
+        targetName,
+        room.id
+      );
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود في الغرفة"
+      );
+
+      return;
+    }
+
+    if (!Array.isArray(room.mutedUsers)) {
+      room.mutedUsers = [];
+    }
+
+    const alreadyMuted =
+      isMutedFromRoom(
+        target.name,
+        room.id
+      );
+
+    if (!alreadyMuted) {
+
+      room.mutedUsers.push({
+        name: target.name,
+        time: new Date().toISOString(),
+        by: requester.name
+      });
+    }
+
+    saveRooms();
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.emit(
+        "room muted",
+        {
+          roomId: room.id,
+          message:
+            "🔇 تم كتمك في هذه الغرفة"
+        }
+      );
+    }
+
+    roomNotification(
+      room.id,
+      `🔇 تم كتم ${target.name}`
+    );
+
+    broadcastRoomUsers(room.id);
+
+    addLog(
+      "room_mute",
+      {
+        admin: requester.name,
+        target: target.name,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     UNMUTE USER FROM ROOM
+  ======================================================= */
+
+  socket.on("unmute room user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "unmute"
+      ) &&
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "mute"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية فك الكتم"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    if (!Array.isArray(room.mutedUsers)) {
+      room.mutedUsers = [];
+    }
+
+    const oldLength =
+      room.mutedUsers.length;
+
+    room.mutedUsers =
+      room.mutedUsers.filter(item => {
+
+        const itemName =
+          typeof item === "string"
+            ? item
+            : (
+                item?.name ||
+                item?.username ||
+                ""
+              );
+
+        return (
+          String(itemName)
+            .trim()
+            .toLowerCase() !==
+          targetName.toLowerCase()
+        );
+      });
+
+    if (
+      room.mutedUsers.length !==
+      oldLength
+    ) {
+
+      saveRooms();
+
+      roomNotification(
+        room.id,
+        `🔊 تم فك كتم ${targetName}`
+      );
+
+      addLog(
+        "room_unmute",
+        {
+          admin: requester.name,
+          target: targetName,
+          roomId: room.id
+        }
+      );
+    }
+
+    socket.emit(
+      "room unmuted",
+      {
+        roomId: room.id,
+        name: targetName
+      }
+    );
+  });
+
+  /* =======================================================
+     KICK USER FROM ROOM
+  ======================================================= */
+
+  socket.on("kick room user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "kick"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية طرد المستخدم"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserInRoom(
+        targetName,
+        room.id
+      );
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود في الغرفة"
+      );
+
+      return;
+    }
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.leave(
+        `room:${room.id}`
+      );
+
+      targetSocket.emit(
+        "room kicked",
+        {
+          roomId: room.id,
+          message:
+            "👢 تم طردك من الغرفة"
+        }
+      );
+    }
+
+    target.roomId = null;
+
+    roomNotification(
+      room.id,
+      `👢 تم طرد ${target.name} من الغرفة`
+    );
+
+    broadcastRoomUsers(room.id);
+    broadcastRooms();
+
+    addLog(
+      "room_kick",
+      {
+        admin: requester.name,
+        target: target.name,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     DISCONNECT USER FROM ROOM
+  ======================================================= */
+
+  socket.on("disconnect room user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !hasRoomPermission(
+        requester.name,
+        room.id,
+        "disconnect"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية فصل المستخدم"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserInRoom(
+        targetName,
+        room.id
+      );
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود في الغرفة"
+      );
+
+      return;
+    }
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.leave(
+        `room:${room.id}`
+      );
+
+      targetSocket.emit(
+        "room disconnected",
+        {
+          roomId: room.id,
+          message:
+            "⛔ تم فصلك من الغرفة"
+        }
+      );
+    }
+
+    target.roomId = null;
+
+    roomNotification(
+      room.id,
+      `⛔ تم فصل ${target.name} من الغرفة`
+    );
+
+    broadcastRoomUsers(room.id);
+    broadcastRooms();
+
+    addLog(
+      "room_disconnect",
+      {
+        admin: requester.name,
+        target: target.name,
+        roomId: room.id
+      }
+    );
+  });
+
+  /* =======================================================
+     GET ROOM MODERATION LISTS
+  ======================================================= */
+
+  socket.on("get room moderation", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const room =
+      getRoom(data?.roomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (
+      !isRoomAdmin(
+        requester.name,
+        room.id
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية إدارة هذه الغرفة"
+      );
+
+      return;
+    }
+
+    socket.emit(
+      "room moderation",
+      {
+        roomId: room.id,
+
+        bannedUsers:
+          Array.isArray(room.bannedUsers)
+            ? room.bannedUsers
+            : [],
+
+        mutedUsers:
+          Array.isArray(room.mutedUsers)
+            ? room.mutedUsers
+            : [],
+
+        admins:
+          room.admins || {},
+
+        permissions:
+          room.permissions || {}
+      }
+    );
+  });
+
+  /* =======================================================
+     ADD ADMIN
+  ======================================================= */
+
+  socket.on("add admin", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(
+        requester.name,
+        "addAdmin"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية إضافة أدمن"
+      );
+
+      return;
+    }
+
+    const name =
+      String(
+        data?.name ||
+        ""
+      ).trim();
+
+    const password =
+      String(
+        data?.password ||
+        ""
+      );
+
+    if (!name || !password) {
+
+      socket.emit(
+        "admin error",
+        "❌ اكتب اسم الأدمن وكلمة المرور"
+      );
+
+      return;
+    }
+
+    if (findAdmin(name)) {
+
+      socket.emit(
+        "admin error",
+        "❌ هذا الأدمن موجود مسبقًا"
+      );
+
+      return;
+    }
+
+    if (!isValidUsername(name)) {
+
+      socket.emit(
+        "admin error",
+        "❌ اسم الأدمن غير صالح"
+      );
+
+      return;
+    }
+
+    const permissions =
+      data?.permissions &&
+      typeof data.permissions === "object"
+        ? data.permissions
+        : {};
+
+    const newAdmin = {
+      name,
+      password,
+      role: "admin",
+      permissions
     };
-}
 
+    admins.push(newAdmin);
 
-function leaveSocketRoom(
-    socket,
-    roomId
-) {
+    saveJSON(
+      FILES.admins,
+      admins
+    );
+
+    socket.emit(
+      "admin added",
+      {
+        name,
+        permissions
+      }
+    );
+
+    addLog(
+      "add_admin",
+      {
+        admin: requester.name,
+        newAdmin: name
+      }
+    );
+
+    broadcastServerStats();
+  });
+
+  /* =======================================================
+     REMOVE ADMIN
+  ======================================================= */
+
+  socket.on("remove admin", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(
+        requester.name,
+        "removeAdmin"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية حذف أدمن"
+      );
+
+      return;
+    }
+
+    const name =
+      String(
+        data?.name ||
+        ""
+      ).trim();
+
+    const admin =
+      findAdmin(name);
+
+    if (!admin) {
+
+      socket.emit(
+        "admin error",
+        "❌ الأدمن غير موجود"
+      );
+
+      return;
+    }
+
+    if (
+      isMasterAdmin(name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا يمكن حذف الأدمن الرئيسي"
+      );
+
+      return;
+    }
+
+    admins =
+      admins.filter(
+        item =>
+          String(item.name)
+            .toLowerCase() !==
+          name.toLowerCase()
+      );
+
+    /*
+      إزالة صلاحياته من جميع الغرف.
+    */
+
+    rooms.forEach(room => {
+
+      if (room.admins) {
+        delete room.admins[name];
+      }
+
+      if (room.permissions) {
+        delete room.permissions[name];
+      }
+    });
+
+    saveJSON(
+      FILES.admins,
+      admins
+    );
+
+    saveRooms();
+
+    socket.emit(
+      "admin removed",
+      {
+        name
+      }
+    );
+
+    broadcastRooms();
+    broadcastServerStats();
+
+    addLog(
+      "remove_admin",
+      {
+        admin: requester.name,
+        removedAdmin: name
+      }
+    );
+  });
+      /* =======================================================
+     GLOBAL BAN USER
+  ======================================================= */
+
+  socket.on("ban user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "ban"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية الحظر"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserByName(targetName);
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود"
+      );
+
+      return;
+    }
+
+    const alreadyBanned =
+      isUserBanned(
+        target.name,
+        target.ip
+      );
+
+    if (!alreadyBanned) {
+
+      bannedUsers.push({
+        name: target.name,
+        ip: target.ip,
+        time: new Date().toISOString(),
+        by: requester.name
+      });
+
+      saveJSON(
+        FILES.banned,
+        bannedUsers
+      );
+    }
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.emit(
+        "banned",
+        {
+          message:
+            "🚫 تم حظرك من الشات"
+        }
+      );
+
+      targetSocket.disconnect(true);
+    }
+
+    users =
+      users.filter(
+        user =>
+          user.socketId !==
+          target.socketId
+      );
+
+    io.emit(
+      "user banned",
+      {
+        name: target.name
+      }
+    );
+
+    broadcastOnlineUsers();
+    broadcastAdminOnlineUsers();
+    broadcastServerStats();
+
+    addLog(
+      "ban_user",
+      {
+        admin: requester.name,
+        target: target.name,
+        ip: target.ip
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL UNBAN USER
+  ======================================================= */
+
+  socket.on("unban user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "unban"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية فك الحظر"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const targetIP =
+      String(
+        data?.ip ||
+        ""
+      ).trim();
+
+    const oldLength =
+      bannedUsers.length;
+
+    bannedUsers =
+      bannedUsers.filter(item => {
+
+        if (typeof item === "string") {
+
+          return (
+            item.trim().toLowerCase() !==
+            targetName.toLowerCase() &&
+            item.trim() !== targetIP
+          );
+        }
+
+        const itemName =
+          String(
+            item?.name ||
+            item?.username ||
+            ""
+          )
+            .trim()
+            .toLowerCase();
+
+        const itemIP =
+          String(
+            item?.ip ||
+            ""
+          ).trim();
+
+        if (
+          targetName &&
+          itemName ===
+          targetName.toLowerCase()
+        ) {
+          return false;
+        }
+
+        if (
+          targetIP &&
+          itemIP === targetIP
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+
+    if (
+      bannedUsers.length ===
+      oldLength
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لم يتم العثور على الحظر"
+      );
+
+      return;
+    }
+
+    saveJSON(
+      FILES.banned,
+      bannedUsers
+    );
+
+    socket.emit(
+      "user unbanned",
+      {
+        name: targetName
+      }
+    );
+
+    io.emit(
+      "user unbanned",
+      {
+        name: targetName
+      }
+    );
+
+    broadcastServerStats();
+
+    addLog(
+      "unban_user",
+      {
+        admin: requester.name,
+        target: targetName
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL MUTE USER
+  ======================================================= */
+
+  socket.on("mute user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "mute"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية الكتم"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserByName(targetName);
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود"
+      );
+
+      return;
+    }
+
+    if (
+      !isUserMuted(
+        target.name,
+        target.roomId
+      )
+    ) {
+
+      mutedUsers.push({
+        name: target.name,
+        roomId: target.roomId || null,
+        time: new Date().toISOString(),
+        by: requester.name
+      });
+
+      saveJSON(
+        FILES.muted,
+        mutedUsers
+      );
+    }
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.emit(
+        "muted",
+        {
+          message:
+            "🔇 تم كتمك"
+        }
+      );
+    }
+
+    io.emit(
+      "user muted",
+      {
+        name: target.name,
+        roomId: target.roomId || null
+      }
+    );
+
+    addLog(
+      "mute_user",
+      {
+        admin: requester.name,
+        target: target.name
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL UNMUTE USER
+  ======================================================= */
+
+  socket.on("unmute user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "unmute"
+      ) &&
+      !hasPermission(
+        requester.name,
+        "mute"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية فك الكتم"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const oldLength =
+      mutedUsers.length;
+
+    mutedUsers =
+      mutedUsers.filter(item => {
+
+        const itemName =
+          typeof item === "string"
+            ? item
+            : (
+                item?.name ||
+                item?.username ||
+                ""
+              );
+
+        return (
+          String(itemName)
+            .trim()
+            .toLowerCase() !==
+          targetName.toLowerCase()
+        );
+      });
+
+    if (
+      mutedUsers.length ===
+      oldLength
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود في قائمة الكتم"
+      );
+
+      return;
+    }
+
+    saveJSON(
+      FILES.muted,
+      mutedUsers
+    );
+
+    socket.emit(
+      "user unmuted",
+      {
+        name: targetName
+      }
+    );
+
+    io.emit(
+      "user unmuted",
+      {
+        name: targetName
+      }
+    );
+
+    addLog(
+      "unmute_user",
+      {
+        admin: requester.name,
+        target: targetName
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL KICK USER
+  ======================================================= */
+
+  socket.on("kick user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "kick"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية الطرد"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserByName(targetName);
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود"
+      );
+
+      return;
+    }
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.emit(
+        "kicked",
+        {
+          message:
+            "👢 تم طردك من الشات"
+        }
+      );
+
+      targetSocket.disconnect(true);
+    }
+
+    users =
+      users.filter(
+        user =>
+          user.socketId !==
+          target.socketId
+      );
+
+    io.emit(
+      "user kicked",
+      {
+        name: target.name
+      }
+    );
+
+    broadcastOnlineUsers();
+    broadcastAdminOnlineUsers();
+    broadcastServerStats();
+
+    addLog(
+      "kick_user",
+      {
+        admin: requester.name,
+        target: target.name
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL DISCONNECT USER
+  ======================================================= */
+
+  socket.on("disconnect user", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "disconnect"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية الفصل"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserByName(targetName);
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود"
+      );
+
+      return;
+    }
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+
+      targetSocket.emit(
+        "disconnected by admin",
+        {
+          message:
+            "⛔ تم فصلك من الشات"
+        }
+      );
+
+      targetSocket.disconnect(true);
+    }
+
+    users =
+      users.filter(
+        user =>
+          user.socketId !==
+          target.socketId
+      );
+
+    io.emit(
+      "user disconnected by admin",
+      {
+        name: target.name
+      }
+    );
+
+    broadcastOnlineUsers();
+    broadcastAdminOnlineUsers();
+    broadcastServerStats();
+
+    addLog(
+      "disconnect_user",
+      {
+        admin: requester.name,
+        target: target.name
+      }
+    );
+  });
+
+  /* =======================================================
+     ADD GLOBAL DEVICE BAN
+  ======================================================= */
+
+  socket.on("ban device", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !isMasterAdmin(requester.name) &&
+      !hasPermission(
+        requester.name,
+        "ban"
+      )
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية حظر الجهاز"
+      );
+
+      return;
+    }
+
+    const targetName =
+      String(
+        data?.name ||
+        data?.username ||
+        ""
+      ).trim();
+
+    const target =
+      getUserByName(targetName);
+
+    if (!target) {
+
+      socket.emit(
+        "admin error",
+        "❌ المستخدم غير موجود"
+      );
+
+      return;
+    }
+
+    const exists =
+      deviceBannedUsers.some(item => {
+
+        if (typeof item === "string") {
+          return item === target.device;
+        }
+
+        return (
+          String(item?.device || "") ===
+          String(target.device || "")
+        );
+      });
+
+    if (!exists) {
+
+      deviceBannedUsers.push({
+        device: target.device,
+        userAgent: target.userAgent,
+        time: new Date().toISOString(),
+        by: requester.name
+      });
+
+      saveJSON(
+        FILES.deviceBanned,
+        deviceBannedUsers
+      );
+    }
+
+    const targetSocket =
+      io.sockets.sockets.get(
+        target.socketId
+      );
+
+    if (targetSocket) {
+      targetSocket.disconnect(true);
+    }
+
+    users =
+      users.filter(
+        user =>
+          user.socketId !==
+          target.socketId
+      );
+
+    broadcastOnlineUsers();
+    broadcastAdminOnlineUsers();
+    broadcastServerStats();
+
+    addLog(
+      "ban_device",
+      {
+        admin: requester.name,
+        target: target.name,
+        device: target.device
+      }
+    );
+  });
+
+  /* =======================================================
+     CLEAR GLOBAL CHAT
+  ======================================================= */
+
+  socket.on("clear chat", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    const roomId =
+      data?.roomId ||
+      requester.roomId;
+
+    if (roomId) {
+
+      const room =
+        getRoom(roomId);
+
+      if (!room) {
+        return;
+      }
+
+      if (
+        !hasRoomPermission(
+          requester.name,
+          room.id,
+          "clear"
+        )
+      ) {
+
+        socket.emit(
+          "admin error",
+          "❌ لا تملك صلاحية مسح هذه الغرفة"
+        );
+
+        return;
+      }
+
+      room.messages = [];
+
+      saveRooms();
+
+      io.to(
+        `room:${room.id}`
+      ).emit(
+        "room chat cleared",
+        {
+          roomId: room.id
+        }
+      );
+
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "clear"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية مسح الدردشة"
+      );
+
+      return;
+    }
+
+    io.emit(
+      "chat cleared"
+    );
+
+    addLog(
+      "clear_chat",
+      {
+        admin: requester.name
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL MAINTENANCE
+  ======================================================= */
+
+  socket.on("toggle maintenance", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "maintenance"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية الصيانة"
+      );
+
+      return;
+    }
+
+    maintenanceMode =
+      typeof data?.enabled === "boolean"
+        ? data.enabled
+        : !maintenanceMode;
+
+    io.emit(
+      "maintenance changed",
+      {
+        enabled:
+          maintenanceMode
+      }
+    );
+
+    addLog(
+      "maintenance",
+      {
+        admin: requester.name,
+        enabled:
+          maintenanceMode
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL CHAT LOCK
+  ======================================================= */
+
+  socket.on("toggle chat lock", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "chatLock"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية قفل الدردشة"
+      );
+
+      return;
+    }
+
+    chatLocked =
+      typeof data?.enabled === "boolean"
+        ? data.enabled
+        : !chatLocked;
+
+    io.emit(
+      "chat lock changed",
+      {
+        enabled:
+          chatLocked
+      }
+    );
+  });
+
+  /* =======================================================
+     GLOBAL PRIVATE LOCK
+  ======================================================= */
+
+  socket.on("toggle private lock", data => {
+
+    const requester =
+      getUserBySocket(socket.id);
+
+    if (!requester) {
+      return;
+    }
+
+    if (
+      !hasPermission(
+        requester.name,
+        "privateLock"
+      ) &&
+      !isMasterAdmin(requester.name)
+    ) {
+
+      socket.emit(
+        "admin error",
+        "❌ لا تملك صلاحية قفل الخاص"
+      );
+
+      return;
+    }
+
+    privateLocked =
+      typeof data?.enabled === "boolean"
+        ? data.enabled
+        : !privateLocked;
+
+    io.emit(
+      "private lock changed",
+      {
+        enabled:
+          privateLocked
+      }
+    );
+  });
+      /* =======================================================
+     SOCKET DISCONNECT
+  ======================================================= */
+
+  socket.on("disconnect", reason => {
 
     const user =
-        getUserBySocket(socket);
+      getUserBySocket(socket.id);
 
-    socket.leave(roomId);
+    if (!user) {
+      return;
+    }
 
-    if (
-        socket.openRooms
-    ) {
+    const roomId =
+      user.roomId || null;
 
-        socket.openRooms.delete(
-            roomId
+    const username =
+      user.name || user.username || "";
+
+    /*
+       إزالة المستخدم من قائمة المتصلين
+    */
+
+    users =
+      users.filter(
+        item =>
+          item.socketId !==
+          socket.id
+      );
+
+    /*
+       إرسال إشعار خروج للغرفة
+    */
+
+    if (roomId) {
+
+      const room =
+        getRoom(roomId);
+
+      if (room) {
+
+        io.to(
+          `room:${room.id}`
+        ).emit(
+          "room notification",
+          {
+            roomId: room.id,
+            message:
+              `👋 غادر ${username} الغرفة`
+          }
         );
+      }
+
+      broadcastRoomUsers(roomId);
     }
 
-    if (
-        user &&
-        Array.isArray(user.roomIds)
-    ) {
+    /*
+       تحديث جميع قوائم المستخدمين
+    */
 
-        user.roomIds =
-            user.roomIds.filter(
-                id =>
-                    id !== roomId
-            );
-    }
-}
+    broadcastOnlineUsers();
+    broadcastAdminOnlineUsers();
+    broadcastServerStats();
+    broadcastRooms();
 
+    /*
+       تسجيل الخروج
+    */
 
-/* =========================================================
-   ADMIN ROOM ACCESS
-   ========================================================= */
-
-function canManageRoom(
-    socket,
-    roomId,
-    permission = null
-) {
-
-    if (!socket.adminData) {
-        return false;
-    }
-
-    if (!roomId) {
-
-        return (
-            isMasterAdmin(
-                socket.adminData
-            ) ||
-            isFullAdmin(
-                socket.adminData
-            )
-        );
-    }
-
-    if (!permission) {
-
-        return (
-            isMasterAdmin(
-                socket.adminData
-            ) ||
-            isFullAdmin(
-                socket.adminData
-            ) ||
-            (
-                Array.isArray(
-                    socket.adminData.rooms
-                ) &&
-                socket.adminData.rooms
-                    .includes(roomId)
-            )
-        );
-    }
-
-    return adminHasPermission(
-        socket.adminData,
-        roomId,
-        permission
+    addLog(
+      "disconnect",
+      {
+        name: username,
+        roomId: roomId,
+        reason: reason || ""
+      }
     );
-}
+  });
+
+});
 
 
 /* =========================================================
-   API: OLD MODERATION FILES
-   ========================================================= */
+   BASIC ROUTES
+========================================================= */
 
-app.get(
-    "/banned.json",
-    (req, res) => {
+app.get("/", (req, res) => {
 
-        res.json(
-            bannedUsers
-        );
-
-    }
-);
-
-
-app.get(
-    "/muted.json",
-    (req, res) => {
-
-        res.json(
-            mutedUsers
-        );
-
-    }
-);
+  res.sendFile(
+    path.join(
+      __dirname,
+      "public",
+      "index.html"
+    )
+  );
+});
 
 
-app.get(
-    "/deviceBanned.json",
-    (req, res) => {
+app.get("/health", (req, res) => {
 
-        res.json(
-            deviceBannedUsers
-        );
-
-    }
-);
+  res.json({
+    ok: true,
+    service: "Mersal Chat",
+    onlineUsers: users.length,
+    rooms: rooms.length
+  });
+});
 
 
 /* =========================================================
-   API: PUBLIC ROOMS
-   ========================================================= */
-
-app.get(
-    "/rooms.json",
-    (req, res) => {
-
-        res.json(
-            getPublicRooms()
-        );
-
-    }
-);
-
-
-/* =========================================================
-   SOCKET.IO
-   ========================================================= */
-
-io.on(
-    "connection",
-    socket => {
-
-        /*
-         |--------------------------------------------------------------------------
-         | INITIAL SOCKET STATE
-         |--------------------------------------------------------------------------
-         */
-
-        socket.username = null;
-
-        socket.adminData = null;
-
-        socket.openRooms =
-            new Set();
-
-
-        /* =====================================================
-           CHECK ADMIN
-           ===================================================== */
-
-        socket.on(
-            "check admin",
-            name => {
-
-                const isAdmin =
-                    admins.some(
-                        admin =>
-                            String(
-                                admin.name
-                            ).toLowerCase()
-                            ===
-                            String(
-                                name || ""
-                            ).toLowerCase()
-                    );
-
-                socket.emit(
-                    "admin check result",
-                    isAdmin
-                );
-
-            }
-        );
-
-
-        /* =====================================================
-           USER JOIN
-           ===================================================== */
-
-        socket.on(
-            "join",
-            data => {
-
-                const username =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-                if (!username) {
-                    return;
-                }
-
-                /*
-                   Reserved username protection.
-                   Admins are allowed.
-                */
-
-                const possibleAdmin =
-                    admins.find(
-                        admin =>
-                            String(
-                                admin.name
-                            ).toLowerCase()
-                            ===
-                            username.toLowerCase()
-                    );
-
-                if (
-                    !possibleAdmin &&
-                    isReservedUsername(
-                        username
-                    )
-                ) {
-
-                    socket.emit(
-                        "banned",
-                        "⚠️ هذا الاسم محجوز للإدارة"
-                    );
-
-                    return;
-                }
-
-                /*
-                   Duplicate username.
-                */
-
-                const exists =
-                    users.find(
-                        user =>
-                            user.username
-                                .toLowerCase()
-                            ===
-                            username.toLowerCase()
-                    );
-
-                if (exists) {
-
-                    socket.emit(
-                        "banned",
-                        "⚠️ الاسم مستخدم"
-                    );
-
-                    return;
-                }
-
-                /*
-                   Device.
-                */
-
-                const device =
-                    data?.deviceToken ||
-                    socket.handshake
-                        .headers[
-                            "user-agent"
-                        ] ||
-                    "unknown";
-
-
-                /*
-                   IP.
-                */
-
-                const ip =
-                    socket.handshake
-                        .address;
-
-
-                /*
-                   Global device ban.
-                */
-
-                const deviceBlocked =
-                    deviceBannedUsers.find(
-                        item =>
-                            item.device ===
-                            device
-                    );
-
-                if (deviceBlocked) {
-
-                    socket.emit(
-                        "banned",
-                        "⛔ الجهاز محظور"
-                    );
-
-                    return;
-                }
-
-
-                /*
-                   Global IP ban.
-                */
-
-                const banned =
-                    bannedUsers.find(
-                        item =>
-                            item.ip === ip
-                    );
-
-                if (banned) {
-
-                    socket.emit(
-                        "banned",
-                        "🚫 محظور"
-                    );
-
-                    return;
-                }
-
-
-                /*
-                   ADMIN CHECK
-                */
-
-                const admin =
-                    possibleAdmin;
-
-
-                if (admin) {
-
-                    if (
-                        String(
-                            admin.password
-                        ) !==
-                        String(
-                            data?.adminPassword ||
-                            ""
-                        )
-                    ) {
-
-                        socket.emit(
-                            "banned",
-                            "🚫 كلمة السر خطأ"
-                        );
-
-                        return;
-                    }
-
-                    socket.adminData =
-                        admin;
-                }
-
-
-                /*
-                   ADMIN ROLE
-                */
-
-                let adminRole = null;
-
-                if (admin) {
-
-                    if (
-                        isMasterAdmin(admin) ||
-                        isFullAdmin(admin)
-                    ) {
-
-                        adminRole =
-                            "master";
-
-                    } else {
-
-                        adminRole =
-                            "moderator";
-                    }
-                }
-
-
-                /*
-                   USER OBJECT
-                */
-
-                const user = {
-
-                    id:
-                        socket.id,
-
-                    username,
-
-                    color:
-                        data?.color ||
-                        "#ffd700",
-
-                    ip,
-
-                    device,
-
-                    isAdmin:
-                        !!admin,
-
-                    adminRole,
-
-                    prefix:
-                        adminRole === "master"
-                            ? "&"
-                            :
-                        adminRole === "moderator"
-                            ? "@"
-                            : "",
-
-                    roomIds: []
-
-                };
-
-
-                users.push(user);
-
-                socket.username =
-                    username;
-
-
-                /*
-                   Login success.
-                   نرسل بيانات إضافية مع الحفاظ
-                   على اسم الحدث القديم.
-                */
-
-                socket.emit(
-                    "login success",
-                    {
-                        username,
-                        isAdmin: !!admin,
-                        adminRole,
-                        prefix:
-                            user.prefix,
-                        rooms:
-                            getPublicRooms()
-                    }
-                );
-
-
-                io.emit(
-                    "online users",
-                    users
-                );
-
-
-                addLog(
-                    `👤 ${username} دخل`
-                );
-
-            }
-        );
-
-
-        /* =====================================================
-           ADMIN PANEL LOGIN
-           ===================================================== */
-
-        function handleAdminLogin(data) {
-
-            const name =
-                String(
-                    data?.name ||
-                    data?.username ||
-                    ""
-                ).trim();
-
-            const password =
-                String(
-                    data?.password ||
-                    ""
-                );
-
-
-            const admin =
-                admins.find(
-                    item =>
-                        String(
-                            item.name
-                        ).toLowerCase()
-                        ===
-                        name.toLowerCase()
-                        &&
-                        String(
-                            item.password
-                        ) ===
-                        password
-                );
-
-
-            if (!admin) {
-
-                socket.emit(
-                    "admin login failed"
-                );
-
-                return;
-            }
-
-
-            socket.adminData =
-                admin;
-
-
-            socket.emit(
-                "admin login success",
-                {
-                    permissions:
-                        admin.permissions ||
-                        {},
-
-                    rooms:
-                        admin.rooms ||
-                        [],
-
-                    role:
-                        admin.role ||
-                        (
-                            isFullAdmin(admin)
-                                ? "master"
-                                : "moderator"
-                        )
-                }
-            );
-
-
-            socket.emit(
-                "admin online users",
-                users
-            );
-
-
-            socket.emit(
-                "server stats",
-                {
-                    onlineUsers:
-                        users.length,
-
-                    bannedUsers:
-                        bannedUsers.length,
-
-                    admins:
-                        admins.length,
-
-                    rooms:
-                        rooms.length
-                }
-            );
-
-
-            socket.emit(
-                "admin logs",
-                logs
-            );
-
-
-            socket.emit(
-                "admin rooms",
-                rooms.map(
-                    publicRoom
-                )
-            );
-
-        }
-
-
-        /*
-         |--------------------------------------------------------------------------
-         | دعم الحدث القديم والجديد
-         |--------------------------------------------------------------------------
-         */
-
-        socket.on(
-            "admin panel login",
-            handleAdminLogin
-        );
-
-        socket.on(
-            "admin.panel login",
-            handleAdminLogin
-        );
-
-
-        /* =====================================================
-           GET ADMIN ROOMS
-           ===================================================== */
-
-        socket.on(
-            "get admin rooms",
-            () => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-                socket.emit(
-                    "admin rooms",
-                    rooms.map(
-                        publicRoom
-                    )
-                );
-
-            }
-        );
-
-
-        /* =====================================================
-           GET ONLINE USERS
-           ===================================================== */
-
-        socket.on(
-            "get online users",
-            () => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-                socket.emit(
-                    "admin online users",
-                    users
-                );
-
-            }
-        );
-
-
-        /* =====================================================
-           GET STATS
-           ===================================================== */
-
-        socket.on(
-            "get stats",
-            () => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-                socket.emit(
-                    "server stats",
-                    {
-                        onlineUsers:
-                            users.length,
-
-                        bannedUsers:
-                            bannedUsers.length,
-
-                        admins:
-                            admins.length,
-
-                        rooms:
-                            rooms.length
-                    }
-                );
-
-            }
-        );
-
-
-        /* =====================================================
-           GET LOGS
-           ===================================================== */
-
-        socket.on(
-            "get logs",
-            () => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-                socket.emit(
-                    "admin logs",
-                    logs
-                );
-
-            }
-        );
-
-
-        /* =====================================================
-           CREATE ROOM
-           ===================================================== */
-
-        socket.on(
-            "create room",
-            data => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    socket.emit(
-                        "room error",
-                        "❌ يجب تسجيل الدخول كأدمن"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية إنشاء الغرف"
-                    );
-
-                    return;
-                }
-
-
-                const name =
-                    String(
-                        data?.name || ""
-                    ).trim();
-
-                const description =
-                    String(
-                        data?.description || ""
-                    ).trim();
-
-
-                if (!name) {
-
-                    socket.emit(
-                        "room error",
-                        "❌ اكتب اسم الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                const exists =
-                    rooms.find(
-                        room =>
-                            room.name
-                                .toLowerCase()
-                            ===
-                            name.toLowerCase()
-                    );
-
-
-                if (exists) {
-
-                    socket.emit(
-                        "room error",
-                        "⚠️ هذه الغرفة موجودة مسبقًا"
-                    );
-
-                    return;
-                }
-
-
-                const room = {
-
-                    id:
-                        "room_" +
-                        Date.now() +
-                        "_" +
-                        Math.random()
-                            .toString(36)
-                            .slice(2, 8),
-
-                    name,
-
-                    description,
-
-                    enabled: true,
-
-                    settings: {
-
-                        starsMode: false,
-
-                        chatLocked: false,
-
-                        maintenance: false,
-
-                        protection: false
-
-                    }
-
-                };
-
-
-                rooms.push(room);
-
-
-                ensureRoomModeration(
-                    room.id
-                );
-
-
-                saveFile(
-                    "rooms.json",
-                    rooms
-                );
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                socket.emit(
-                    "room created",
-                    room
-                );
-
-
-                io.emit(
-                    "admin rooms",
-                    rooms.map(
-                        publicRoom
-                    )
-                );
-
-
-                io.emit(
-                    "rooms updated",
-                    getPublicRooms()
-                );
-
-
-                addLog(
-                    `🏠 تم إنشاء الغرفة ${name}`,
-                    room.id
-                );
-
-            }
-        );
-                // =========================================================
-        // ROOM JOIN
-        // =========================================================
-
-        socket.on(
-            "join room",
-            data => {
-
-                if (!socket.username) {
-                    socket.emit(
-                        "room error",
-                        "❌ يجب تسجيل الدخول أولاً"
-                    );
-
-                    return;
-                }
-
-
-                const roomId =
-                    String(
-                        data?.roomId || ""
-                    );
-
-
-                const room =
-                    rooms.find(
-                        r =>
-                            r.id === roomId
-                    );
-
-
-                if (!room) {
-
-                    socket.emit(
-                        "room error",
-                        "❌ الغرفة غير موجودة"
-                    );
-
-                    return;
-                }
-
-
-                if (!room.enabled) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ هذه الغرفة متوقفة حالياً"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    isBannedFromRoom(
-                        room.id,
-                        socket.username,
-                        getIP(socket)
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "🚫 أنت محظور من هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    isDeviceBannedFromRoom(
-                        room.id,
-                        getDevice(socket)
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "🚫 جهازك محظور من هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                if (socket.currentRoom) {
-
-                    socket.leave(
-                        socket.currentRoom
-                    );
-
-                }
-
-
-                socket.join(room.id);
-
-                socket.currentRoom =
-                    room.id;
-
-
-                ensureRoomModeration(
-                    room.id
-                );
-
-
-                const moderation =
-                    roomModeration[
-                        room.id
-                    ];
-
-
-                const roomAdmins =
-                    moderation.admins || [];
-
-
-                const isAssigned =
-                    roomAdmins.includes(
-                        socket.username
-                    );
-
-
-                socket.roomAdmin =
-                    isAssigned;
-
-
-                socket.emit(
-                    "room joined",
-                    {
-                        room,
-                        moderation,
-                        isAdmin:
-                            isAssigned ||
-                            isFullAdmin(
-                                socket.adminData
-                            )
-                    }
-                );
-
-
-                if (
-                    isAssigned &&
-                    socket.username
-                ) {
-
-                    socket.emit(
-                        "room notice",
-                        {
-                            type:
-                                "admin assigned",
-
-                            message:
-                                `✨ تم توكيل ${socket.username}`
-                        }
-                    );
-
-                }
-
-
-                io.to(room.id).emit(
-                    "room users",
-                    getRoomUsers(
-                        room.id
-                    )
-                );
-
-
-                addLog(
-                    `🚪 ${socket.username} دخل الغرفة ${room.name}`,
-                    room.id
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // LEAVE ROOM
-        // =========================================================
-
-        socket.on(
-            "leave room",
-            () => {
-
-                if (!socket.currentRoom) {
-                    return;
-                }
-
-
-                const oldRoom =
-                    socket.currentRoom;
-
-
-                socket.leave(
-                    oldRoom
-                );
-
-
-                socket.currentRoom =
-                    null;
-
-
-                socket.roomAdmin =
-                    false;
-
-
-                io.to(oldRoom).emit(
-                    "room users",
-                    getRoomUsers(
-                        oldRoom
-                    )
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // GET ROOM USERS
-        // =========================================================
-
-        socket.on(
-            "get room users",
-            () => {
-
-                if (!socket.currentRoom) {
-                    return;
-                }
-
-
-                socket.emit(
-                    "room users",
-                    getRoomUsers(
-                        socket.currentRoom
-                    )
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // PUBLIC CHAT MESSAGE
-        // =========================================================
-
-        socket.on(
-            "chat message",
-            data => {
-
-                if (!socket.username) {
-                    return;
-                }
-
-
-                const roomId =
-                    socket.currentRoom;
-
-
-                if (!roomId) {
-
-                    socket.emit(
-                        "chat error",
-                        "❌ اختر غرفة أولاً"
-                    );
-
-                    return;
-                }
-
-
-                const room =
-                    rooms.find(
-                        r =>
-                            r.id === roomId
-                    );
-
-
-                if (!room) {
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                if (
-                    moderation.bannedUsers
-                    .some(
-                        user =>
-                            user.name ===
-                            socket.username
-                    )
-                ) {
-
-                    socket.emit(
-                        "chat error",
-                        "🚫 أنت محظور من هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    moderation.mutedUsers
-                    .some(
-                        user =>
-                            user.name ===
-                            socket.username
-                    )
-                ) {
-
-                    socket.emit(
-                        "chat error",
-                        "🔇 أنت مكتوم في هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    room.settings &&
-                    room.settings.chatLocked
-                ) {
-
-                    const allowed =
-                        hasRoomPermission(
-                            socket,
-                            "chatLock"
-                        );
-
-
-                    if (!allowed) {
-
-                        socket.emit(
-                            "chat error",
-                            "🔒 الدردشة مقفلة حالياً"
-                        );
-
-                        return;
-                    }
-
-                }
-
-
-                if (
-                    room.settings &&
-                    room.settings.maintenance
-                ) {
-
-                    const allowed =
-                        hasRoomPermission(
-                            socket,
-                            "maintenance"
-                        );
-
-
-                    if (!allowed) {
-
-                        socket.emit(
-                            "chat error",
-                            "🛠️ الغرفة تحت الصيانة حالياً"
-                        );
-
-                        return;
-                    }
-
-                }
-
-
-                const message =
-                    String(
-                        data?.message || ""
-                    ).trim();
-
-
-                if (!message) {
-                    return;
-                }
-
-
-                if (message.length > 2000) {
-
-                    socket.emit(
-                        "chat error",
-                        "❌ الرسالة طويلة جداً"
-                    );
-
-                    return;
-                }
-
-
-                const reply =
-                    data?.reply || null;
-
-
-                const messageData = {
-
-                    id:
-                        "msg_" +
-                        Date.now() +
-                        "_" +
-                        Math.random()
-                            .toString(36)
-                            .slice(2, 8),
-
-                    roomId,
-
-                    name:
-                        socket.username,
-
-                    message,
-
-                    reply,
-
-                    time:
-                        new Date()
-                            .toLocaleTimeString(
-                                "no-NO",
-                                {
-                                    hour:
-                                        "2-digit",
-
-                                    minute:
-                                        "2-digit"
-                                }
-                            )
-
-                };
-
-
-                io.to(roomId).emit(
-                    "chat message",
-                    messageData
-                );
-
-
-                addLog(
-                    `💬 ${socket.username}: ${message}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // PRIVATE MESSAGE
-        // =========================================================
-
-        socket.on(
-            "private message",
-            data => {
-
-                if (!socket.username) {
-                    return;
-                }
-
-
-                const target =
-                    String(
-                        data?.to || ""
-                    ).trim();
-
-
-                const message =
-                    String(
-                        data?.message || ""
-                    ).trim();
-
-
-                if (!target || !message) {
-                    return;
-                }
-
-
-                if (
-                    privateLocked &&
-                    !socket.adminData
-                ) {
-
-                    socket.emit(
-                        "private error",
-                        "🔒 المحادثات الخاصة مقفلة"
-                    );
-
-                    return;
-                }
-
-
-                const targetSocket =
-                    users
-                        .map(
-                            item =>
-                                item.socket
-                        )
-                        .find(
-                            s =>
-                                s &&
-                                s.username ===
-                                target
-                        );
-
-
-                if (!targetSocket) {
-
-                    socket.emit(
-                        "private error",
-                        "❌ المستخدم غير متصل"
-                    );
-
-                    return;
-                }
-
-
-                const privateData = {
-
-                    id:
-                        "pm_" +
-                        Date.now() +
-                        "_" +
-                        Math.random()
-                            .toString(36)
-                            .slice(2, 8),
-
-                    from:
-                        socket.username,
-
-                    to:
-                        target,
-
-                    message,
-
-                    time:
-                        new Date()
-                            .toLocaleTimeString(
-                                "no-NO",
-                                {
-                                    hour:
-                                        "2-digit",
-
-                                    minute:
-                                        "2-digit"
-                                }
-                            )
-
-                };
-
-
-                socket.emit(
-                    "private message",
-                    privateData
-                );
-
-
-                targetSocket.emit(
-                    "private message",
-                    privateData
-                );
-
-
-                targetSocket.emit(
-                    "private notification",
-                    {
-                        from:
-                            socket.username,
-
-                        message
-                    }
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // CREATE ROOM
-        // =========================================================
-
-        socket.on(
-            "create room",
-            data => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-
-                if (
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية إنشاء الغرف"
-                    );
-
-                    return;
-                }
-
-
-                const name =
-                    String(
-                        data?.name || ""
-                    ).trim();
-
-
-                const description =
-                    String(
-                        data?.description || ""
-                    ).trim();
-
-
-                if (!name) {
-
-                    socket.emit(
-                        "room error",
-                        "❌ اكتب اسم الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                const exists =
-                    rooms.find(
-                        room =>
-                            room.name
-                                .toLowerCase()
-                            ===
-                            name.toLowerCase()
-                    );
-
-
-                if (exists) {
-
-                    socket.emit(
-                        "room error",
-                        "⚠️ هذه الغرفة موجودة مسبقاً"
-                    );
-
-                    return;
-                }
-
-
-                const room = {
-
-                    id:
-                        "room_" +
-                        Date.now() +
-                        "_" +
-                        Math.random()
-                            .toString(36)
-                            .slice(2, 8),
-
-                    name,
-
-                    description,
-
-                    enabled: true,
-
-                    settings: {
-
-                        starsMode: false,
-
-                        chatLocked: false,
-
-                        maintenance: false,
-
-                        protection: false
-
-                    }
-
-                };
-
-
-                rooms.push(room);
-
-
-                ensureRoomModeration(
-                    room.id
-                );
-
-
-                saveFile(
-                    "rooms.json",
-                    rooms
-                );
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                socket.emit(
-                    "room created",
-                    room
-                );
-
-
-                io.emit(
-                    "admin rooms",
-                    rooms.map(
-                        publicRoom
-                    )
-                );
-
-
-                io.emit(
-                    "rooms updated",
-                    getPublicRooms()
-                );
-
-
-                addLog(
-                    `🏠 تم إنشاء الغرفة ${name}`,
-                    room.id
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // DELETE ROOM
-        // =========================================================
-
-        socket.on(
-            "delete room",
-            roomId => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-
-                if (
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية حذف الغرف"
-                    );
-
-                    return;
-                }
-
-
-                const room =
-                    rooms.find(
-                        r =>
-                            r.id ===
-                            roomId
-                    );
-
-
-                if (!room) {
-                    return;
-                }
-
-
-                io.to(roomId).emit(
-                    "room deleted"
-                );
-
-
-                rooms =
-                    rooms.filter(
-                        r =>
-                            r.id !==
-                            roomId
-                    );
-
-
-                delete roomModeration[
-                    roomId
-                ];
-
-
-                saveFile(
-                    "rooms.json",
-                    rooms
-                );
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                io.emit(
-                    "admin rooms",
-                    rooms.map(
-                        publicRoom
-                    )
-                );
-
-
-                io.emit(
-                    "rooms updated",
-                    getPublicRooms()
-                );
-
-
-                addLog(
-                    `🗑️ تم حذف الغرفة ${room.name}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // EDIT ROOM
-        // =========================================================
-
-        socket.on(
-            "edit room",
-            data => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-
-                if (
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية تعديل الغرف"
-                    );
-
-                    return;
-                }
-
-
-                const room =
-                    rooms.find(
-                        r =>
-                            r.id ===
-                            data?.roomId
-                    );
-
-
-                if (!room) {
-
-                    socket.emit(
-                        "room error",
-                        "❌ الغرفة غير موجودة"
-                    );
-
-                    return;
-                }
-
-
-                const name =
-                    String(
-                        data?.name || ""
-                    ).trim();
-
-
-                const description =
-                    String(
-                        data?.description || ""
-                    ).trim();
-
-
-                if (!name) {
-
-                    socket.emit(
-                        "room error",
-                        "❌ اسم الغرفة مطلوب"
-                    );
-
-                    return;
-                }
-
-
-                const duplicate =
-                    rooms.find(
-                        r =>
-                            r.id !== room.id &&
-                            r.name
-                                .toLowerCase()
-                            ===
-                            name.toLowerCase()
-                    );
-
-
-                if (duplicate) {
-
-                    socket.emit(
-                        "room error",
-                        "⚠️ يوجد غرفة بهذا الاسم"
-                    );
-
-                    return;
-                }
-
-
-                room.name =
-                    name;
-
-                room.description =
-                    description;
-
-
-                saveFile(
-                    "rooms.json",
-                    rooms
-                );
-
-
-                socket.emit(
-                    "room updated",
-                    room
-                );
-
-
-                io.emit(
-                    "admin rooms",
-                    rooms.map(
-                        publicRoom
-                    )
-                );
-
-
-                io.emit(
-                    "rooms updated",
-                    getPublicRooms()
-                );
-
-
-                io.to(room.id).emit(
-                    "room information updated",
-                    publicRoom(room)
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // ENABLE / DISABLE ROOM
-        // =========================================================
-
-        socket.on(
-            "toggle room",
-            roomId => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-
-                if (
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-                    return;
-                }
-
-
-                const room =
-                    rooms.find(
-                        r =>
-                            r.id ===
-                            roomId
-                    );
-
-
-                if (!room) {
-                    return;
-                }
-
-
-                room.enabled =
-                    !room.enabled;
-
-
-                saveFile(
-                    "rooms.json",
-                    rooms
-                );
-
-
-                io.emit(
-                    "admin rooms",
-                    rooms.map(
-                        publicRoom
-                    )
-                );
-
-
-                io.emit(
-                    "rooms updated",
-                    getPublicRooms()
-                );
-
-
-                io.to(roomId).emit(
-                    "room status",
-                    {
-                        enabled:
-                            room.enabled
-                    }
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // ROOM SETTINGS
-        // =========================================================
-
-        socket.on(
-            "room setting",
-            data => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-
-                const roomId =
-                    String(
-                        data?.roomId || ""
-                    );
-
-
-                const setting =
-                    String(
-                        data?.setting || ""
-                    );
-
-
-                const value =
-                    Boolean(
-                        data?.value
-                    );
-
-
-                const room =
-                    rooms.find(
-                        r =>
-                            r.id ===
-                            roomId
-                    );
-
-
-                if (!room) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        setting,
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك هذه الصلاحية في الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                const allowedSettings = [
-
-                    "starsMode",
-
-                    "chatLocked",
-
-                    "maintenance",
-
-                    "protection"
-
-                ];
-
-
-                if (
-                    !allowedSettings.includes(
-                        setting
-                    )
-                ) {
-                    return;
-                }
-
-
-                room.settings[
-                    setting
-                ] =
-                    value;
-
-
-                saveFile(
-                    "rooms.json",
-                    rooms
-                );
-
-
-                io.to(roomId).emit(
-                    "room setting changed",
-                    {
-                        setting,
-                        value
-                    }
-                );
-
-
-                io.emit(
-                    "rooms updated",
-                    getPublicRooms()
-                );
-
-
-                addLog(
-                    `⚙️ ${setting} = ${value}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // ASSIGN ADMIN TO ROOM
-        // =========================================================
-
-        socket.on(
-            "assign room admin",
-            data => {
-
-                if (
-                    !socket.adminData ||
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية تعيين الأدمن"
-                    );
-
-                    return;
-                }
-
-
-                const roomId =
-                    String(
-                        data?.roomId || ""
-                    );
-
-
-                const adminName =
-                    String(
-                        data?.adminName || ""
-                    ).trim();
-
-
-                const room =
-                    rooms.find(
-                        r =>
-                            r.id ===
-                            roomId
-                    );
-
-
-                if (!room) {
-                    return;
-                }
-
-
-                const admin =
-                    admins.find(
-                        a =>
-                            a.name ===
-                            adminName
-                    );
-
-
-                if (!admin) {
-
-                    socket.emit(
-                        "room error",
-                        "❌ الأدمن غير موجود"
-                    );
-
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                if (
-                    !moderation.admins
-                        .includes(
-                            adminName
-                        )
-                ) {
-
-                    moderation.admins.push(
-                        adminName
-                    );
-
-                }
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                io.emit(
-                    "room admins updated",
-                    {
-                        roomId,
-
-                        admins:
-                            moderation.admins
-                    }
-                );
-
-
-                addLog(
-                    `👑 تم تعيين ${adminName} في ${room.name}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // REMOVE ADMIN FROM ROOM
-        // =========================================================
-
-        socket.on(
-            "remove room admin",
-            data => {
-
-                if (
-                    !socket.adminData ||
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-                    return;
-                }
-
-
-                const roomId =
-                    String(
-                        data?.roomId || ""
-                    );
-
-
-                const adminName =
-                    String(
-                        data?.adminName || ""
-                    ).trim();
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                moderation.admins =
-                    moderation.admins.filter(
-                        name =>
-                            name !==
-                            adminName
-                    );
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                io.emit(
-                    "room admins updated",
-                    {
-                        roomId,
-
-                        admins:
-                            moderation.admins
-                    }
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // GIVE STAR
-        // =========================================================
-
-        socket.on(
-            "give star",
-            data => {
-
-                const roomId =
-                    socket.currentRoom;
-
-
-                if (!roomId) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "stars",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية النجوم في هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                const target =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                if (!target) {
-                    return;
-                }
-
-
-                const roomStars =
-                    getRoomStars(
-                        roomId
-                    );
-
-
-                if (
-                    !roomStars.includes(
-                        target
-                    )
-                ) {
-
-                    roomStars.push(
-                        target
-                    );
-
-                }
-
-
-                saveFile(
-                    "stars.json",
-                    stars
-                );
-
-
-                io.to(roomId).emit(
-                    "room stars updated",
-                    roomStars
-                );
-
-
-                addLog(
-                    `⭐ تم إعطاء نجمة لـ ${target}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // REMOVE STAR
-        // =========================================================
-
-        socket.on(
-            "remove star",
-            data => {
-
-                const roomId =
-                    socket.currentRoom;
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "stars",
-                        roomId
-                    )
-                ) {
-                    return;
-                }
-
-
-                const target =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                const roomStars =
-                    getRoomStars(
-                        roomId
-                    );
-
-
-                stars[roomId] =
-                    roomStars.filter(
-                        name =>
-                            name !==
-                            target
-                    );
-
-
-                saveFile(
-                    "stars.json",
-                    stars
-                );
-
-
-                io.to(roomId).emit(
-                    "room stars updated",
-                    stars[roomId]
-                );
-
-            }
-        );
-                // =========================================================
-        // KICK USER FROM ROOM
-        // =========================================================
-
-        socket.on(
-            "kick user",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-                const targetName =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                if (!roomId || !targetName) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "kick",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية الطرد في هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                const targetSocket =
-                    findUserSocketInRoom(
-                        roomId,
-                        targetName
-                    );
-
-
-                if (!targetSocket) {
-
-                    socket.emit(
-                        "room error",
-                        "❌ المستخدم غير موجود في الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                targetSocket.emit(
-                    "room kicked",
-                    {
-                        roomId,
-                        username:
-                            targetName,
-
-                        message:
-                            "👢 تم طردك من الغرفة"
-                    }
-                );
-
-
-                targetSocket.leave(
-                    roomId
-                );
-
-
-                if (
-                    targetSocket.currentRoom ===
-                    roomId
-                ) {
-
-                    targetSocket.currentRoom =
-                        null;
-
-                    targetSocket.roomAdmin =
-                        false;
-
-                }
-
-
-                io.to(roomId).emit(
-                    "room moderation notice",
-                    {
-                        type:
-                            "kick",
-
-                        username:
-                            targetName,
-
-                        message:
-                            `👢 تم طرد ${targetName} من الغرفة`
-                    }
-                );
-
-
-                io.to(roomId).emit(
-                    "room users",
-                    getRoomUsers(roomId)
-                );
-
-
-                addLog(
-                    `👢 تم طرد ${targetName}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // BAN USER FROM ROOM
-        // =========================================================
-
-        socket.on(
-            "ban user",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-                const targetName =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                if (!roomId || !targetName) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "ban",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية الحظر في هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                const targetSocket =
-                    findUserSocketInRoom(
-                        roomId,
-                        targetName
-                    );
-
-
-                let targetIP = "";
-                let targetDevice = "";
-
-
-                if (targetSocket) {
-
-                    targetIP =
-                        getIP(
-                            targetSocket
-                        );
-
-                    targetDevice =
-                        getDevice(
-                            targetSocket
-                        );
-
-                }
-
-
-                const alreadyBanned =
-                    moderation.bannedUsers.some(
-                        user =>
-                            user.name ===
-                            targetName
-                    );
-
-
-                if (!alreadyBanned) {
-
-                    moderation.bannedUsers.push(
-                        {
-                            name:
-                                targetName,
-
-                            ip:
-                                targetIP,
-
-                            device:
-                                targetDevice,
-
-                            time:
-                                new Date()
-                                    .toISOString()
-                        }
-                    );
-
-                }
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                if (targetSocket) {
-
-                    targetSocket.emit(
-                        "room banned",
-                        {
-                            roomId,
-
-                            username:
-                                targetName,
-
-                            message:
-                                "🚫 تم حظرك من الغرفة"
-                        }
-                    );
-
-
-                    targetSocket.leave(
-                        roomId
-                    );
-
-
-                    if (
-                        targetSocket.currentRoom ===
-                        roomId
-                    ) {
-
-                        targetSocket.currentRoom =
-                            null;
-
-                        targetSocket.roomAdmin =
-                            false;
-
-                    }
-
-                }
-
-
-                io.to(roomId).emit(
-                    "room moderation notice",
-                    {
-                        type:
-                            "ban",
-
-                        username:
-                            targetName,
-
-                        message:
-                            `🚫 تم حظر ${targetName} من الغرفة`
-                    }
-                );
-
-
-                io.to(roomId).emit(
-                    "room users",
-                    getRoomUsers(roomId)
-                );
-
-
-                addLog(
-                    `🚫 تم حظر ${targetName}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // MUTE USER
-        // =========================================================
-
-        socket.on(
-            "mute user",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-                const targetName =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                if (!roomId || !targetName) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "mute",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية الكتم في هذه الغرفة"
-                    );
-
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                const exists =
-                    moderation.mutedUsers.some(
-                        user =>
-                            user.name ===
-                            targetName
-                    );
-
-
-                if (!exists) {
-
-                    moderation.mutedUsers.push(
-                        {
-                            name:
-                                targetName,
-
-                            time:
-                                new Date()
-                                    .toISOString()
-                        }
-                    );
-
-                }
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                io.to(roomId).emit(
-                    "room moderation notice",
-                    {
-                        type:
-                            "mute",
-
-                        username:
-                            targetName,
-
-                        message:
-                            `🔇 تم كتم ${targetName}`
-                    }
-                );
-
-
-                const targetSocket =
-                    findUserSocketInRoom(
-                        roomId,
-                        targetName
-                    );
-
-
-                if (targetSocket) {
-
-                    targetSocket.emit(
-                        "room muted",
-                        {
-                            roomId,
-
-                            username:
-                                targetName
-                        }
-                    );
-
-                }
-
-
-                addLog(
-                    `🔇 تم كتم ${targetName}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // UNBAN USER
-        // =========================================================
-
-        socket.on(
-            "unban user",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-                const targetName =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                if (!roomId || !targetName) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "unban",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية فك الحظر"
-                    );
-
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                moderation.bannedUsers =
-                    moderation.bannedUsers.filter(
-                        user =>
-                            user.name !==
-                            targetName
-                    );
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                io.to(roomId).emit(
-                    "room moderation notice",
-                    {
-                        type:
-                            "unban",
-
-                        username:
-                            targetName,
-
-                        message:
-                            `🔓 تم فك حظر ${targetName}`
-                    }
-                );
-
-
-                addLog(
-                    `🔓 تم فك حظر ${targetName}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // UNMUTE USER
-        // =========================================================
-
-        socket.on(
-            "unmute user",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-                const targetName =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                if (!roomId || !targetName) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "mute",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية فك الكتم"
-                    );
-
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                moderation.mutedUsers =
-                    moderation.mutedUsers.filter(
-                        user =>
-                            user.name !==
-                            targetName
-                    );
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                io.to(roomId).emit(
-                    "room moderation notice",
-                    {
-                        type:
-                            "unmute",
-
-                        username:
-                            targetName,
-
-                        message:
-                            `🔊 تم فك كتم ${targetName}`
-                    }
-                );
-
-
-                addLog(
-                    `🔊 تم فك كتم ${targetName}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // DISCONNECT USER FROM SERVER
-        // =========================================================
-
-        socket.on(
-            "disconnect user",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-                const targetName =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                if (!roomId || !targetName) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "disconnect",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية الفصل"
-                    );
-
-                    return;
-                }
-
-
-                const targetSocket =
-                    findUserSocketInRoom(
-                        roomId,
-                        targetName
-                    );
-
-
-                if (!targetSocket) {
-                    return;
-                }
-
-
-                targetSocket.emit(
-                    "room disconnected",
-                    {
-                        roomId,
-
-                        message:
-                            "⛔ تم فصلك من الغرفة"
-                    }
-                );
-
-
-                targetSocket.disconnect(
-                    true
-                );
-
-
-                io.to(roomId).emit(
-                    "room moderation notice",
-                    {
-                        type:
-                            "disconnect",
-
-                        username:
-                            targetName,
-
-                        message:
-                            `⛔ تم فصل ${targetName} من الغرفة`
-                    }
-                );
-
-
-                addLog(
-                    `⛔ تم فصل ${targetName}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // DELETE MESSAGE
-        // =========================================================
-
-        socket.on(
-            "delete message",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-                const messageId =
-                    String(
-                        data?.messageId || ""
-                    );
-
-
-                if (!roomId || !messageId) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "deleteMessage",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية حذف الرسائل"
-                    );
-
-                    return;
-                }
-
-
-                io.to(roomId).emit(
-                    "message deleted",
-                    {
-                        roomId,
-
-                        messageId
-                    }
-                );
-
-
-                addLog(
-                    `🗑️ تم حذف رسالة ${messageId}`,
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // CLEAR ROOM CHAT
-        // =========================================================
-
-        socket.on(
-            "clear room chat",
-            data => {
-
-                const roomId =
-                    String(
-                        data?.roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-
-                if (!roomId) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "clear",
-                        roomId
-                    )
-                ) {
-
-                    socket.emit(
-                        "room error",
-                        "⛔ لا تملك صلاحية مسح الدردشة"
-                    );
-
-                    return;
-                }
-
-
-                io.to(roomId).emit(
-                    "room chat cleared",
-                    {
-                        roomId
-                    }
-                );
-
-
-                addLog(
-                    "🧹 تم مسح دردشة الغرفة",
-                    roomId
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // GET ROOM MODERATION DATA
-        // =========================================================
-
-        socket.on(
-            "get room moderation",
-            roomId => {
-
-                roomId =
-                    String(
-                        roomId ||
-                        socket.currentRoom ||
-                        ""
-                    );
-
-
-                if (!roomId) {
-                    return;
-                }
-
-
-                if (
-                    !hasRoomPermission(
-                        socket,
-                        "viewUserInfo",
-                        roomId
-                    ) &&
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                socket.emit(
-                    "room moderation data",
-                    {
-                        roomId,
-
-                        moderation
-                    }
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // VIEW USER INFORMATION
-        // =========================================================
-
-        socket.on(
-            "view user",
-            data => {
-
-                if (
-                    !socket.adminData
-                ) {
-                    return;
-                }
-
-
-                if (
-                    !socket.adminData.permissions
-                        ?.viewUserInfo
-                    &&
-                    !socket.adminData.permissions
-                        ?.viewIP
-                ) {
-                    return;
-                }
-
-
-                const username =
-                    String(
-                        data?.username || ""
-                    ).trim();
-
-
-                const target =
-                    users.find(
-                        user =>
-                            user.username ===
-                            username
-                    );
-
-
-                if (!target) {
-
-                    socket.emit(
-                        "user info",
-                        null
-                    );
-
-                    return;
-                }
-
-
-                socket.emit(
-                    "user info",
-                    {
-                        username:
-                            target.username,
-
-                        ip:
-                            target.ip,
-
-                        device:
-                            target.device,
-
-                        userAgent:
-                            target.userAgent,
-
-                        room:
-                            target.socket
-                                ?.currentRoom ||
-                            null
-                    }
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // ADD ADMIN
-        // =========================================================
-
-        socket.on(
-            "add admin",
-            data => {
-
-                if (
-                    !socket.adminData ||
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-
-                    socket.emit(
-                        "admin error",
-                        "⛔ لا تملك صلاحية إضافة أدمن"
-                    );
-
-                    return;
-                }
-
-
-                const name =
-                    String(
-                        data?.name || ""
-                    ).trim();
-
-
-                const password =
-                    String(
-                        data?.password || ""
-                    );
-
-
-                if (!name || !password) {
-
-                    socket.emit(
-                        "admin error",
-                        "❌ الاسم وكلمة المرور مطلوبان"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    admins.some(
-                        admin =>
-                            admin.name ===
-                            name
-                    )
-                ) {
-
-                    socket.emit(
-                        "admin error",
-                        "⚠️ هذا الأدمن موجود مسبقاً"
-                    );
-
-                    return;
-                }
-
-
-                const newAdmin = {
-
-                    name,
-
-                    password,
-
-                    permissions:
-                        data?.permissions ||
-                        {
-                            kick: false,
-                            ban: false,
-                            disconnect: false,
-                            unban: false,
-                            mute: false,
-                            clear: false,
-                            maintenance: false,
-                            chatLock: false,
-                            privateLock: false,
-                            deleteMessage: false,
-                            addAdmin: false,
-                            removeAdmin: false,
-                            viewIP: false,
-                            viewUserInfo: false,
-                            stars: false
-                        }
-
-                };
-
-
-                admins.push(
-                    newAdmin
-                );
-
-
-                saveFile(
-                    "admins.json",
-                    admins
-                );
-
-
-                socket.emit(
-                    "admin added",
-                    newAdmin
-                );
-
-
-                io.emit(
-                    "admins updated",
-                    admins.map(
-                        admin => ({
-                            name:
-                                admin.name,
-
-                            permissions:
-                                admin.permissions
-                        })
-                    )
-                );
-
-
-                addLog(
-                    `👑 تمت إضافة الأدمن ${name}`
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // REMOVE ADMIN
-        // =========================================================
-
-        socket.on(
-            "remove admin",
-            data => {
-
-                if (
-                    !socket.adminData ||
-                    !isFullAdmin(
-                        socket.adminData
-                    )
-                ) {
-                    return;
-                }
-
-
-                const name =
-                    String(
-                        data?.name || ""
-                    ).trim();
-
-
-                if (!name) {
-                    return;
-                }
-
-
-                admins =
-                    admins.filter(
-                        admin =>
-                            admin.name !==
-                            name
-                    );
-
-
-                saveFile(
-                    "admins.json",
-                    admins
-                );
-
-
-                for (
-                    const roomId
-                    in roomModeration
-                ) {
-
-                    const moderation =
-                        roomModeration[
-                            roomId
-                        ];
-
-
-                    if (
-                        moderation &&
-                        Array.isArray(
-                            moderation.admins
-                        )
-                    ) {
-
-                        moderation.admins =
-                            moderation.admins.filter(
-                                adminName =>
-                                    adminName !==
-                                    name
-                            );
-
-                    }
-
-                }
-
-
-                saveFile(
-                    "roomModeration.json",
-                    roomModeration
-                );
-
-
-                io.emit(
-                    "admins updated",
-                    admins.map(
-                        admin => ({
-                            name:
-                                admin.name,
-
-                            permissions:
-                                admin.permissions
-                        })
-                    )
-                );
-
-
-                addLog(
-                    `🗑️ تمت إزالة الأدمن ${name}`
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // ROOM ADMIN LIST
-        // =========================================================
-
-        socket.on(
-            "get room admins",
-            roomId => {
-
-                roomId =
-                    String(
-                        roomId || ""
-                    );
-
-
-                if (!roomId) {
-                    return;
-                }
-
-
-                const moderation =
-                    ensureRoomModeration(
-                        roomId
-                    );
-
-
-                socket.emit(
-                    "room admins updated",
-                    {
-                        roomId,
-
-                        admins:
-                            moderation.admins
-                    }
-                );
-
-            }
-        );
-
-
-        // =========================================================
-        // ADMIN LOGOUT
-        // =========================================================
-
-        socket.on(
-            "admin logout",
-            () => {
-
-                socket.adminData =
-                    null;
-
-                socket.roomAdmin =
-                    false;
-
-            }
-        );
-
-
-        // =========================================================
-        // USER DISCONNECT
-        // =========================================================
-
-        socket.on(
-            "disconnect",
-            reason => {
-
-                const username =
-                    socket.username;
-
-
-                if (username) {
-
-                    users =
-                        users.filter(
-                            user =>
-                                user.socket !==
-                                socket
-                        );
-
-
-                    io.emit(
-                        "online users",
-                        users.map(
-                            user =>
-                                user.username
-                        )
-                    );
-
-
-                    if (
-                        socket.currentRoom
-                    ) {
-
-                        io.to(
-                            socket.currentRoom
-                        ).emit(
-                            "room users",
-                            getRoomUsers(
-                                socket.currentRoom
-                            )
-                        );
-
-                    }
-
-
-                    addLog(
-                        `🔴 ${username} خرج من السيرفر`
-                    );
-
-                }
-
-            }
-        );
-
-    }
-);
-
-
-// =============================================================
-// SERVER START
-// =============================================================
+   SERVER START
+========================================================= */
 
 const PORT =
-    process.env.PORT ||
-    3000;
-
+  process.env.PORT || 3000;
 
 server.listen(
-    PORT,
-    () => {
+  PORT,
+  "0.0.0.0",
+  () => {
 
-        console.log(
-            `🚀 Mersal Chat running on port ${PORT}`
-        );
+    console.log(
+      `🚀 Mersal Chat running on port ${PORT}`
+    );
 
-    }
+    console.log(
+      `🏠 Rooms: ${rooms.length}`
+    );
+
+    console.log(
+      `👥 Online users: ${users.length}`
+    );
+  }
 );
+    
