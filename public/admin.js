@@ -1090,3 +1090,115 @@ loadDisconnectedList();
 console.log(
     "✅ Mersal admin.js loaded correctly"
 );
+/* =========================================================
+   ROOMS
+   ========================================================= */
+
+function saveRoom() {
+
+    const nameElement =
+        document.getElementById("roomName");
+
+    const descriptionElement =
+        document.getElementById("roomDescription");
+
+    if (!nameElement || !descriptionElement) {
+        alert("❌ حقول الغرفة غير موجودة.");
+        return;
+    }
+
+    const name =
+        nameElement.value.trim();
+
+    const description =
+        descriptionElement.value.trim();
+
+    if (!name) {
+        alert("❌ اكتب اسم الغرفة.");
+        return;
+    }
+
+    socket.emit(
+        "create room",
+        {
+            name,
+            description
+        }
+    );
+}
+
+window.saveRoom = saveRoom;
+
+
+/* عرض الغرف */
+
+socket.on("admin rooms", rooms => {
+
+    const box =
+        document.getElementById("roomsList");
+
+    if (!box) return;
+
+    box.innerHTML = "";
+
+    (rooms || []).forEach(room => {
+
+        const div =
+            document.createElement("div");
+
+        div.className = "user-card";
+
+        div.innerHTML = `
+            <div>
+                🏠 <strong>${room.name}</strong>
+            </div>
+
+            <div>
+                ${room.description || ""}
+            </div>
+
+            <button onclick="deleteRoom('${room.id}')">
+                🗑️ حذف
+            </button>
+        `;
+
+        box.appendChild(div);
+
+    });
+
+});
+
+
+function deleteRoom(roomId) {
+
+    if (!confirm("هل تريد حذف الغرفة؟")) {
+        return;
+    }
+
+    socket.emit(
+        "delete room",
+        roomId
+    );
+
+}
+
+window.deleteRoom = deleteRoom;
+
+
+/* نجاح */
+
+socket.on("room created", () => {
+
+    alert("✅ تم إنشاء الغرفة.");
+
+    document.getElementById("roomName").value = "";
+    document.getElementById("roomDescription").value = "";
+
+});
+
+
+socket.on("room deleted", () => {
+
+    alert("🗑️ تم حذف الغرفة.");
+
+});
