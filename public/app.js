@@ -4842,3 +4842,775 @@ updateChatViewport();
 // =========================================================
 // END OF APP.JS
 // =========================================================
+/* =========================================================
+   MERSAL ROOMS - FINAL ROOM SELECTOR
+   ========================================================= */
+
+(function(){
+
+  let mersalRooms = [];
+  let currentRoomId = null;
+  let roomOverlay = null;
+
+  /* =======================================================
+     CREATE ROOM SCREEN
+     ======================================================= */
+
+  function createRoomScreen(){
+
+    if(document.getElementById("mersalRoomOverlay")){
+      return;
+    }
+
+    roomOverlay = document.createElement("div");
+
+    roomOverlay.id = "mersalRoomOverlay";
+
+    roomOverlay.style.cssText = `
+      position:fixed;
+      inset:0;
+      z-index:99999;
+      background:
+        radial-gradient(
+          circle at top,
+          #18202c 0%,
+          #090b10 45%,
+          #050609 100%
+        );
+      display:none;
+      flex-direction:column;
+      color:white;
+      font-family:Arial,sans-serif;
+      overflow:hidden;
+    `;
+
+    roomOverlay.innerHTML = `
+
+      <div
+        id="mersalRoomHeader"
+        style="
+          min-height:70px;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          padding:0 18px;
+          border-bottom:1px solid rgba(255,255,255,.08);
+          background:rgba(0,0,0,.35);
+          backdrop-filter:blur(12px);
+        "
+      >
+
+        <div
+          style="
+            font-size:21px;
+            font-weight:bold;
+            color:#ffd700;
+          "
+        >
+          🔥 Mersal Chat
+        </div>
+
+        <div
+          style="
+            font-size:14px;
+            color:#aaa;
+          "
+        >
+          اختر الغرفة
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          flex:1;
+          overflow-y:auto;
+          padding:20px 16px 35px;
+        "
+      >
+
+        <div
+          style="
+            text-align:center;
+            margin:10px 0 24px;
+          "
+        >
+
+          <div
+            style="
+              font-size:28px;
+              margin-bottom:8px;
+            "
+          >
+            🏠
+          </div>
+
+          <div
+            style="
+              font-size:22px;
+              font-weight:bold;
+            "
+          >
+            الغرف
+          </div>
+
+          <div
+            style="
+              color:#999;
+              margin-top:6px;
+              font-size:14px;
+            "
+          >
+            اختر الغرفة التي تريد الدخول إليها
+          </div>
+
+        </div>
+
+
+        <div
+          id="mersalRoomsContainer"
+          style="
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+            max-width:650px;
+            margin:0 auto;
+          "
+        >
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(roomOverlay);
+  }
+
+
+  /* =======================================================
+     SHOW ROOM SCREEN
+     ======================================================= */
+
+  function showRoomScreen(){
+
+    createRoomScreen();
+
+    roomOverlay.style.display = "flex";
+
+    renderRooms();
+  }
+
+
+  /* =======================================================
+     HIDE ROOM SCREEN
+     ======================================================= */
+
+  function hideRoomScreen(){
+
+    if(!roomOverlay){
+      return;
+    }
+
+    roomOverlay.style.display = "none";
+  }
+
+
+  /* =======================================================
+     RENDER ROOMS
+     ======================================================= */
+
+  function renderRooms(){
+
+    createRoomScreen();
+
+    const box =
+      document.getElementById(
+        "mersalRoomsContainer"
+      );
+
+    if(!box){
+      return;
+    }
+
+    box.innerHTML = "";
+
+    const rooms =
+      Array.isArray(mersalRooms)
+        ? mersalRooms
+        : [];
+
+    if(!rooms.length){
+
+      const empty =
+        document.createElement("div");
+
+      empty.style.cssText = `
+        text-align:center;
+        padding:45px 20px;
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:18px;
+        background:rgba(255,255,255,.03);
+        color:#aaa;
+      `;
+
+      empty.innerHTML = `
+        <div
+          style="
+            font-size:40px;
+            margin-bottom:12px;
+          "
+        >
+          🏠
+        </div>
+
+        <div
+          style="
+            font-size:18px;
+            color:#fff;
+            margin-bottom:7px;
+          "
+        >
+          لا توجد غرف متاحة حاليًا
+        </div>
+
+        <div
+          style="
+            font-size:13px;
+          "
+        >
+          سيتم تحديث الغرف تلقائيًا
+        </div>
+      `;
+
+      box.appendChild(empty);
+
+      return;
+    }
+
+
+    rooms.forEach(room => {
+
+      if(!room){
+        return;
+      }
+
+      const enabled =
+        room.enabled !== false &&
+        room.settings?.enabled !== false;
+
+      if(!enabled){
+        return;
+      }
+
+
+      const card =
+        document.createElement("button");
+
+      card.type = "button";
+
+      card.style.cssText = `
+        width:100%;
+        text-align:right;
+        border:1px solid rgba(255,215,0,.16);
+        border-radius:18px;
+        padding:18px;
+        background:
+          linear-gradient(
+            145deg,
+            rgba(255,215,0,.08),
+            rgba(255,255,255,.025)
+          );
+        color:white;
+        cursor:pointer;
+        transition:.2s;
+        box-shadow:
+          0 8px 30px rgba(0,0,0,.22);
+      `;
+
+
+      const name =
+        document.createElement("div");
+
+      name.style.cssText = `
+        font-size:19px;
+        font-weight:bold;
+        color:#ffd700;
+        margin-bottom:7px;
+      `;
+
+      name.textContent =
+        "🏠 " +
+        String(
+          room.name ||
+          "غرفة بدون اسم"
+        );
+
+
+      const description =
+        document.createElement("div");
+
+      description.style.cssText = `
+        font-size:13px;
+        line-height:1.6;
+        color:#aaa;
+      `;
+
+      description.textContent =
+        String(
+          room.description ||
+          "غرفة مرسال"
+        );
+
+
+      const status =
+        document.createElement("div");
+
+      status.style.cssText = `
+        margin-top:12px;
+        font-size:12px;
+        color:#65ff9b;
+      `;
+
+      status.textContent =
+        "● متاحة للدخول";
+
+
+      card.appendChild(name);
+      card.appendChild(description);
+      card.appendChild(status);
+
+
+      card.addEventListener(
+        "mouseenter",
+        () => {
+          card.style.transform =
+            "translateY(-2px)";
+          card.style.borderColor =
+            "rgba(255,215,0,.45)";
+        }
+      );
+
+
+      card.addEventListener(
+        "mouseleave",
+        () => {
+          card.style.transform =
+            "translateY(0)";
+          card.style.borderColor =
+            "rgba(255,215,0,.16)";
+        }
+      );
+
+
+      card.addEventListener(
+        "click",
+        () => {
+          enterMersalRoom(room);
+        }
+      );
+
+
+      box.appendChild(card);
+
+    });
+
+  }
+
+
+  /* =======================================================
+     ENTER ROOM
+     ======================================================= */
+
+  function enterMersalRoom(room){
+
+    if(!room || !room.id){
+      return;
+    }
+
+    currentRoomId =
+      String(room.id);
+
+    showRoomLoading(
+      room.name
+    );
+
+    socket.emit(
+      "join room",
+      {
+        roomId:
+          String(room.id)
+      }
+    );
+  }
+
+
+  /* =======================================================
+     ROOM LOADING
+     ======================================================= */
+
+  function showRoomLoading(name){
+
+    createRoomScreen();
+
+    const box =
+      document.getElementById(
+        "mersalRoomsContainer"
+      );
+
+    if(!box){
+      return;
+    }
+
+    box.innerHTML = `
+
+      <div
+        style="
+          text-align:center;
+          padding:55px 20px;
+        "
+      >
+
+        <div
+          style="
+            font-size:45px;
+            margin-bottom:15px;
+          "
+        >
+          ⏳
+        </div>
+
+        <div
+          style="
+            font-size:19px;
+            font-weight:bold;
+          "
+        >
+          جارٍ دخول ${escapeRoomText(name)}
+        </div>
+
+        <div
+          style="
+            color:#999;
+            margin-top:8px;
+            font-size:13px;
+          "
+        >
+          لحظة واحدة...
+        </div>
+
+      </div>
+    `;
+  }
+
+
+  /* =======================================================
+     ESCAPE TEXT
+     ======================================================= */
+
+  function escapeRoomText(value){
+
+    const div =
+      document.createElement("div");
+
+    div.textContent =
+      String(value || "");
+
+    return div.innerHTML;
+  }
+
+
+  /* =======================================================
+     RECEIVE ROOMS
+     ======================================================= */
+
+  socket.on(
+    "rooms",
+    rooms => {
+
+      mersalRooms =
+        Array.isArray(rooms)
+          ? rooms
+          : [];
+
+      console.log(
+        "🏠 Mersal rooms:",
+        mersalRooms
+      );
+
+      if(
+        roomOverlay &&
+        roomOverlay.style.display !== "none"
+      ){
+        renderRooms();
+      }
+
+    }
+  );
+
+
+  /* =======================================================
+     COMPATIBILITY
+     ======================================================= */
+
+  socket.on(
+    "room list",
+    rooms => {
+
+      mersalRooms =
+        Array.isArray(rooms)
+          ? rooms
+          : [];
+
+      console.log(
+        "🏠 Mersal room list:",
+        mersalRooms
+      );
+
+      if(
+        roomOverlay &&
+        roomOverlay.style.display !== "none"
+      ){
+        renderRooms();
+      }
+
+    }
+  );
+
+
+  /* =======================================================
+     LOGIN SUCCESS
+     ======================================================= */
+
+  socket.on(
+    "login success",
+    () => {
+
+      setTimeout(
+        () => {
+
+          createRoomScreen();
+
+          showRoomScreen();
+
+          socket.emit(
+            "get rooms"
+          );
+
+        },
+        100
+      );
+
+    }
+  );
+
+
+  /* =======================================================
+     ROOM JOINED
+     ======================================================= */
+
+  socket.on(
+    "room joined",
+    data => {
+
+      currentRoomId =
+        String(
+          data?.roomId ||
+          data?.room?.id ||
+          currentRoomId ||
+          ""
+        );
+
+      console.log(
+        "🏠 دخلت الغرفة:",
+        currentRoomId
+      );
+
+      hideRoomScreen();
+
+      /*
+        تنظيف الرسائل القديمة
+        عند دخول غرفة جديدة.
+      */
+
+      if(
+        typeof messages !== "undefined" &&
+        messages
+      ){
+        messages.innerHTML = "";
+      }
+
+      /*
+        تحديث عنوان الصفحة إن وجد.
+      */
+
+      const title =
+        document.querySelector(
+          ".top-title"
+        );
+
+      if(title){
+
+        title.textContent =
+          "🔥 " +
+          (
+            data?.room?.name ||
+            "Mersal"
+          );
+
+      }
+
+    }
+  );
+
+
+  /* =======================================================
+     ROOM ERROR
+     ======================================================= */
+
+  socket.on(
+    "room error",
+    message => {
+
+      console.error(
+        "❌ ROOM ERROR:",
+        message
+      );
+
+      showRoomScreen();
+
+      if(
+        typeof showToast ===
+        "function"
+      ){
+
+        showToast(
+          message ||
+          "❌ تعذر دخول الغرفة"
+        );
+
+      }else{
+
+        alert(
+          message ||
+          "❌ تعذر دخول الغرفة"
+        );
+
+      }
+
+    }
+  );
+
+
+  /* =======================================================
+     ROOM CREATED
+     ======================================================= */
+
+  socket.on(
+    "room created",
+    room => {
+
+      console.log(
+        "🏠 غرفة جديدة:",
+        room
+      );
+
+      /*
+        السيرفر يرسل rooms
+        أيضًا، لكن نضيف الغرفة
+        فورًا لضمان ظهورها.
+      */
+
+      if(
+        room &&
+        room.id
+      ){
+
+        const exists =
+          mersalRooms.some(
+            r =>
+              String(r.id) ===
+              String(room.id)
+          );
+
+        if(!exists){
+
+          mersalRooms.push(
+            room
+          );
+
+        }
+
+      }
+
+      renderRooms();
+
+    }
+  );
+
+
+  /* =======================================================
+     ROOMS UPDATED
+     ======================================================= */
+
+  socket.on(
+    "rooms updated",
+    rooms => {
+
+      if(
+        Array.isArray(rooms)
+      ){
+
+        mersalRooms =
+          rooms;
+
+      }
+
+      renderRooms();
+
+    }
+  );
+
+
+  /* =======================================================
+     AUTO REQUEST AFTER CONNECTION
+     ======================================================= */
+
+  socket.on(
+    "connect",
+    () => {
+
+      if(
+        currentUser
+      ){
+
+        setTimeout(
+          () => {
+
+            socket.emit(
+              "get rooms"
+            );
+
+          },
+          300
+        );
+
+      }
+
+    }
+  );
+
+
+  /* =======================================================
+     PUBLIC API
+     ======================================================= */
+
+  window.mersalShowRooms =
+    showRoomScreen;
+
+  window.mersalHideRooms =
+    hideRoomScreen;
+
+  window.mersalRenderRooms =
+    renderRooms;
+
+})();
