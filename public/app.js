@@ -1,4211 +1,4844 @@
-/* =========================================================
-   MERSAL CHAT - APP.JS
-   ROOM SYSTEM + TABS + PRIVATE TABS
-   ========================================================= */
-
 const socket = io();
 
-/* =========================================================
-   GLOBAL
-   ========================================================= */
+
+// =========================================================
+// GLOBAL STATE
+// =========================================================
 
 let currentUser = null;
-let currentUserId = null;
 let currentColor = "#ffd700";
-let currentUserRole = "";
 
-let loginPending = false;
-let replyData = null;
-let toastTimer = null;
+let currentRoom = null;
+let roomsCache = [];
 
-let usersCache = [];
-let currentRoomId = null;
-
-let rooms = [];
 let openRooms = [];
-let currentTab = null;
+let activeRoomId = null;
+
+let currentPrivateUser = null;
+let currentPrivateName = null;
 
 let privateChats = {};
-let unreadPrivate = {};
+let privateUnread = {};
 
-let roomMessages = {};
-let roomScrollPositions = {};
+let replyData = null;
 
-let roomTouchStartX = 0;
-let roomTouchEndX = 0;
+let usersCache = [];
 
-let isAdmin = false;
-let adminPermissions = {};
-let adminRooms = [];
+let privateListMode = false;
+
+let loginPending = false;
+
+let toastTimer = null;
 
 
-/* =========================================================
-   ELEMENTS
-   ========================================================= */
+// =========================================================
+// HELPERS
+// =========================================================
 
 const $ = id =>
-  document.getElementById(id);
+    document.getElementById(id);
 
-const loginPage =
-  $("loginPage");
-
-const chatPage =
-  $("chatPage");
-
-const usernameInput =
-  $("username");
-
-const adminPassword =
-  $("adminPassword");
-
-const messages =
-  $("messages");
-
-const usersList =
-  $("usersList");
-
-const usersMenu =
-  $("usersMenu");
-
-const menuTitle =
-  $("menuTitle");
-
-const loginStatus =
-  $("loginStatus");
-
-const privateMessages =
-  $("privateMessages");
-
-const privateInput =
-  $("privateInput");
-
-const messageInput =
-  $("messageInput");
-
-
-/* =========================================================
-   IPHONE / SAFARI VIEWPORT
-   ========================================================= */
-
-function updateChatViewport(){
-
-  const viewport =
-    window.visualViewport;
-
-  const height =
-    viewport
-      ? viewport.height
-      : window.innerHeight;
-
-  document.documentElement.style.setProperty(
-    "--app-height",
-    `${height}px`
-  );
-}
-
-updateChatViewport();
-
-window.addEventListener(
-  "resize",
-  updateChatViewport
-);
-
-if(window.visualViewport){
-
-  window.visualViewport.addEventListener(
-    "resize",
-    updateChatViewport
-  );
-
-}
-
-
-/* =========================================================
-   IPHONE - PREVENT PAGE MOVING
-   ========================================================= */
-
-function lockPagePosition(){
-
-  window.scrollTo(
-    0,
-    0
-  );
-
-}
-
-window.addEventListener(
-  "scroll",
-  lockPagePosition,
-  {
-    passive: true
-  }
-);
-
-if(window.visualViewport){
-
-  window.visualViewport.addEventListener(
-    "scroll",
-    lockPagePosition
-  );
-
-}
-
-document.addEventListener(
-  "focusin",
-  function(e){
-
-    if(
-      e.target &&
-      (
-        e.target.id ===
-          "messageInput" ||
-        e.target.id ===
-          "privateInput"
-      )
-    ){
-
-      setTimeout(
-        () =>
-          window.scrollTo(
-            0,
-            0
-          ),
-        50
-      );
-
-      setTimeout(
-        () =>
-          window.scrollTo(
-            0,
-            0
-          ),
-        300
-      );
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   HELPERS
-   ========================================================= */
 
 function escapeHtml(value){
 
-  return String(
-    value ?? ""
-  )
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 
 }
 
 
 function showToast(text){
 
-  let toast =
-    $("toast");
+    const toast =
+        $("toast");
 
-  if(!toast){
+    if(!toast){
 
-    toast =
-      document.createElement(
-        "div"
-      );
+        alert(text);
 
-    toast.id =
-      "toast";
+        return;
+    }
 
-    toast.style.position =
-      "fixed";
 
-    toast.style.left =
-      "50%";
+    toast.textContent =
+        text;
 
-    toast.style.bottom =
-      "25px";
-
-    toast.style.transform =
-      "translateX(-50%)";
-
-    toast.style.zIndex =
-      "99999";
-
-    toast.style.padding =
-      "12px 18px";
-
-    toast.style.borderRadius =
-      "14px";
-
-    toast.style.background =
-      "rgba(0,0,0,.9)";
-
-    toast.style.color =
-      "#fff";
-
-    toast.style.border =
-      "1px solid rgba(255,255,255,.15)";
-
-    document.body.appendChild(
-      toast
+    toast.classList.add(
+        "show"
     );
 
-  }
 
-  toast.textContent =
-    text;
+    clearTimeout(
+        toastTimer
+    );
 
-  toast.style.display =
-    "block";
 
-  clearTimeout(
-    toastTimer
-  );
+    toastTimer =
+        setTimeout(
+            () => {
 
-  toastTimer =
-    setTimeout(
-      () => {
+                toast.classList.remove(
+                    "show"
+                );
 
-        toast.style.display =
-          "none";
+            },
+            2200
+        );
 
-      },
-      2500
+}
+
+
+function getChatMessages(){
+
+    return $("messages");
+
+}
+
+
+function getMessageInput(){
+
+    return $("messageInput");
+
+}
+
+
+function getPrivateMessages(){
+
+    return $("privateMessages");
+
+}
+
+
+function getPrivateInput(){
+
+    return $("privateInput");
+
+}
+
+
+// =========================================================
+// IPHONE / SAFARI VIEWPORT
+// =========================================================
+
+function updateChatViewport(){
+
+    const viewport =
+        window.visualViewport;
+
+    const height =
+        viewport
+            ? viewport.height
+            : window.innerHeight;
+
+
+    document.documentElement
+        .style
+        .setProperty(
+            "--app-height",
+            `${height}px`
+        );
+
+}
+
+
+updateChatViewport();
+
+
+window.addEventListener(
+    "resize",
+    updateChatViewport
+);
+
+
+if(window.visualViewport){
+
+    window.visualViewport.addEventListener(
+        "resize",
+        updateChatViewport
     );
 
 }
 
 
-function setLoginStatus(
-  text,
-  error = false
-){
+// =========================================================
+// IPHONE - PREVENT PAGE MOVEMENT
+// =========================================================
 
-  if(!loginStatus){
-    return;
-  }
+function lockPagePosition(){
 
-  loginStatus.textContent =
-    text || "";
-
-  loginStatus.style.color =
-    error
-      ? "#ff9d9d"
-      : "#9dffca";
+    window.scrollTo(
+        0,
+        0
+    );
 
 }
 
 
-/* =========================================================
-   ADMIN PASSWORD
-   ========================================================= */
+window.addEventListener(
+    "scroll",
+    lockPagePosition,
+    {
+        passive: true
+    }
+);
 
-if(usernameInput){
 
-  usernameInput.addEventListener(
-    "input",
-    () => {
+if(window.visualViewport){
 
-      const name =
-        usernameInput.value.trim();
+    window.visualViewport.addEventListener(
+        "scroll",
+        lockPagePosition
+    );
 
-      setLoginStatus("");
+}
 
-      if(!name){
 
-        if(adminPassword){
+document.addEventListener(
+    "focusin",
+    function(e){
 
-          adminPassword.style.display =
-            "none";
+        if(
+            e.target &&
+            (
+                e.target.id ===
+                    "messageInput" ||
 
-          adminPassword.value =
-            "";
+                e.target.id ===
+                    "privateInput"
+            )
+        ){
+
+            setTimeout(
+                () => {
+                    window.scrollTo(
+                        0,
+                        0
+                    );
+                },
+                50
+            );
+
+
+            setTimeout(
+                () => {
+                    window.scrollTo(
+                        0,
+                        0
+                    );
+                },
+                300
+            );
 
         }
 
-        return;
-      }
-
-      socket.emit(
-        "check admin",
-        name
-      );
-
     }
-  );
-
-}
-
-
-socket.on(
-  "admin check result",
-  isAdminResult => {
-
-    if(!adminPassword){
-      return;
-    }
-
-    if(isAdminResult){
-
-      adminPassword.style.display =
-        "block";
-
-    }else{
-
-      adminPassword.style.display =
-        "none";
-
-      adminPassword.value =
-        "";
-
-    }
-
-  }
 );
 
 
-/* =========================================================
-   COLORS
-   ========================================================= */
-
-document
-  .querySelectorAll(
-    ".color-option"
-  )
-  .forEach(
-    element => {
-
-      element.addEventListener(
-        "click",
-        () => {
-
-          document
-            .querySelectorAll(
-              ".color-option"
-            )
-            .forEach(
-              item =>
-                item.classList.remove(
-                  "active-color"
-                )
-            );
-
-          element.classList.add(
-            "active-color"
-          );
-
-          currentColor =
-            element.dataset.color ||
-            "#ffd700";
-
-        }
-      );
-
-    }
-  );
-
-
-/* =========================================================
-   JOIN
-   ========================================================= */
-
-function joinChat(){
-
-  if(loginPending){
-    return;
-  }
-
-  const name =
-    usernameInput
-      ?.value
-      ?.trim();
-
-  if(!name){
-
-    setLoginStatus(
-      "اكتب اسمك أولاً",
-      true
-    );
-
-    usernameInput?.focus();
-
-    return;
-  }
-
-  /*
-     حماية إضافية في الواجهة.
-     السيرفر هو الحماية الأساسية.
-  */
-
-  if(
-    name.includes("&") ||
-    name.includes("@")
-  ){
-
-    setLoginStatus(
-      "❌ لا يمكن استخدام رموز الإدارة في الاسم",
-      true
-    );
-
-    return;
-  }
-
-  loginPending =
-    true;
-
-  setLoginStatus(
-    "جارٍ الدخول...",
-    false
-  );
-
-  socket.emit(
-    "join",
-    {
-
-      username:
-        name,
-
-      adminPassword:
-        adminPassword
-          ?.value || "",
-
-      color:
-        currentColor,
-
-      deviceToken:
-        navigator.userAgent
-
-    }
-  );
-
-}
-
-window.joinChat =
-  joinChat;
-
-
-/* =========================================================
-   LOGIN SUCCESS
-   ========================================================= */
-
-socket.on(
-  "login success",
-  data => {
-
-    loginPending =
-      false;
-
-    currentUser =
-      data?.user?.username ||
-      usernameInput
-        ?.value
-        ?.trim();
-
-    currentUserId =
-      data?.user?.id ||
-      null;
-
-    currentUserRole =
-      data?.user?.role ||
-      "";
-
-    isAdmin =
-      !!data?.isAdmin;
-
-    rooms =
-      Array.isArray(
-        data?.rooms
-      )
-        ? data.rooms
-        : [];
-
-    if(
-      data?.user?.color
-    ){
-
-      currentColor =
-        data.user.color;
-
-    }
-
-    if(
-      loginPage
-    ){
-
-      loginPage.style.display =
-        "none";
-
-    }
-
-    if(
-      chatPage
-    ){
-
-      chatPage.style.display =
-        "flex";
-
-    }
-
-    setLoginStatus("");
-
-    /*
-       لا ندخل إلى الشات مباشرة.
-       أولاً قائمة الغرف.
-    */
-
-    showRoomSelector();
-
-    updateChatViewport();
-
-  }
-);
-
-
-/* =========================================================
-   BANNED / ERRORS
-   ========================================================= */
-
-socket.on(
-  "banned",
-  message => {
-
-    loginPending =
-      false;
-
-    showToast(
-      message ||
-      "❌ تعذر تنفيذ العملية"
-    );
-
-    if(
-      !currentUser
-    ){
-
-      setLoginStatus(
-        message ||
-        "تعذر الدخول",
-        true
-      );
-
-    }
-
-  }
-);
-
-
-socket.on(
-  "room error",
-  message => {
-
-    showToast(
-      message ||
-      "❌ حدث خطأ في الغرفة"
-    );
-
-  }
-);
-
-
-socket.on(
-  "disconnect",
-  () => {
-
-    if(currentUser){
-
-      showToast(
-        "⚠️ انقطع الاتصال بالخادم"
-      );
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   ROOM UI
-   ========================================================= */
-
-let roomSelector;
-let roomTabs;
-let roomAdminBar;
-let privateButton;
-
-
-function createRoomSystem(){
-
-  /*
-     نحاول وضع النظام داخل chatPage
-  */
-
-  if(!chatPage){
-    return;
-  }
-
-  /*
-     Room selector
-  */
-
-  roomSelector =
-    document.createElement(
-      "div"
-    );
-
-  roomSelector.id =
-    "mersalRoomSelector";
-
-  roomSelector.style.cssText = `
-    position:absolute;
-    inset:0;
-    z-index:5000;
-    background:#080808;
-    color:#fff;
-    display:none;
-    flex-direction:column;
-    overflow:auto;
-    padding:20px;
-    box-sizing:border-box;
-  `;
-
-
-  roomSelector.innerHTML = `
-
-    <div style="
-      max-width:900px;
-      width:100%;
-      margin:0 auto;
-    ">
-
-      <div style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        margin-bottom:20px;
-      ">
-
-        <div>
-
-          <div style="
-            font-size:25px;
-            font-weight:bold;
-          ">
-            🏠 غرف مرسال
-          </div>
-
-          <div style="
-            color:#aaa;
-            margin-top:5px;
-          ">
-            اختر الغرفة التي تريد الدخول إليها
-          </div>
-
-        </div>
-
-        <div style="
-          font-size:14px;
-          color:#aaa;
-        ">
-          👤 ${escapeHtml(
-            currentUser || ""
-          )}
-        </div>
-
-      </div>
-
-      <div
-        id="mersalRoomsGrid"
-        style="
-          display:grid;
-          grid-template-columns:
-            repeat(
-              auto-fit,
-              minmax(230px,1fr)
-            );
-          gap:14px;
-        "
-      ></div>
-
-    </div>
-  `;
-
-
-  chatPage.style.position =
-    "relative";
-
-  chatPage.appendChild(
-    roomSelector
-  );
-
-
-  /*
-     Room tabs
-  */
-
-  roomTabs =
-    document.createElement(
-      "div"
-    );
-
-  roomTabs.id =
-    "mersalRoomTabs";
-
-  roomTabs.style.cssText = `
-    display:none;
-    width:100%;
-    overflow-x:auto;
-    gap:7px;
-    padding:7px;
-    box-sizing:border-box;
-    background:#0c0c0c;
-    border-bottom:1px solid rgba(255,255,255,.08);
-    scrollbar-width:none;
-  `;
-
-
-  /*
-     نضع التبويبات أعلى chatPage
-  */
-
-  chatPage.insertBefore(
-    roomTabs,
-    chatPage.firstChild
-  );
-
-
-  /*
-     Admin bar
-  */
-
-  roomAdminBar =
-    document.createElement(
-      "div"
-    );
-
-  roomAdminBar.id =
-    "mersalRoomAdminBar";
-
-  roomAdminBar.style.cssText = `
-    display:none;
-    width:100%;
-    overflow-x:auto;
-    gap:6px;
-    padding:6px;
-    box-sizing:border-box;
-    background:#111;
-    border-bottom:1px solid rgba(255,215,0,.15);
-  `;
-
-  chatPage.insertBefore(
-    roomAdminBar,
-    chatPage.firstChild
-  );
-
-
-  /*
-     Private icon
-  */
-
-  privateButton =
-    document.createElement(
-      "button"
-    );
-
-  privateButton.id =
-    "mersalPrivateButton";
-
-  privateButton.innerHTML =
-    "💬 الخاص";
-
-  privateButton.style.cssText = `
-    position:fixed;
-    right:14px;
-    bottom:90px;
-    z-index:4000;
-    border:none;
-    border-radius:18px;
-    padding:10px 14px;
-    background:#151515;
-    color:#fff;
-    border:1px solid rgba(255,255,255,.12);
-    cursor:pointer;
-  `;
-
-  privateButton.addEventListener(
-    "click",
-    openPrivateList
-  );
-
-  chatPage.appendChild(
-    privateButton
-  );
-
-
-  /*
-     Swipe
-  */
-
-  chatPage.addEventListener(
-    "touchstart",
-    e => {
-
-      roomTouchStartX =
-        e.changedTouches[0].screenX;
-
-    },
-    {
-      passive:true
-    }
-  );
-
-
-  chatPage.addEventListener(
-    "touchend",
-    e => {
-
-      roomTouchEndX =
-        e.changedTouches[0].screenX;
-
-      handleRoomSwipe();
-
-    },
-    {
-      passive:true
-    }
-  );
-
-}
-
-
-function handleRoomSwipe(){
-
-  const difference =
-    roomTouchEndX -
-    roomTouchStartX;
-
-  if(
-    Math.abs(
-      difference
-    ) < 70
-  ){
-
-    return;
-  }
-
-  if(
-    difference < 0
-  ){
-
-    switchRoomBy(
-      1
-    );
-
-  }else{
-
-    switchRoomBy(
-      -1
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   ROOM SELECTOR
-   ========================================================= */
-
-function showRoomSelector(){
-
-  if(!roomSelector){
-
-    createRoomSystem();
-
-  }
-
-  roomSelector.style.display =
-    "flex";
-
-  if(roomTabs){
-
-    roomTabs.style.display =
-      "none";
-
-  }
-
-  if(roomAdminBar){
-
-    roomAdminBar.style.display =
-      "none";
-
-  }
-
-  renderRooms();
-
-}
-
-
-function hideRoomSelector(){
-
-  if(roomSelector){
-
-    roomSelector.style.display =
-      "none";
-
-  }
-
-  if(roomTabs){
-
-    roomTabs.style.display =
-      "flex";
-
-  }
-
-}
-
-
-function renderRooms(){
-
-  if(!roomSelector){
-    return;
-  }
-
-  const grid =
-    $("mersalRoomsGrid");
-
-  if(!grid){
-    return;
-  }
-
-  grid.innerHTML =
-    "";
-
-  if(!rooms.length){
-
-    grid.innerHTML = `
-
-      <div style="
-        grid-column:1/-1;
-        padding:30px;
-        text-align:center;
-        color:#aaa;
-      ">
-
-        💤 لا توجد غرف مفعلة حالياً
-
-      </div>
-
-    `;
-
-    return;
-  }
-
-
-  rooms
-    .filter(
-      room =>
-        room.enabled !== false
-    )
-    .forEach(
-      room => {
-
-        const card =
-          document.createElement(
-            "button"
-          );
-
-        card.type =
-          "button";
-
-        card.style.cssText = `
-          text-align:right;
-          border:1px solid rgba(255,255,255,.10);
-          background:#111;
-          color:#fff;
-          border-radius:18px;
-          padding:18px;
-          cursor:pointer;
-          min-height:125px;
-        `;
-
-        card.innerHTML = `
-
-          <div style="
-            font-size:21px;
-            font-weight:bold;
-            margin-bottom:8px;
-          ">
-            🏠 ${escapeHtml(
-              room.name
-            )}
-          </div>
-
-          <div style="
-            color:#aaa;
-            line-height:1.6;
-          ">
-            ${escapeHtml(
-              room.description ||
-              "بدون وصف"
-            )}
-          </div>
-
-          <div style="
-            margin-top:12px;
-            color:#777;
-            font-size:12px;
-          ">
-            اضغط للدخول
-          </div>
-
-        `;
-
-        card.addEventListener(
-          "click",
-          () =>
-            openPublicRoom(
-              room.id
-            )
-        );
-
-        grid.appendChild(
-          card
-        );
-
-      }
-    );
-
-}
-
-
-socket.on(
-  "rooms list",
-  list => {
-
-    rooms =
-      Array.isArray(list)
-        ? list
-        : [];
-
-    if(
-      roomSelector &&
-      roomSelector.style.display !==
-        "none"
-    ){
-
-      renderRooms();
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   OPEN PUBLIC ROOM
-   ========================================================= */
-
-function openPublicRoom(
-  roomId
-){
-
-  const room =
-    rooms.find(
-      item =>
-        String(item.id) ===
-        String(roomId)
-    );
-
-  if(!room){
-    return;
-  }
-
-
-  /*
-     Maximum 3 public rooms
-  */
-
-  if(
-    !openRooms.includes(
-      String(roomId)
-    ) &&
-    openRooms.length >= 3
-  ){
-
-    showToast(
-      "⚠️ يمكنك فتح 3 غرف عامة كحد أقصى"
-    );
-
-    return;
-
-  }
-
-
-  if(
-    !openRooms.includes(
-      String(roomId)
-    )
-  ){
-
-    openRooms.push(
-      String(roomId)
-    );
-
-    roomMessages[
-      String(roomId)
-    ] ||= [];
-
-    roomScrollPositions[
-      String(roomId)
-    ] ||= 0;
-
-  }
-
-
-  socket.emit(
-    "join room",
-    roomId
-  );
-
-}
-
-
-socket.on(
-  "room joined",
-  data => {
-
-    const room =
-      data?.room;
-
-    if(!room){
-      return;
-    }
-
-    currentRoomId =
-      String(room.id);
-
-    currentTab =
-      "room:" +
-      currentRoomId;
-
-    roomMessages[
-      currentRoomId
-    ] ||= [];
-
-
-    hideRoomSelector();
-
-    renderRoomTabs();
-
-    showPublicRoomInterface();
-
-    renderRoomMessages(
-      currentRoomId
-    );
-
-    updateRoomAdminBar();
-
-    showToast(
-      `🏠 دخلت ${room.name}`
-    );
-
-    requestAnimationFrame(
-      () =>
-        focusMessageInput()
-    );
-
-  }
-);
-
-
-/* =========================================================
-   ROOM TABS
-   ========================================================= */
-
-function renderRoomTabs(){
-
-  if(!roomTabs){
-    return;
-  }
-
-  roomTabs.innerHTML =
-    "";
-
-
-  /*
-     Public rooms
-  */
-
-  openRooms.forEach(
-    roomId => {
-
-      const room =
-        rooms.find(
-          item =>
-            String(
-              item.id
-            ) ===
-            String(roomId)
-        );
-
-      if(!room){
-        return;
-      }
-
-      const tab =
-        document.createElement(
-          "div"
-        );
-
-      tab.style.cssText = `
-        display:flex;
-        align-items:center;
-        gap:7px;
-        flex:0 0 auto;
-        border-radius:13px;
-        padding:7px 8px 7px 12px;
-        background:${
-          currentTab ===
-          "room:" + roomId
-            ? "#242424"
-            : "#111"
-        };
-        color:#fff;
-        border:1px solid rgba(255,255,255,.08);
-      `;
-
-      const open =
-        document.createElement(
-          "button"
-        );
-
-      open.type =
-        "button";
-
-      open.textContent =
-        "🏠 " +
-        room.name;
-
-      open.style.cssText = `
-        background:none;
-        border:none;
-        color:#fff;
-        cursor:pointer;
-      `;
-
-      open.onclick =
-        () =>
-          switchToRoom(
-            roomId
-          );
-
-
-      const close =
-        document.createElement(
-          "button"
-        );
-
-      close.type =
-        "button";
-
-      close.textContent =
-        "✕";
-
-      close.style.cssText = `
-        background:none;
-        border:none;
-        color:#aaa;
-        cursor:pointer;
-        padding:2px 4px;
-      `;
-
-      close.onclick =
-        e => {
-
-          e.stopPropagation();
-
-          closePublicRoom(
-            roomId
-          );
-
-        };
-
-
-      tab.append(
-        open,
-        close
-      );
-
-      roomTabs.appendChild(
-        tab
-      );
-
-    }
-  );
-
-
-  /*
-     Plus button
-  */
-
-  const plus =
-    document.createElement(
-      "button"
-    );
-
-  plus.type =
-    "button";
-
-  plus.textContent =
-    "＋";
-
-  plus.title =
-    "فتح غرفة";
-
-  plus.style.cssText = `
-    flex:0 0 auto;
-    border:1px solid rgba(255,255,255,.1);
-    background:#151515;
-    color:#fff;
-    border-radius:13px;
-    min-width:45px;
-    cursor:pointer;
-  `;
-
-  plus.onclick =
-    showRoomSelector;
-
-  roomTabs.appendChild(
-    plus
-  );
-
-
-  /*
-     Private tabs
-  */
-
-  Object.keys(
-    privateChats
-  ).forEach(
-    userId => {
-
-      const chat =
-        privateChats[
-          userId
-        ];
-
-      const tab =
-        document.createElement(
-          "div"
-        );
-
-      tab.style.cssText = `
-        display:flex;
-        align-items:center;
-        gap:7px;
-        flex:0 0 auto;
-        border-radius:13px;
-        padding:7px 8px 7px 12px;
-        background:${
-          currentTab ===
-          "private:" + userId
-            ? "#242424"
-            : "#111"
-        };
-        border:1px solid rgba(255,255,255,.08);
-      `;
-
-
-      const unread =
-        unreadPrivate[
-          userId
-        ] || 0;
-
-
-      const open =
-        document.createElement(
-          "button"
-        );
-
-      open.type =
-        "button";
-
-      open.innerHTML =
-        `💬 ${escapeHtml(
-          chat.name
-        )}${
-          unread
-            ? ` <b style="color:#ff5252">(${unread})</b>`
-            : ""
-        }`;
-
-      open.style.cssText = `
-        background:none;
-        border:none;
-        color:#fff;
-        cursor:pointer;
-      `;
-
-      open.onclick =
-        () =>
-          switchToPrivate(
-            userId
-          );
-
-
-      const close =
-        document.createElement(
-          "button"
-        );
-
-      close.type =
-        "button";
-
-      close.textContent =
-        "✕";
-
-      close.style.cssText = `
-        background:none;
-        border:none;
-        color:#aaa;
-        cursor:pointer;
-      `;
-
-      close.onclick =
-        e => {
-
-          e.stopPropagation();
-
-          closePrivateTab(
-            userId
-          );
-
-        };
-
-
-      tab.append(
-        open,
-        close
-      );
-
-      roomTabs.appendChild(
-        tab
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   SWITCH ROOM
-   ========================================================= */
-
-function switchToRoom(
-  roomId
-){
-
-  roomId =
-    String(roomId);
-
-  if(
-    !openRooms.includes(
-      roomId
-    )
-  ){
-
-    return;
-  }
-
-  saveCurrentScroll();
-
-  currentRoomId =
-    roomId;
-
-  currentTab =
-    "room:" +
-    roomId;
-
-  socket.emit(
-    "join room",
-    roomId
-  );
-
-  renderRoomTabs();
-
-  showPublicRoomInterface();
-
-  renderRoomMessages(
-    roomId
-  );
-
-  updateRoomAdminBar();
-
-}
-
-
-function switchRoomBy(
-  direction
-){
-
-  const tabs = [
-    ...openRooms.map(
-      id =>
-        "room:" + id
-    ),
-    ...Object.keys(
-      privateChats
-    ).map(
-      id =>
-        "private:" + id
-    )
-  ];
-
-  if(!tabs.length){
-    return;
-  }
-
-  let index =
-    tabs.indexOf(
-      currentTab
-    );
-
-  if(index < 0){
-    index = 0;
-  }
-
-  index += direction;
-
-  if(
-    index < 0
-  ){
-
-    index =
-      tabs.length - 1;
-
-  }
-
-  if(
-    index >= tabs.length
-  ){
-
-    index = 0;
-
-  }
-
-  const tab =
-    tabs[index];
-
-  if(
-    tab.startsWith(
-      "room:"
-    )
-  ){
-
-    switchToRoom(
-      tab.replace(
-        "room:",
-        ""
-      )
-    );
-
-  }else{
-
-    switchToPrivate(
-      tab.replace(
-        "private:",
-        ""
-      )
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   CLOSE PUBLIC ROOM
-   ========================================================= */
-
-function closePublicRoom(
-  roomId
-){
-
-  roomId =
-    String(roomId);
-
-  const index =
-    openRooms.indexOf(
-      roomId
-    );
-
-  if(index < 0){
-    return;
-  }
-
-  saveCurrentScroll();
-
-  openRooms.splice(
-    index,
-    1
-  );
-
-
-  if(
-    currentTab ===
-    "room:" + roomId
-  ){
-
-    if(openRooms.length){
-
-      switchToRoom(
-        openRooms[
-          Math.max(
-            0,
-            index - 1
-          )
-        ]
-      );
-
-    }else{
-
-      currentRoomId =
-        null;
-
-      currentTab =
-        null;
-
-      socket.emit(
-        "leave room"
-      );
-
-      showRoomSelector();
-
-      clearMessages();
-
-    }
-
-  }
-
-
-  renderRoomTabs();
-
-}
-
-
-/* =========================================================
-   PUBLIC INTERFACE
-   ========================================================= */
-
-function showPublicRoomInterface(){
-
-  if(messages){
-
-    messages.style.display =
-      "block";
-
-  }
-
-  const box =
-    document.querySelector(
-      ".message-box"
-    );
-
-  if(box){
-
-    box.style.display =
-      "flex";
-
-  }
-
-  if(privateMessages){
-
-    privateMessages.style.display =
-      "none";
-
-  }
-
-}
-
-
-function clearMessages(){
-
-  if(messages){
-
-    messages.innerHTML =
-      "";
-
-  }
-
-}
-
-
-/* =========================================================
-   ROOM MESSAGE STORAGE
-   ========================================================= */
-
-function saveCurrentScroll(){
-
-  if(
-    currentTab &&
-    currentTab.startsWith(
-      "room:"
-    ) &&
-    messages
-  ){
-
-    const roomId =
-      currentTab.replace(
-        "room:",
-        ""
-      );
-
-    roomScrollPositions[
-      roomId
-    ] =
-      messages.scrollTop;
-
-  }
-
-}
-
-
-/* =========================================================
-   RECEIVE MESSAGE
-   ========================================================= */
-
-socket.on(
-  "chat message",
-  data => {
-
-    const roomId =
-      String(
-        data.roomId ||
-        currentRoomId ||
-        ""
-      );
-
-    if(!roomId){
-      return;
-    }
-
-    roomMessages[
-      roomId
-    ] ||= [];
-
-    roomMessages[
-      roomId
-    ].push(
-      data
-    );
-
-
-    /*
-       لا نعرض الرسالة
-       إذا ليست الغرفة الحالية.
-    */
-
-    if(
-      currentTab !==
-      "room:" + roomId
-    ){
-
-      return;
-    }
-
-    renderRoomMessages(
-      roomId,
-      true
-    );
-
-  }
-);
-
-
-/* =========================================================
-   RENDER ROOM MESSAGES
-   ========================================================= */
-
-function renderRoomMessages(
-  roomId,
-  keepBottom = false
-){
-
-  if(!messages){
-    return;
-  }
-
-  roomId =
-    String(roomId);
-
-  messages.innerHTML =
-    "";
-
-
-  const list =
-    roomMessages[
-      roomId
-    ] || [];
-
-
-  list.forEach(
-    data =>
-      appendPublicMessage(
-        data
-      )
-  );
-
-
-  if(keepBottom){
-
-    messages.scrollTop =
-      messages.scrollHeight;
-
-  }else{
-
-    messages.scrollTop =
-      roomScrollPositions[
-        roomId
-      ] || 0;
-
-  }
-
-}
-
-
-function appendPublicMessage(
-  data
-){
-
-  const div =
-    document.createElement(
-      "div"
-    );
-
-  div.className =
-    "message";
-
-
-  if(
-    data.username ===
-    currentUser
-  ){
-
-    div.classList.add(
-      "my-message"
-    );
-
-  }
-
-
-  const user =
-    document.createElement(
-      "div"
-    );
-
-  user.className =
-    "message-user";
-
-  user.style.color =
-    data.color ||
-    "#ffd700";
-
-  user.textContent =
-    `${
-      data.role
-        ? data.role + " "
-        : ""
-    }${
-      data.username ||
-      "مستخدم"
-    }`;
-
-
-  user.addEventListener(
-    "click",
-    () =>
-      showUserPopup(
-        data
-      )
-  );
-
-
-  div.appendChild(
-    user
-  );
-
-
-  if(data.reply){
-
-    const reply =
-      document.createElement(
-        "div"
-      );
-
-    reply.className =
-      "reply-preview";
-
-    reply.textContent =
-      `↩️ ${
-        data.reply.user ||
-        ""
-      }: ${
-        data.reply.text ||
-        ""
-      }`;
-
-    div.appendChild(
-      reply
-    );
-
-  }
-
-
-  const text =
-    document.createElement(
-      "div"
-    );
-
-  text.className =
-    "message-text";
-
-  text.textContent =
-    data.message ||
-    "";
-
-
-  div.appendChild(
-    text
-  );
-
-
-  messages.appendChild(
-    div
-  );
-
-}
-
-
-/* =========================================================
-   SEND PUBLIC MESSAGE
-   ========================================================= */
-
-function sendMessage(){
-
-  if(
-    !currentRoomId
-  ){
-
-    showToast(
-      "🏠 اختر غرفة أولاً"
-    );
-
-    return;
-  }
-
-  if(!messageInput){
-    return;
-  }
-
-  const text =
-    messageInput.value.trim();
-
-  if(!text){
-    return;
-  }
-
-
-  socket.emit(
-    "chat message",
-    {
-
-      roomId:
-        currentRoomId,
-
-      message:
-        text,
-
-      reply:
-        replyData
-
-    }
-  );
-
-
-  messageInput.value =
-    "";
-
-  cancelReply();
-
-
-  requestAnimationFrame(
-    () => {
-
-      messageInput.focus();
-
-      keepChatBottom();
-
-    }
-  );
-
-}
-
-window.sendMessage =
-  sendMessage;
-
-
-/* =========================================================
-   ENTER SEND
-   ========================================================= */
-
-if(messageInput){
-
-  messageInput.addEventListener(
-    "keydown",
-    e => {
-
-      if(
-        e.key ===
-          "Enter" &&
-        !e.shiftKey
-      ){
-
-        e.preventDefault();
-
-        sendMessage();
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   KEEP CHAT BOTTOM
-   ========================================================= */
+// =========================================================
+// KEEP CHAT BOTTOM
+// =========================================================
 
 function keepChatBottom(){
 
-  requestAnimationFrame(
-    () => {
+    requestAnimationFrame(
+        () => {
 
-      if(
-        currentTab &&
-        currentTab.startsWith(
-          "room:"
-        ) &&
-        messages
-      ){
+            const messages =
+                getChatMessages();
 
-        messages.scrollTop =
-          messages.scrollHeight;
+            if(messages){
 
-      }
+                messages.scrollTop =
+                    messages.scrollHeight;
 
-      if(
-        privateMessages
-      ){
+            }
 
-        privateMessages.scrollTop =
-          privateMessages.scrollHeight;
 
-      }
+            const privateMessages =
+                getPrivateMessages();
 
-    }
-  );
+            if(privateMessages){
+
+                privateMessages.scrollTop =
+                    privateMessages.scrollHeight;
+
+            }
+
+        }
+    );
 
 }
 
 
-/* =========================================================
-   USERS
-   ========================================================= */
+// =========================================================
+// LOGIN ELEMENTS
+// =========================================================
+
+const loginPage =
+    $("loginPage");
+
+const chatPage =
+    $("chatPage");
+
+const username =
+    $("username");
+
+const adminPassword =
+    $("adminPassword");
+
+const loginStatus =
+    $("loginStatus");
+
+
+// =========================================================
+// ADMIN PASSWORD CHECK
+// =========================================================
+
+if(username){
+
+    username.addEventListener(
+        "input",
+        () => {
+
+            const name =
+                username.value.trim();
+
+
+            if(loginStatus){
+
+                loginStatus.textContent =
+                    "";
+
+            }
+
+
+            if(!name){
+
+                if(adminPassword){
+
+                    adminPassword.style.display =
+                        "none";
+
+                    adminPassword.value =
+                        "";
+
+                }
+
+                return;
+            }
+
+
+            socket.emit(
+                "check admin",
+                name
+            );
+
+        }
+    );
+
+}
+
 
 socket.on(
-  "room users",
-  users => {
+    "admin check result",
+    isAdmin => {
 
-    usersCache =
-      Array.isArray(
-        users
-      )
-        ? users
-        : [];
+        if(!adminPassword)
+            return;
 
-    renderUsers();
 
-  }
+        if(isAdmin){
+
+            adminPassword.style.display =
+                "block";
+
+        }else{
+
+            adminPassword.style.display =
+                "none";
+
+            adminPassword.value =
+                "";
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// COLORS
+// =========================================================
+
+document
+    .querySelectorAll(
+        ".color-option"
+    )
+    .forEach(
+        element => {
+
+            element.addEventListener(
+                "click",
+                () => {
+
+                    document
+                        .querySelectorAll(
+                            ".color-option"
+                        )
+                        .forEach(
+                            x =>
+                                x.classList.remove(
+                                    "active-color"
+                                )
+                        );
+
+
+                    element.classList.add(
+                        "active-color"
+                    );
+
+
+                    currentColor =
+                        element.dataset.color ||
+                        "#ffd700";
+
+                }
+            );
+
+        }
+    );
+
+
+// =========================================================
+// LOGIN
+// =========================================================
+
+function setLoginStatus(
+    text,
+    error = false
+){
+
+    if(!loginStatus)
+        return;
+
+
+    loginStatus.textContent =
+        text || "";
+
+
+    loginStatus.style.color =
+        error
+            ? "#ff9d9d"
+            : "#9dffca";
+
+}
+
+
+function joinChat(){
+
+    if(loginPending)
+        return;
+
+
+    if(!username)
+        return;
+
+
+    const name =
+        username.value.trim();
+
+
+    if(!name){
+
+        setLoginStatus(
+            "اكتب اسمك أولاً",
+            true
+        );
+
+        username.focus();
+
+        return;
+    }
+
+
+    loginPending =
+        true;
+
+
+    setLoginStatus(
+        "جارٍ الدخول...",
+        false
+    );
+
+
+    socket.emit(
+        "join",
+        {
+            username:
+                name,
+
+            adminPassword:
+                adminPassword
+                    ? adminPassword.value
+                    : "",
+
+            color:
+                currentColor,
+
+            deviceToken:
+                navigator.userAgent
+        }
+    );
+
+}
+
+
+window.joinChat =
+    joinChat;
+
+
+// =========================================================
+// LOGIN SUCCESS
+// =========================================================
+
+socket.on(
+    "login success",
+    data => {
+
+        currentUser =
+            username
+                ? username.value.trim()
+                : "";
+
+
+        loginPending =
+            false;
+
+
+        if(loginPage){
+
+            loginPage.style.display =
+                "none";
+
+        }
+
+
+        if(chatPage){
+
+            chatPage.style.display =
+                "flex";
+
+        }
+
+
+        setLoginStatus(
+            ""
+        );
+
+
+        createRoomInterface();
+
+
+        showRoomSelection();
+
+
+        updateChatViewport();
+
+    }
+);
+
+
+// =========================================================
+// LOGIN ERROR
+// =========================================================
+
+socket.on(
+    "banned",
+    msg => {
+
+        loginPending =
+            false;
+
+
+        setLoginStatus(
+            msg ||
+            "تعذر الدخول",
+            true
+        );
+
+
+        showToast(
+            msg ||
+            "تعذر تنفيذ العملية"
+        );
+
+    }
+);
+
+
+// =========================================================
+// SOCKET CONNECTION
+// =========================================================
+
+socket.on(
+    "connect",
+    () => {
+
+        if(!currentUser){
+
+            setLoginStatus(
+                ""
+            );
+
+        }
+
+    }
 );
 
 
 socket.on(
-  "online users",
-  users => {
+    "disconnect",
+    () => {
+
+        if(currentUser){
+
+            showToast(
+                "⚠️ انقطع الاتصال بالخادم"
+            );
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// ROOM INTERFACE
+// =========================================================
+
+let roomInterfaceCreated =
+    false;
+
+
+function createRoomInterface(){
+
+    if(roomInterfaceCreated)
+        return;
+
+
+    roomInterfaceCreated =
+        true;
+
 
     /*
-       احتياط للتوافق
-       مع السيرفر القديم.
+       ننشئ شاشة الغرف
+       من JavaScript حتى لا نحتاج
+       إلى تعديل index.html الآن.
+    */
+
+    const wrapper =
+        document.createElement(
+            "div"
+        );
+
+
+    wrapper.id =
+        "roomSelection";
+
+
+    wrapper.style.cssText = `
+        position:fixed;
+        inset:0;
+        z-index:9999;
+        background:#080808;
+        color:white;
+        display:none;
+        flex-direction:column;
+        overflow:hidden;
+        direction:rtl;
+    `;
+
+
+    wrapper.innerHTML = `
+
+        <div
+            style="
+                padding:22px 18px 10px;
+                text-align:right;
+            "
+        >
+
+            <div
+                style="
+                    font-size:32px;
+                    font-weight:800;
+                    color:white;
+                "
+            >
+                🏠 غرف مرسال
+            </div>
+
+
+            <div
+                style="
+                    margin-top:6px;
+                    color:#aaa;
+                    font-size:18px;
+                "
+            >
+                اختر الغرفة التي تريد الدخول إليها
+            </div>
+
+        </div>
+
+
+        <div
+            id="roomsContainer"
+            style="
+                flex:1;
+                overflow-y:auto;
+                padding:18px;
+            "
+        ></div>
+
+
+        <div
+            style="
+                padding:15px 18px;
+                color:#777;
+                text-align:center;
+                font-size:14px;
+            "
+        >
+            🔥 Mersal Chat
+        </div>
+
+    `;
+
+
+    document.body.appendChild(
+        wrapper
+    );
+
+}
+
+
+// =========================================================
+// SHOW ROOM SELECTION
+// =========================================================
+
+function showRoomSelection(){
+
+    createRoomInterface();
+
+
+    const selection =
+        $("roomSelection");
+
+
+    if(!selection)
+        return;
+
+
+    selection.style.display =
+        "flex";
+
+
+    /*
+       نخفي واجهة الدردشة مؤقتًا
+       إلى أن يختار المستخدم غرفة.
+    */
+
+    if(chatPage){
+
+        chatPage.style.visibility =
+            "hidden";
+
+    }
+
+
+    renderRooms();
+
+}
+
+
+function hideRoomSelection(){
+
+    const selection =
+        $("roomSelection");
+
+
+    if(selection){
+
+        selection.style.display =
+            "none";
+
+    }
+
+
+    if(chatPage){
+
+        chatPage.style.visibility =
+            "visible";
+
+    }
+
+}
+
+
+// =========================================================
+// RENDER ROOMS
+// =========================================================
+
+function renderRooms(){
+
+    createRoomInterface();
+
+
+    const container =
+        $("roomsContainer");
+
+
+    if(!container)
+        return;
+
+
+    container.innerHTML =
+        "";
+
+
+    const rooms =
+        Array.isArray(
+            roomsCache
+        )
+            ? roomsCache
+            : [];
+
+
+    if(!rooms.length){
+
+        container.innerHTML = `
+
+            <div
+                style="
+                    padding:40px 20px;
+                    text-align:center;
+                    color:#888;
+                    font-size:18px;
+                "
+            >
+                🏠 لا توجد غرف متاحة حالياً
+            </div>
+
+        `;
+
+        return;
+    }
+
+
+    rooms.forEach(
+        room => {
+
+            if(
+                room &&
+                room.enabled === false
+            ){
+
+                return;
+
+            }
+
+
+            const card =
+                document.createElement(
+                    "button"
+                );
+
+
+            card.type =
+                "button";
+
+
+            card.style.cssText = `
+                display:block;
+                width:100%;
+                margin-bottom:15px;
+                padding:22px;
+                border-radius:22px;
+                border:1px solid #292929;
+                background:#111;
+                color:white;
+                text-align:right;
+                cursor:pointer;
+                box-sizing:border-box;
+            `;
+
+
+            const name =
+                escapeHtml(
+                    room.name ||
+                    "غرفة"
+                );
+
+
+            const description =
+                escapeHtml(
+                    room.description ||
+                    "أهلاً وسهلاً بكم"
+                );
+
+
+            card.innerHTML = `
+
+                <div
+                    style="
+                        font-size:28px;
+                        font-weight:800;
+                    "
+                >
+                    🏠 ${name}
+                </div>
+
+
+                <div
+                    style="
+                        margin-top:10px;
+                        color:#aaa;
+                        font-size:18px;
+                    "
+                >
+                    ${description}
+                </div>
+
+
+                <div
+                    style="
+                        margin-top:16px;
+                        color:#777;
+                        font-size:15px;
+                    "
+                >
+                    اضغط للدخول
+                </div>
+
+            `;
+
+
+            card.addEventListener(
+                "click",
+                () => {
+
+                    enterRoom(
+                        room.id
+                    );
+
+                }
+            );
+
+
+            container.appendChild(
+                card
+            );
+
+        }
+    );
+
+}
+
+
+// =========================================================
+// RECEIVE ROOMS
+// =========================================================
+
+socket.on(
+    "rooms updated",
+    rooms => {
+
+        roomsCache =
+            Array.isArray(
+                rooms
+            )
+                ? rooms
+                : [];
+
+
+        renderRooms();
+
+    }
+);
+
+
+// =========================================================
+// ENTER ROOM
+// =========================================================
+
+function enterRoom(
+    roomId
+){
+
+    if(!roomId)
+        return;
+
+
+    const room =
+        roomsCache.find(
+            r =>
+                r.id === roomId
+        );
+
+
+    if(!room)
+        return;
+
+
+    /*
+       نسمح بحد أقصى 3 غرف
+       مفتوحة في نفس الوقت.
     */
 
     if(
-      Array.isArray(users)
+        !openRooms.includes(
+            roomId
+        ) &&
+        openRooms.length >= 3
     ){
 
-      usersCache =
-        users.filter(
-          user =>
-            !currentRoomId ||
-            String(
-              user.roomId
-            ) ===
-            String(
-              currentRoomId
-            )
+        showToast(
+            "⚠️ يمكنك فتح 3 غرف فقط"
         );
 
-      renderUsers();
+        return;
 
     }
 
-  }
+
+    /*
+       هذه هي النقطة المهمة:
+       عند الضغط على الغرفة
+       نرسل أمر السيرفر.
+    */
+
+    socket.emit(
+        "join room",
+        {
+            roomId
+        }
+    );
+
+}
+
+
+// =========================================================
+// ROOM JOINED
+// =========================================================
+
+socket.on(
+    "room joined",
+    data => {
+
+        if(!data)
+            return;
+
+
+        const room =
+            data.room;
+
+
+        if(!room)
+            return;
+
+
+        currentRoom =
+            room;
+
+
+        activeRoomId =
+            room.id;
+
+
+        if(
+            !openRooms.includes(
+                room.id
+            )
+        ){
+
+            openRooms.push(
+                room.id
+            );
+
+        }
+
+
+        hideRoomSelection();
+
+
+        prepareRoomView(
+            room
+        );
+
+
+        clearCurrentRoomMessages();
+
+
+        showToast(
+            `🏠 دخلت غرفة ${room.name}`
+        );
+
+
+        /*
+           نطلب المستخدمين والبيانات
+           الخاصة بالغرفة.
+        */
+
+        socket.emit(
+            "get room users"
+        );
+
+
+        socket.emit(
+            "get room moderation",
+            room.id
+        );
+
+
+        socket.emit(
+            "get room admins",
+            room.id
+        );
+
+    }
 );
 
 
-function renderUsers(){
+// =========================================================
+// ROOM ERROR
+// =========================================================
 
-  if(!usersList){
-    return;
-  }
+socket.on(
+    "room error",
+    message => {
 
-  usersList.innerHTML =
-    "";
-
-
-  usersCache.forEach(
-    user => {
-
-      const div =
-        document.createElement(
-          "div"
+        showToast(
+            message ||
+            "❌ حدث خطأ في الغرفة"
         );
 
-      div.className =
-        "user-item";
-
-
-      div.innerHTML =
-        `👤 ${
-          user.role
-            ? user.role + " "
-            : ""
-        }${
-          escapeHtml(
-            user.username
-          )
-        }`;
-
-
-      div.addEventListener(
-        "click",
-        () =>
-          showUserPopup(
-            user
-          )
-      );
-
-
-      usersList.appendChild(
-        div
-      );
-
     }
-  );
-
-}
+);
 
 
-/* =========================================================
-   USERS MENU
-   ========================================================= */
+// =========================================================
+// ROOM DELETED
+// =========================================================
 
-function openUsers(){
-
-  if(!usersMenu){
-    return;
-  }
-
-  renderUsers();
-
-  usersMenu.style.display =
-    "flex";
-
-  requestAnimationFrame(
+socket.on(
+    "room deleted",
     () => {
 
-      usersMenu.classList.add(
-        "show"
-      );
+        const deletedId =
+            activeRoomId;
+
+
+        if(deletedId){
+
+            openRooms =
+                openRooms.filter(
+                    id =>
+                        id !==
+                        deletedId
+                );
+
+        }
+
+
+        currentRoom =
+            null;
+
+        activeRoomId =
+            null;
+
+
+        showRoomSelection();
+
+
+        showToast(
+            "🗑️ تم حذف الغرفة"
+        );
 
     }
-  );
-
-}
-
-window.openUsers =
-  openUsers;
+);
 
 
-function closeUsers(){
+// =========================================================
+// PREPARE ROOM VIEW
+// =========================================================
 
-  if(!usersMenu){
-    return;
-  }
-
-  usersMenu.classList.remove(
-    "show"
-  );
-
-  setTimeout(
-    () => {
-
-      if(
-        !usersMenu.classList.contains(
-          "show"
-        )
-      ){
-
-        usersMenu.style.display =
-          "none";
-
-      }
-
-    },
-    230
-  );
-
-}
-
-window.closeUsers =
-  closeUsers;
-
-
-/* =========================================================
-   USER POPUP
-   ========================================================= */
-
-function showUserPopup(
-  user
+function prepareRoomView(
+    room
 ){
 
-  closeUsers();
-
-  const overlay =
-    $("userPopupOverlay");
-
-  const title =
-    $("popupUsername");
-
-  const buttons =
-    $("popupButtons");
+    const title =
+        document.querySelector(
+            ".top-title"
+        );
 
 
-  if(!overlay){
-    return;
-  }
+    if(title){
+
+        title.textContent =
+            `🏠 ${room.name}`;
+
+    }
 
 
-  if(title){
-
-    title.textContent =
-      `👤 ${
-        user.role
-          ? user.role + " "
-          : ""
-      }${
-        user.username ||
-        "مستخدم"
-      }`;
-
-  }
+    const input =
+        getMessageInput();
 
 
-  if(!buttons){
-    return;
-  }
+    if(input){
+
+        input.placeholder =
+            `اكتب رسالتك في ${room.name}...`;
+
+    }
+
+}
 
 
-  buttons.innerHTML =
-    "";
+// =========================================================
+// CLEAR CURRENT ROOM
+// =========================================================
+
+function clearCurrentRoomMessages(){
+
+    const messages =
+        getChatMessages();
 
 
-  /*
-     Copy
-  */
+    if(messages){
 
-  const copyBtn =
-    document.createElement(
-      "button"
+        messages.innerHTML =
+            "";
+
+    }
+
+
+    replyData =
+        null;
+
+
+    const replyBox =
+        $("replyBox");
+
+
+    if(replyBox){
+
+        replyBox.style.display =
+            "none";
+
+    }
+
+}
+// =========================================================
+// SEND PUBLIC MESSAGE
+// =========================================================
+
+function sendMessage(){
+
+    const input =
+        getMessageInput();
+
+
+    if(!input)
+        return;
+
+
+    const message =
+        input.value.trim();
+
+
+    if(!message)
+        return;
+
+
+    if(!activeRoomId){
+
+        showToast(
+            "🏠 اختر غرفة أولاً"
+        );
+
+        return;
+    }
+
+
+    socket.emit(
+        "chat message",
+        {
+            message,
+
+            reply:
+                replyData
+        }
     );
 
-  copyBtn.textContent =
-    "📋 نسخ الاسم";
 
-  copyBtn.onclick =
-    () =>
-      copyName(
-        user.username
-      );
+    input.value =
+        "";
 
 
-  /*
-     Reply
-  */
+    cancelReply();
 
-  const replyBtn =
-    document.createElement(
-      "button"
+
+    setTimeout(
+        () => {
+
+            input.focus();
+
+        },
+        20
     );
 
-  replyBtn.textContent =
-    "↩️ رد";
-
-  replyBtn.onclick =
-    () =>
-      replyTo(
-        user.username,
-        user.message ||
-        ""
-      );
+}
 
 
-  /*
-     Private
-  */
-
-  const privateBtn =
-    document.createElement(
-      "button"
-    );
-
-  privateBtn.textContent =
-    "💬 مرسال خاص";
-
-  privateBtn.onclick =
-    () =>
-      openPrivate(
-        user.id,
-        user.username
-      );
+window.sendMessage =
+    sendMessage;
 
 
-  buttons.append(
-    copyBtn,
-    replyBtn,
-    privateBtn
-  );
+// =========================================================
+// ENTER KEY TO SEND
+// =========================================================
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        const target =
+            event.target;
 
 
-  /*
-     Admin moderation
-  */
+        if(
+            target &&
+            target.id ===
+                "messageInput"
+        ){
 
-  if(
-    isAdmin &&
-    user.id !==
-      currentUserId
-  ){
+            if(
+                event.key ===
+                    "Enter" &&
+                !event.shiftKey
+            ){
 
-    const separator =
-      document.createElement(
-        "div"
-      );
+                event.preventDefault();
 
-    separator.style.cssText = `
-      height:1px;
-      background:rgba(255,255,255,.1);
-      margin:8px 0;
+                sendMessage();
+
+            }
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// RECEIVE PUBLIC MESSAGE
+// =========================================================
+
+socket.on(
+    "chat message",
+    data => {
+
+        if(!data)
+            return;
+
+
+        const roomId =
+            data.roomId ||
+            activeRoomId;
+
+
+        /*
+           إذا كانت الرسالة لغرفة غير
+           الغرفة الحالية، لا نعرضها
+           في الغرفة الحالية.
+        */
+
+        if(
+            roomId &&
+            activeRoomId &&
+            roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        renderPublicMessage(
+            data
+        );
+
+    }
+);
+
+
+// =========================================================
+// RENDER PUBLIC MESSAGE
+// =========================================================
+
+function renderPublicMessage(
+    data
+){
+
+    const messages =
+        getChatMessages();
+
+
+    if(!messages)
+        return;
+
+
+    const item =
+        document.createElement(
+            "div"
+        );
+
+
+    item.className =
+        "mersal-message";
+
+
+    item.dataset.messageId =
+        data.id || "";
+
+
+    const name =
+        escapeHtml(
+            data.name ||
+            "مستخدم"
+        );
+
+
+    const text =
+        escapeHtml(
+            data.message ||
+            ""
+        );
+
+
+    const time =
+        escapeHtml(
+            data.time ||
+            ""
+        );
+
+
+    let replyHtml =
+        "";
+
+
+    if(data.reply){
+
+        replyHtml = `
+
+            <div
+                style="
+                    padding:8px 10px;
+                    margin-bottom:8px;
+                    border-right:3px solid #777;
+                    background:#191919;
+                    border-radius:8px;
+                    color:#999;
+                    font-size:13px;
+                "
+            >
+                ↩️ ${escapeHtml(
+                    data.reply.message ||
+                    ""
+                )}
+            </div>
+
+        `;
+
+    }
+
+
+    item.innerHTML = `
+
+        <div
+            class="message-content"
+            style="
+                padding:10px 13px;
+            "
+        >
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
+                    gap:10px;
+                    margin-bottom:4px;
+                "
+            >
+
+                <strong>
+                    ${name}
+                </strong>
+
+
+                <span
+                    style="
+                        color:#777;
+                        font-size:11px;
+                    "
+                >
+                    ${time}
+                </span>
+
+            </div>
+
+
+            ${replyHtml}
+
+
+            <div
+                class="message-text"
+                style="
+                    white-space:pre-wrap;
+                    word-break:break-word;
+                "
+            >
+                ${text}
+            </div>
+
+        </div>
+
     `;
 
-    buttons.appendChild(
-      separator
+
+    /*
+       الضغط المطول على رسالة
+       يفتح خيارات الرد والحذف
+       في الجزء الثالث.
+    */
+
+    item.addEventListener(
+        "contextmenu",
+        event => {
+
+            event.preventDefault();
+
+            selectMessage(
+                data
+            );
+
+        }
     );
 
 
-    addModerationButton(
-      buttons,
-      "👢 طرد من الغرفة",
-      "kick",
-      user
+    messages.appendChild(
+        item
     );
 
 
-    addModerationButton(
-      buttons,
-      "🚫 حظر من الغرفة",
-      "ban",
-      user
-    );
-
-
-    addModerationButton(
-      buttons,
-      "🔇 كتم",
-      "mute",
-      user
-    );
-
-
-    addModerationButton(
-      buttons,
-      "⛔ فصل",
-      "disconnect",
-      user
-    );
-
-
-    addModerationButton(
-      buttons,
-      "⭐ إعطاء نجمة",
-      "star",
-      user
-    );
-
-
-    addModerationButton(
-      buttons,
-      "⭐❌ سحب النجمة",
-      "unstar",
-      user
-    );
-
-  }
-
-
-  overlay.style.display =
-    "flex";
+    keepChatBottom();
 
 }
 
-window.showUserPopup =
-  showUserPopup;
+
+// =========================================================
+// SELECT MESSAGE
+// =========================================================
+
+let selectedMessage =
+    null;
 
 
-function addModerationButton(
-  parent,
-  text,
-  action,
-  user
+function selectMessage(
+    data
 ){
 
-  const button =
-    document.createElement(
-      "button"
+    selectedMessage =
+        data;
+
+
+    showMessageActions(
+        data
     );
 
-  button.textContent =
-    text;
-
-  button.onclick =
-    () => {
-
-      if(
-        !currentRoomId
-      ){
-        return;
-      }
+}
 
 
-      if(
-        action ===
-        "star"
-      ){
+// =========================================================
+// MESSAGE ACTIONS
+// =========================================================
 
-        socket.emit(
-          "give star",
-          user.username
+function showMessageActions(
+    data
+){
+
+    let menu =
+        $("messageActions");
+
+
+    if(!menu){
+
+        menu =
+            document.createElement(
+                "div"
+            );
+
+
+        menu.id =
+            "messageActions";
+
+
+        menu.style.cssText = `
+            position:fixed;
+            left:15px;
+            right:15px;
+            bottom:90px;
+            z-index:10001;
+            background:#181818;
+            border:1px solid #333;
+            border-radius:18px;
+            padding:12px;
+            box-shadow:0 10px 40px rgba(0,0,0,.5);
+            direction:rtl;
+        `;
+
+
+        document.body.appendChild(
+            menu
         );
 
-      }
+    }
 
 
-      else if(
-        action ===
-        "unstar"
-      ){
+    menu.innerHTML = `
 
-        socket.emit(
-          "remove star",
-          user.username
-        );
-
-      }
-
-
-      else{
-
-        socket.emit(
-          action +
-            " user",
-          user.id
-        );
-
-      }
+        <button
+            type="button"
+            id="replyMessageButton"
+            style="
+                width:100%;
+                padding:13px;
+                border:0;
+                border-radius:12px;
+                background:#292929;
+                color:white;
+                margin-bottom:8px;
+                font-size:16px;
+            "
+        >
+            ↩️ رد
+        </button>
 
 
-      closeUserPopup();
+        <button
+            type="button"
+            id="closeMessageActions"
+            style="
+                width:100%;
+                padding:13px;
+                border:0;
+                border-radius:12px;
+                background:#222;
+                color:#aaa;
+                font-size:16px;
+            "
+        >
+            إلغاء
+        </button>
+
+    `;
+
+
+    menu.style.display =
+        "block";
+
+
+    const replyButton =
+        $("replyMessageButton");
+
+
+    if(replyButton){
+
+        replyButton.onclick =
+            () => {
+
+                startReply(
+                    data
+                );
+
+                hideMessageActions();
+
+            };
+
+    }
+
+
+    const closeButton =
+        $("closeMessageActions");
+
+
+    if(closeButton){
+
+        closeButton.onclick =
+            hideMessageActions;
+
+    }
+
+}
+
+
+function hideMessageActions(){
+
+    const menu =
+        $("messageActions");
+
+
+    if(menu){
+
+        menu.style.display =
+            "none";
+
+    }
+
+}
+
+
+function startReply(
+    data
+){
+
+    replyData = {
+
+        id:
+            data.id,
+
+        name:
+            data.name,
+
+        message:
+            data.message
 
     };
 
 
-  parent.appendChild(
-    button
-  );
-
-}
+    let replyBox =
+        $("replyBox");
 
 
-function closeUserPopup(){
+    if(!replyBox){
 
-  const overlay =
-    $("userPopupOverlay");
-
-  if(overlay){
-
-    overlay.style.display =
-      "none";
-
-  }
-
-}
-
-window.closeUserPopup =
-  closeUserPopup;
+        replyBox =
+            document.createElement(
+                "div"
+            );
 
 
-/* =========================================================
-   COPY
-   ========================================================= */
-
-async function copyName(
-  name
-){
-
-  try{
-
-    await navigator.clipboard.writeText(
-      name || ""
-    );
-
-    showToast(
-      "✅ تم نسخ الاسم"
-    );
-
-  }catch{
-
-    showToast(
-      "❌ تعذر نسخ الاسم"
-    );
-
-  }
-
-  closeUserPopup();
-
-}
-
-window.copyName =
-  copyName;
+        replyBox.id =
+            "replyBox";
 
 
-/* =========================================================
-   REPLY
-   ========================================================= */
-
-function replyTo(
-  user,
-  text
-){
-
-  closeUsers();
-
-  closeUserPopup();
-
-  replyData = {
-
-    user:
-      user,
-
-    text:
-      text
-
-  };
+        replyBox.style.cssText = `
+            position:fixed;
+            left:10px;
+            right:10px;
+            bottom:65px;
+            z-index:9998;
+            padding:10px 13px;
+            background:#191919;
+            border-right:3px solid #777;
+            color:#bbb;
+            border-radius:10px;
+            direction:rtl;
+        `;
 
 
-  const replyBox =
-    $("replyBox");
+        document.body.appendChild(
+            replyBox
+        );
 
-  const replyText =
-    $("replyText");
+    }
 
 
-  if(replyBox){
+    replyBox.innerHTML = `
+
+        <div
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:10px;
+            "
+        >
+
+            <div>
+                ↩️ الرد على
+                <strong>
+                    ${escapeHtml(
+                        data.name
+                    )}
+                </strong>
+
+                <div
+                    style="
+                        margin-top:3px;
+                        color:#777;
+                        font-size:13px;
+                    "
+                >
+                    ${escapeHtml(
+                        data.message
+                    )}
+                </div>
+            </div>
+
+
+            <button
+                type="button"
+                onclick="cancelReply()"
+                style="
+                    border:0;
+                    background:transparent;
+                    color:#aaa;
+                    font-size:20px;
+                "
+            >
+                ×
+            </button>
+
+        </div>
+
+    `;
+
 
     replyBox.style.display =
-      "flex";
-
-  }
+        "block";
 
 
-  if(replyText){
-
-    replyText.textContent =
-      `↩️ ${user}: ${text}`;
-
-  }
+    const input =
+        getMessageInput();
 
 
-  messageInput?.focus();
+    if(input){
+
+        input.focus();
+
+    }
 
 }
-
-window.replyTo =
-  replyTo;
 
 
 function cancelReply(){
 
-  replyData =
-    null;
-
-  const replyBox =
-    $("replyBox");
-
-  if(replyBox){
-
-    replyBox.style.display =
-      "none";
-
-  }
-
-}
-
-window.cancelReply =
-  cancelReply;
-
-
-/* =========================================================
-   PRIVATE CHAT
-   ========================================================= */
-
-function openPrivate(
-  id,
-  name
-){
-
-  if(
-    !id ||
-    id === currentUserId
-  ){
-
-    return;
-  }
-
-
-  const userId =
-    String(id);
-
-
-  privateChats[
-    userId
-  ] ||= {
-
-    id:
-      userId,
-
-    name:
-      name ||
-      "مستخدم",
-
-    messages:
-      []
-
-  };
-
-
-  privateChats[
-    userId
-  ].name =
-    name ||
-    privateChats[
-      userId
-    ].name;
-
-
-  unreadPrivate[
-    userId
-  ] = 0;
-
-
-  currentTab =
-    "private:" +
-    userId;
-
-
-  currentRoomId =
-    null;
-
-
-  /*
-     server socket
-     remains connected
-     to public room only
-     until another room.
-  */
-
-
-  renderRoomTabs();
-
-  renderPrivateChat(
-    userId
-  );
-
-  closeUsers();
-
-  closeUserPopup();
-
-}
-
-window.openPrivate =
-  openPrivate;
-
-
-/* =========================================================
-   PRIVATE LIST
-   ========================================================= */
-
-function openPrivateList(){
-
-  if(!usersCache.length){
-
-    showToast(
-      "لا يوجد مستخدمون في الغرفة"
-    );
-
-    return;
-  }
-
-
-  if(menuTitle){
-
-    menuTitle.textContent =
-      "💬 اختر شخصًا للمراسلة";
-
-  }
-
-
-  if(usersList){
-
-    usersList.innerHTML =
-      "";
-
-  }
-
-
-  usersCache
-    .filter(
-      user =>
-        user.id !==
-        currentUserId
-    )
-    .forEach(
-      user => {
-
-        const div =
-          document.createElement(
-            "div"
-          );
-
-        div.className =
-          "user-item";
-
-        div.innerHTML =
-          `💬 ${
-            user.role
-              ? user.role + " "
-              : ""
-          }${
-            escapeHtml(
-              user.username
-            )
-          }`;
-
-        div.onclick =
-          () =>
-            openPrivate(
-              user.id,
-              user.username
-            );
-
-        usersList?.appendChild(
-          div
-        );
-
-      }
-    );
-
-
-  if(usersMenu){
-
-    usersMenu.style.display =
-      "flex";
-
-    requestAnimationFrame(
-      () =>
-        usersMenu.classList.add(
-          "show"
-        )
-    );
-
-  }
-
-}
-
-window.openPrivateList =
-  openPrivateList;
-
-
-/* =========================================================
-   PRIVATE CHAT RENDER
-   ========================================================= */
-
-function renderPrivateChat(
-  userId
-){
-
-  /*
-     نخفي public
-  */
-
-  if(messages){
-
-    messages.style.display =
-      "none";
-
-  }
-
-  const publicBox =
-    document.querySelector(
-      ".message-box"
-    );
-
-  if(publicBox){
-
-    publicBox.style.display =
-      "none";
-
-  }
-
-
-  if(privateMessages){
-
-    privateMessages.style.display =
-      "block";
-
-  }
-
-
-  /*
-     إذا HTML عنده privateChatBox
-     نستعمله كحاوية.
-  */
-
-  const privateBox =
-    $("privateChatBox");
-
-
-  if(privateBox){
-
-    privateBox.style.display =
-      "flex";
-
-  }
-
-
-  const chat =
-    privateChats[
-      userId
-    ];
-
-  if(!chat){
-    return;
-  }
-
-
-  /*
-     العنوان
-  */
-
-  const title =
-    $("privateTitle");
-
-  if(title){
-
-    title.textContent =
-      `💬 ${chat.name}`;
-
-  }
-
-
-  if(privateMessages){
-
-    privateMessages.innerHTML =
-      "";
-
-
-    /*
-       أول رسالة تعريفية
-    */
-
-    if(
-      chat.messages.length ===
-      0
-    ){
-
-      const notice =
-        document.createElement(
-          "div"
-        );
-
-      notice.style.cssText = `
-        text-align:center;
-        color:#999;
-        padding:15px;
-        font-size:13px;
-      `;
-
-      notice.textContent =
-        `💬 أنت الآن في محادثة خاصة مع ${chat.name}`;
-
-      privateMessages.appendChild(
-        notice
-      );
-
-    }
-
-
-    chat.messages.forEach(
-      message =>
-        appendPrivateMessage(
-          message
-        )
-    );
-
-
-    privateMessages.scrollTop =
-      privateMessages.scrollHeight;
-
-  }
-
-
-  /*
-     input
-  */
-
-  setTimeout(
-    () => {
-
-      privateInput?.focus();
-
-    },
-    100
-  );
-
-}
-
-
-/* =========================================================
-   APPEND PRIVATE MESSAGE
-   ========================================================= */
-
-function appendPrivateMessage(
-  data
-){
-
-  if(!privateMessages){
-    return;
-  }
-
-  const div =
-    document.createElement(
-      "div"
-    );
-
-  div.className =
-    "private-message " +
-    (
-      data.mine
-        ? "me"
-        : "other"
-    );
-
-
-  const name =
-    document.createElement(
-      "div"
-    );
-
-  name.className =
-    "private-name";
-
-  name.textContent =
-    data.from ||
-    currentUser ||
-    "مستخدم";
-
-
-  const text =
-    document.createElement(
-      "div"
-    );
-
-  text.textContent =
-    data.message ||
-    "";
-
-
-  div.append(
-    name,
-    text
-  );
-
-
-  privateMessages.appendChild(
-    div
-  );
-
-}
-
-
-/* =========================================================
-   SEND PRIVATE
-   ========================================================= */
-
-function sendPrivate(){
-
-  if(
-    !currentTab ||
-    !currentTab.startsWith(
-      "private:"
-    )
-  ){
-
-    return;
-  }
-
-
-  const userId =
-    currentTab.replace(
-      "private:",
-      ""
-    );
-
-
-  if(!privateInput){
-    return;
-  }
-
-
-  const text =
-    privateInput.value.trim();
-
-  if(!text){
-    return;
-  }
-
-
-  const chat =
-    privateChats[
-      userId
-    ];
-
-
-  if(!chat){
-    return;
-  }
-
-
-  socket.emit(
-    "private message",
-    {
-
-      to:
-        userId,
-
-      from:
-        currentUser,
-
-      message:
-        text
-
-    }
-  );
-
-
-  const message = {
-
-    from:
-      currentUser,
-
-    message:
-      text,
-
-    mine:
-      true
-
-  };
-
-
-  chat.messages.push(
-    message
-  );
-
-
-  appendPrivateMessage(
-    message
-  );
-
-
-  privateInput.value =
-    "";
-
-
-  requestAnimationFrame(
-    () => {
-
-      privateInput.focus();
-
-      if(privateMessages){
-
-        privateMessages.scrollTop =
-          privateMessages.scrollHeight;
-
-      }
-
-    }
-  );
-
-}
-
-window.sendPrivate =
-  sendPrivate;
-
-
-if(privateInput){
-
-  privateInput.addEventListener(
-    "keydown",
-    e => {
-
-      if(
-        e.key ===
-        "Enter"
-      ){
-
-        e.preventDefault();
-
-        sendPrivate();
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   RECEIVE PRIVATE
-   ========================================================= */
-
-socket.on(
-  "private message",
-  data => {
-
-    /*
-       نحاول معرفة المرسل
-       من usersCache.
-    */
-
-    let senderId =
-      data.fromId ||
-      null;
-
-
-    if(!senderId){
-
-      const found =
-        usersCache.find(
-          user =>
-            user.username ===
-            data.from
-        );
-
-      if(found){
-
-        senderId =
-          found.id;
-
-      }
-
-    }
-
-
-    /*
-       إذا لم نجد ID
-       لا نضيع الرسالة.
-    */
-
-    if(!senderId){
-
-      showToast(
-        `💬 رسالة خاصة من ${
-          data.from ||
-          "مستخدم"
-        }`
-      );
-
-      return;
-
-    }
-
-
-    senderId =
-      String(
-        senderId
-      );
-
-
-    privateChats[
-      senderId
-    ] ||= {
-
-      id:
-        senderId,
-
-      name:
-        data.from ||
-        "مستخدم",
-
-      messages:
-        []
-
-    };
-
-
-    privateChats[
-      senderId
-    ].messages.push({
-
-      from:
-        data.from,
-
-      message:
-        data.message,
-
-      mine:
-        false
-
-    });
-
-
-    /*
-       إذا المحادثة ليست الحالية
-       يزيد العداد.
-    */
-
-    if(
-      currentTab !==
-      "private:" +
-      senderId
-    ){
-
-      unreadPrivate[
-        senderId
-      ] =
-        (
-          unreadPrivate[
-            senderId
-          ] || 0
-        ) + 1;
-
-
-      showToast(
-        `💬 رسالة خاصة من ${data.from}`
-      );
-
-    }
-
-
-    renderRoomTabs();
-
-
-    if(
-      currentTab ===
-      "private:" +
-      senderId
-    ){
-
-      renderPrivateChat(
-        senderId
-      );
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   SWITCH PRIVATE
-   ========================================================= */
-
-function switchToPrivate(
-  userId
-){
-
-  userId =
-    String(userId);
-
-  if(
-    !privateChats[
-      userId
-    ]
-  ){
-
-    return;
-  }
-
-
-  saveCurrentScroll();
-
-  currentTab =
-    "private:" +
-    userId;
-
-  currentRoomId =
-    null;
-
-
-  renderRoomTabs();
-
-  renderPrivateChat(
-    userId
-  );
-
-}
-
-window.switchToPrivate =
-  switchToPrivate;
-
-
-/* =========================================================
-   CLOSE PRIVATE TAB
-   ========================================================= */
-
-function closePrivateTab(
-  userId
-){
-
-  userId =
-    String(userId);
-
-
-  delete privateChats[
-    userId
-  ];
-
-  delete unreadPrivate[
-    userId
-  ];
-
-
-  if(
-    currentTab ===
-    "private:" +
-    userId
-  ){
-
-    if(
-      openRooms.length
-    ){
-
-      switchToRoom(
-        openRooms[0]
-      );
-
-    }else{
-
-      currentTab =
+    replyData =
         null;
 
-      showRoomSelector();
+
+    const replyBox =
+        $("replyBox");
+
+
+    if(replyBox){
+
+        replyBox.style.display =
+            "none";
 
     }
 
-  }
-
-
-  renderRoomTabs();
-
 }
 
-window.closePrivateTab =
-  closePrivateTab;
+
+window.cancelReply =
+    cancelReply;
 
 
-/* =========================================================
-   PRIVATE OLD MODAL COMPATIBILITY
-   ========================================================= */
+// =========================================================
+// ROOM TABS
+// =========================================================
 
-function closePrivate(){
+function renderRoomTabs(){
 
-  const box =
-    $("privateChatBox");
-
-  if(box){
-
-    box.style.display =
-      "none";
-
-  }
-
-  /*
-     لا نحذف التبويب.
-     فقط نرجع للغرفة.
-  */
-
-  if(
-    currentRoomId
-  ){
-
-    currentTab =
-      "room:" +
-      currentRoomId;
-
-    showPublicRoomInterface();
-
-  }
-
-}
-
-window.closePrivate =
-  closePrivate;
+    let tabs =
+        $("roomTabs");
 
 
-/* =========================================================
-   ADMIN ROOM BAR
-   ========================================================= */
+    if(!tabs){
 
-socket.on(
-  "room admin active",
-  data => {
-
-    if(!data){
-      return;
-    }
-
-    isAdmin =
-      true;
-
-    adminPermissions =
-      data.permissions ||
-      {};
-
-    renderRoomAdminBar();
-
-  }
-);
+        tabs =
+            document.createElement(
+                "div"
+            );
 
 
-function updateRoomAdminBar(){
+        tabs.id =
+            "roomTabs";
 
-  if(
-    !isAdmin ||
-    !currentRoomId
-  ){
 
-    if(roomAdminBar){
+        tabs.style.cssText = `
+            display:flex;
+            align-items:center;
+            gap:7px;
+            width:100%;
+            overflow-x:auto;
+            padding:8px 10px;
+            box-sizing:border-box;
+            background:#0b0b0b;
+            border-bottom:1px solid #222;
+            direction:rtl;
+            scrollbar-width:none;
+        `;
 
-      roomAdminBar.style.display =
-        "none";
+
+        const parent =
+            chatPage ||
+            document.body;
+
+
+        parent.prepend(
+            tabs
+        );
 
     }
 
-    return;
 
-  }
-
-  renderRoomAdminBar();
-
-}
+    tabs.innerHTML =
+        "";
 
 
-function renderRoomAdminBar(){
+    openRooms.forEach(
+        roomId => {
 
-  if(
-    !roomAdminBar ||
-    !currentRoomId ||
-    !isAdmin
-  ){
-
-    return;
-  }
-
-
-  roomAdminBar.innerHTML =
-    "";
+            const room =
+                roomsCache.find(
+                    r =>
+                        r.id ===
+                        roomId
+                );
 
 
-  const room =
-    rooms.find(
-      item =>
-        String(
-          item.id
-        ) ===
-        String(
-          currentRoomId
-        )
-    );
+            if(!room)
+                return;
 
 
-  if(!room){
-    return;
-  }
+            const tab =
+                document.createElement(
+                    "div"
+                );
 
 
-  roomAdminBar.style.display =
-    "flex";
+            tab.style.cssText = `
+                display:flex;
+                align-items:center;
+                gap:7px;
+                flex-shrink:0;
+                padding:8px 10px;
+                border-radius:12px;
+                background:${
+                    roomId === activeRoomId
+                        ? "#333"
+                        : "#171717"
+                };
+                color:white;
+                border:1px solid ${
+                    roomId === activeRoomId
+                        ? "#555"
+                        : "#252525"
+                };
+            `;
 
 
-  /*
-     stars
-  */
-
-  if(
-    adminPermissions.stars
-  ){
-
-    addAdminToggle(
-      "⭐ النجوم",
-      "starsMode",
-      room.settings?.starsMode
-    );
-
-  }
+            const title =
+                document.createElement(
+                    "button"
+                );
 
 
-  /*
-     lock
-  */
-
-  if(
-    adminPermissions.chatLock
-  ){
-
-    addAdminToggle(
-      "🔒 القفل",
-      "chatLocked",
-      room.settings?.chatLocked
-    );
-
-  }
+            title.type =
+                "button";
 
 
-  /*
-     maintenance
-  */
-
-  if(
-    adminPermissions.maintenance
-  ){
-
-    addAdminToggle(
-      "🛠️ الصيانة",
-      "maintenance",
-      room.settings?.maintenance
-    );
-
-  }
+            title.textContent =
+                `🏠 ${room.name}`;
 
 
-  /*
-     protection
-  */
-
-  if(
-    adminPermissions.protection
-  ){
-
-    addAdminToggle(
-      "🛡️ الحماية",
-      "protection",
-      room.settings?.protection
-    );
-
-  }
-
-}
+            title.style.cssText = `
+                border:0;
+                background:transparent;
+                color:white;
+                font-size:14px;
+                padding:0;
+            `;
 
 
-function addAdminToggle(
-  label,
-  key,
-  enabled
-){
+            title.onclick =
+                () => {
 
-  const button =
-    document.createElement(
-      "button"
-    );
+                    switchRoom(
+                        roomId
+                    );
 
-  button.type =
-    "button";
-
-  button.textContent =
-    `${label}: ${
-      enabled
-        ? "ON"
-        : "OFF"
-    }`;
-
-  button.style.cssText = `
-    flex:0 0 auto;
-    border:1px solid ${
-      enabled
-        ? "rgba(255,215,0,.5)"
-        : "rgba(255,255,255,.1)"
-    };
-    background:${
-      enabled
-        ? "rgba(255,215,0,.10)"
-        : "#151515"
-    };
-    color:#fff;
-    border-radius:10px;
-    padding:7px 10px;
-    cursor:pointer;
-  `;
+                };
 
 
-  button.onclick =
-    () => {
+            const close =
+                document.createElement(
+                    "button"
+                );
 
-      socket.emit(
-        "update room setting",
-        {
 
-          roomId:
-            currentRoomId,
+            close.type =
+                "button";
 
-          key:
-            key,
 
-          value:
-            !enabled
+            close.textContent =
+                "×";
+
+
+            close.style.cssText = `
+                width:22px;
+                height:22px;
+                border:0;
+                border-radius:50%;
+                background:#252525;
+                color:#aaa;
+                font-size:17px;
+                line-height:20px;
+            `;
+
+
+            close.onclick =
+                event => {
+
+                    event.stopPropagation();
+
+                    closeRoom(
+                        roomId
+                    );
+
+                };
+
+
+            tab.appendChild(
+                title
+            );
+
+
+            tab.appendChild(
+                close
+            );
+
+
+            tabs.appendChild(
+                tab
+            );
 
         }
-      );
-
-    };
+    );
 
 
-  roomAdminBar.appendChild(
-    button
-  );
+    /*
+       زر + لفتح غرفة أخرى
+    */
+
+    const add =
+        document.createElement(
+            "button"
+        );
+
+
+    add.type =
+        "button";
+
+
+    add.textContent =
+        "＋";
+
+
+    add.title =
+        "فتح غرفة";
+
+
+    add.style.cssText = `
+        flex-shrink:0;
+        width:42px;
+        height:42px;
+        border-radius:50%;
+        border:1px solid #333;
+        background:#202020;
+        color:white;
+        font-size:27px;
+    `;
+
+
+    add.onclick =
+        () => {
+
+            showRoomSelection();
+
+        };
+
+
+    tabs.appendChild(
+        add
+    );
 
 }
 
 
-/* =========================================================
-   ROOM SETTINGS UPDATE
-   ========================================================= */
+// =========================================================
+// SWITCH ROOM
+// =========================================================
 
-socket.on(
-  "room settings",
-  settings => {
-
-    if(!currentRoomId){
-      return;
-    }
-
-
-    const room =
-      rooms.find(
-        item =>
-          String(
-            item.id
-          ) ===
-          String(
-            currentRoomId
-          )
-      );
-
-
-    if(room){
-
-      room.settings =
-        settings ||
-        {};
-
-    }
-
-
-    renderRoomAdminBar();
-
-  }
-);
-
-
-/* =========================================================
-   MODERATION NOTIFICATIONS
-   ========================================================= */
-
-socket.on(
-  "room moderation",
-  data => {
-
-    if(!data){
-      return;
-    }
-
-    showToast(
-      data.message ||
-      "⚙️ تم تنفيذ الإجراء"
-    );
-
-    /*
-       إضافة إشعار داخل الشات
-    */
+function switchRoom(
+    roomId
+){
 
     if(
-      currentRoomId &&
-      data.message
+        !openRooms.includes(
+            roomId
+        )
     ){
 
-      const notice =
-        document.createElement(
-          "div"
+        enterRoom(
+            roomId
         );
 
-      notice.style.cssText = `
-        text-align:center;
-        color:#ffd700;
-        padding:8px;
-        font-size:13px;
-        opacity:.9;
-      `;
-
-      notice.textContent =
-        data.message;
-
-      messages?.appendChild(
-        notice
-      );
-
-      if(messages){
-
-        messages.scrollTop =
-          messages.scrollHeight;
-
-      }
+        return;
 
     }
 
-  }
-);
-
-
-/* =========================================================
-   ROOM NOTICE
-   ========================================================= */
-
-socket.on(
-  "room notice",
-  message => {
-
-    showToast(
-      message
-    );
 
     if(
-      messages &&
-      currentRoomId
+        roomId ===
+        activeRoomId
     ){
 
-      const notice =
-        document.createElement(
-          "div"
-        );
-
-      notice.style.cssText = `
-        text-align:center;
-        color:#ffd700;
-        padding:8px;
-        font-size:13px;
-      `;
-
-      notice.textContent =
-        message;
-
-      messages.appendChild(
-        notice
-      );
-
-      messages.scrollTop =
-        messages.scrollHeight;
+        return;
 
     }
 
-  }
-);
+
+    socket.emit(
+        "join room",
+        {
+            roomId
+        }
+    );
+
+}
 
 
-/* =========================================================
-   ROOM DELETED
-   ========================================================= */
+function closeRoom(
+    roomId
+){
 
-socket.on(
-  "room deleted",
-  roomId => {
-
-    roomId =
-      String(roomId);
+    if(!roomId)
+        return;
 
 
     openRooms =
-      openRooms.filter(
-        id =>
-          String(id) !==
-          roomId
-      );
+        openRooms.filter(
+            id =>
+                id !==
+                roomId
+        );
 
 
-    delete roomMessages[
-      roomId
-    ];
-
-
-    rooms =
-      rooms.filter(
-        room =>
-          String(
-            room.id
-          ) !==
-          roomId
-      );
-
+    /*
+       إذا أغلقنا الغرفة الحالية،
+       ننتقل إلى غرفة أخرى إن وجدت.
+    */
 
     if(
-      currentRoomId ===
-      roomId
+        roomId ===
+        activeRoomId
     ){
 
-      currentRoomId =
-        null;
+        if(openRooms.length){
 
-      currentTab =
-        null;
+            const nextRoom =
+                openRooms[
+                    openRooms.length - 1
+                ];
 
-      socket.emit(
-        "leave room"
-      );
 
-      showRoomSelector();
+            activeRoomId =
+                null;
 
-      clearMessages();
+
+            currentRoom =
+                null;
+
+
+            socket.emit(
+                "join room",
+                {
+                    roomId:
+                        nextRoom
+                }
+            );
+
+        }else{
+
+            activeRoomId =
+                null;
+
+            currentRoom =
+                null;
+
+
+            showRoomSelection();
+
+        }
 
     }
 
 
     renderRoomTabs();
 
-    showToast(
-      "🗑️ تم حذف هذه الغرفة"
+}
+
+
+window.switchRoom =
+    switchRoom;
+
+
+window.closeRoom =
+    closeRoom;
+
+
+// =========================================================
+// WHEN ROOM CHANGES
+// =========================================================
+
+const originalPrepareRoomView =
+    prepareRoomView;
+
+
+prepareRoomView =
+    function(room){
+
+        currentRoom =
+            room;
+
+
+        activeRoomId =
+            room.id;
+
+
+        if(
+            !openRooms.includes(
+                room.id
+            )
+        ){
+
+            openRooms.push(
+                room.id
+            );
+
+        }
+
+
+        originalPrepareRoomView(
+            room
+        );
+
+
+        renderRoomTabs();
+
+    };
+
+
+// =========================================================
+// ROOM USERS
+// =========================================================
+
+socket.on(
+    "room users",
+    users => {
+
+        usersCache =
+            Array.isArray(
+                users
+            )
+                ? users
+                : [];
+
+
+        renderRoomUsers();
+
+    }
+);
+
+
+// =========================================================
+// RENDER ROOM USERS
+// =========================================================
+
+function renderRoomUsers(){
+
+    let list =
+        $("roomUsers");
+
+
+    /*
+       إذا لم يكن عندك roomUsers
+       ننشئه تلقائيًا.
+    */
+
+    if(!list){
+
+        list =
+            document.createElement(
+                "div"
+            );
+
+
+        list.id =
+            "roomUsers";
+
+
+        list.style.cssText = `
+            position:fixed;
+            top:80px;
+            right:10px;
+            width:220px;
+            max-height:55vh;
+            overflow-y:auto;
+            z-index:9990;
+            display:none;
+            padding:10px;
+            border-radius:15px;
+            background:#111;
+            border:1px solid #292929;
+            direction:rtl;
+            box-sizing:border-box;
+        `;
+
+
+        document.body.appendChild(
+            list
+        );
+
+    }
+
+
+    list.innerHTML = `
+
+        <div
+            style="
+                font-weight:bold;
+                padding:8px;
+                border-bottom:1px solid #292929;
+                margin-bottom:5px;
+            "
+        >
+            👥 الموجودون
+            (${usersCache.length})
+        </div>
+
+    `;
+
+
+    usersCache.forEach(
+        user => {
+
+            const name =
+                typeof user ===
+                    "string"
+                    ? user
+                    : user.username;
+
+
+            if(!name)
+                return;
+
+
+            const row =
+                document.createElement(
+                    "div"
+                );
+
+
+            row.style.cssText = `
+                padding:9px 7px;
+                color:#ddd;
+                border-bottom:1px solid #1e1e1e;
+            `;
+
+
+            row.innerHTML = `
+                👤
+                ${escapeHtml(
+                    name
+                )}
+            `;
+
+
+            row.addEventListener(
+                "click",
+                () => {
+
+                    openPrivateChat(
+                        name
+                    );
+
+                }
+            );
+
+
+            list.appendChild(
+                row
+            );
+
+        }
     );
-
-  }
-);
-
-
-/* =========================================================
-   STAR UPDATE
-   ========================================================= */
-
-socket.on(
-  "star update",
-  data => {
-
-    if(
-      String(
-        data?.roomId
-      ) !==
-      String(
-        currentRoomId
-      )
-    ){
-
-      return;
-    }
-
-    showToast(
-      data.hasStar
-        ? `⭐ تم إعطاء نجمة لـ ${data.username}`
-        : `⭐❌ تم سحب النجمة من ${data.username}`
-    );
-
-  }
-);
-
-
-/* =========================================================
-   ADMIN PERMISSIONS
-   ========================================================= */
-
-socket.on(
-  "admin login success",
-  data => {
-
-    isAdmin =
-      true;
-
-    adminPermissions =
-      data?.permissions ||
-      {};
-
-    adminRooms =
-      data?.rooms ||
-      [];
-
-  }
-);
-
-
-socket.on(
-  "admin assigned rooms",
-  roomIds => {
-
-    adminRooms =
-      Array.isArray(
-        roomIds
-      )
-        ? roomIds
-        : [];
-
-  }
-);
-
-
-/* =========================================================
-   ROOM ADMIN GOLD NOTICE
-   ========================================================= */
-
-socket.on(
-  "room admin active",
-  data => {
-
-    if(
-      !data
-    ){
-
-      return;
-    }
-
-    isAdmin =
-      true;
-
-    adminPermissions =
-      data.permissions ||
-      {};
-
-    showToast(
-      `✨ تم توكيل ${
-        currentUser
-      }`
-    );
-
-    renderRoomAdminBar();
-
-  }
-);
-
-
-/* =========================================================
-   ESC
-   ========================================================= */
-
-document.addEventListener(
-  "keydown",
-  e => {
-
-    if(
-      e.key !==
-      "Escape"
-    ){
-
-      return;
-    }
-
-
-    closeUserPopup();
-
-    closeUsers();
-
-  }
-);
-
-
-/* =========================================================
-   INITIALIZE
-   ========================================================= */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
-
-    createRoomSystem();
-
-    if(chatPage){
-
-      chatPage.style.position =
-        "relative";
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   INITIAL ROOM REQUEST
-   ========================================================= */
-
-socket.on(
-  "connect",
-  () => {
-
-    if(
-      currentUser
-    ){
-
-      socket.emit(
-        "get rooms"
-      );
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   ROOM SCROLL SAVE
-   ========================================================= */
-
-if(messages){
-
-  messages.addEventListener(
-    "scroll",
-    () => {
-
-      if(
-        currentTab &&
-        currentTab.startsWith(
-          "room:"
-        )
-      ){
-
-        const roomId =
-          currentTab.replace(
-            "room:",
-            ""
-          );
-
-        roomScrollPositions[
-          roomId
-        ] =
-          messages.scrollTop;
-
-      }
-
-    }
-  );
 
 }
 
 
-/* =========================================================
-   PRIVATE SCROLL
-   ========================================================= */
+// =========================================================
+// PRIVATE CHAT
+// =========================================================
 
-if(privateMessages){
+function openPrivateChat(
+    name
+){
 
-  privateMessages.addEventListener(
-    "scroll",
-    () => {
+    if(!name)
+        return;
 
-      /*
-         Private scroll محفوظ
-         داخل DOM/session الحالي.
-      */
+
+    if(
+        currentUser &&
+        name ===
+            currentUser
+    ){
+
+        showToast(
+            "ℹ️ لا يمكنك فتح محادثة خاصة مع نفسك"
+        );
+
+        return;
 
     }
-  );
+
+
+    currentPrivateUser =
+        name;
+
+
+    currentPrivateName =
+        name;
+
+
+    if(
+        !privateChats[name]
+    ){
+
+        privateChats[name] =
+            [];
+
+    }
+
+
+    if(
+        !privateUnread[name]
+    ){
+
+        privateUnread[name] =
+            0;
+
+    }
+
+
+    privateUnread[name] =
+        0;
+
+
+    createPrivateInterface();
+
+
+    renderPrivateChat();
+
+
+    showPrivateInterface();
 
 }
 
 
-/* =========================================================
-   FINAL IPHONE SAFETY
-   ========================================================= */
+window.openPrivateChat =
+    openPrivateChat;
 
-window.addEventListener(
-  "orientationchange",
-  () => {
+
+// =========================================================
+// PRIVATE INTERFACE
+// =========================================================
+
+function createPrivateInterface(){
+
+    if(
+        $("privatePanel")
+    ){
+
+        return;
+
+    }
+
+
+    const panel =
+        document.createElement(
+            "div"
+        );
+
+
+    panel.id =
+        "privatePanel";
+
+
+    panel.style.cssText = `
+        position:fixed;
+        inset:0;
+        z-index:10000;
+        display:none;
+        flex-direction:column;
+        background:#080808;
+        color:white;
+        direction:rtl;
+    `;
+
+
+    panel.innerHTML = `
+
+        <div
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                padding:15px;
+                background:#111;
+                border-bottom:1px solid #292929;
+            "
+        >
+
+            <div>
+
+                <div
+                    style="
+                        font-size:18px;
+                        font-weight:bold;
+                    "
+                    id="privateTitle"
+                >
+                    💬 محادثة خاصة
+                </div>
+
+
+                <div
+                    style="
+                        color:#777;
+                        font-size:13px;
+                        margin-top:3px;
+                    "
+                >
+                    أنت الآن في محادثة خاصة
+                </div>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="closePrivateButton"
+                style="
+                    width:40px;
+                    height:40px;
+                    border:0;
+                    border-radius:50%;
+                    background:#252525;
+                    color:white;
+                    font-size:22px;
+                "
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <div
+            id="privateMessages"
+            style="
+                flex:1;
+                overflow-y:auto;
+                padding:15px;
+            "
+        ></div>
+
+
+        <div
+            style="
+                display:flex;
+                gap:8px;
+                padding:10px;
+                background:#111;
+                border-top:1px solid #222;
+            "
+        >
+
+            <input
+                id="privateInput"
+                type="text"
+                autocomplete="off"
+                placeholder="اكتب رسالة خاصة..."
+                style="
+                    flex:1;
+                    min-width:0;
+                    border:1px solid #333;
+                    background:#181818;
+                    color:white;
+                    border-radius:14px;
+                    padding:12px;
+                    font-size:16px;
+                    outline:none;
+                "
+            >
+
+
+            <button
+                type="button"
+                id="privateSendButton"
+                style="
+                    width:52px;
+                    border:0;
+                    border-radius:14px;
+                    background:#292929;
+                    color:white;
+                    font-size:20px;
+                "
+            >
+                ➤
+            </button>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(
+        panel
+    );
+
+
+    const close =
+        $("closePrivateButton");
+
+
+    if(close){
+
+        close.onclick =
+            hidePrivateInterface;
+
+    }
+
+
+    const send =
+        $("privateSendButton");
+
+
+    if(send){
+
+        send.onclick =
+            sendPrivateMessage;
+
+    }
+
+
+    const input =
+        $("privateInput");
+
+
+    if(input){
+
+        input.addEventListener(
+            "keydown",
+            event => {
+
+                if(
+                    event.key ===
+                        "Enter"
+                ){
+
+                    event.preventDefault();
+
+                    sendPrivateMessage();
+
+                }
+
+            }
+        );
+
+    }
+
+}
+
+
+// =========================================================
+// SHOW PRIVATE
+// =========================================================
+
+function showPrivateInterface(){
+
+    createPrivateInterface();
+
+
+    const panel =
+        $("privatePanel");
+
+
+    if(panel){
+
+        panel.style.display =
+            "flex";
+
+    }
+
+
+    renderPrivateChat();
+
+
+    const input =
+        $("privateInput");
+
+
+    if(input){
+
+        setTimeout(
+            () => {
+
+                input.focus();
+
+            },
+            100
+        );
+
+    }
+
+}
+
+
+// =========================================================
+// HIDE PRIVATE
+// =========================================================
+
+function hidePrivateInterface(){
+
+    const panel =
+        $("privatePanel");
+
+
+    if(panel){
+
+        panel.style.display =
+            "none";
+
+    }
+
+
+    currentPrivateUser =
+        null;
+
+}
+
+
+// =========================================================
+// SEND PRIVATE MESSAGE
+// =========================================================
+
+function sendPrivateMessage(){
+
+    if(!currentPrivateUser)
+        return;
+
+
+    const input =
+        getPrivateInput();
+
+
+    if(!input)
+        return;
+
+
+    const message =
+        input.value.trim();
+
+
+    if(!message)
+        return;
+
+
+    socket.emit(
+        "private message",
+        {
+            to:
+                currentPrivateUser,
+
+            message
+        }
+    );
+
+
+    input.value =
+        "";
+
 
     setTimeout(
-      () => {
+        () => {
+
+            input.focus();
+
+        },
+        20
+    );
+
+}
+
+
+window.sendPrivateMessage =
+    sendPrivateMessage;
+
+
+// =========================================================
+// RECEIVE PRIVATE MESSAGE
+// =========================================================
+
+socket.on(
+    "private message",
+    data => {
+
+        if(!data)
+            return;
+
+
+        const from =
+            data.from;
+
+
+        const to =
+            data.to;
+
+
+        let partner;
+
+
+        if(
+            from ===
+                currentUser
+        ){
+
+            partner =
+                to;
+
+        }else{
+
+            partner =
+                from;
+
+        }
+
+
+        if(!partner)
+            return;
+
+
+        if(
+            !privateChats[partner]
+        ){
+
+            privateChats[partner] =
+                [];
+
+        }
+
+
+        privateChats[partner].push(
+            data
+        );
+
+
+        if(
+            currentPrivateUser !==
+                partner
+        ){
+
+            privateUnread[partner] =
+                (
+                    privateUnread[
+                        partner
+                    ] ||
+                    0
+                ) + 1;
+
+
+            showToast(
+                `💬 رسالة خاصة من ${partner}`
+            );
+
+            updatePrivateNotification();
+
+            return;
+
+        }
+
+
+        renderPrivateChat();
+
+    }
+);
+
+
+// =========================================================
+// PRIVATE NOTIFICATION
+// =========================================================
+
+socket.on(
+    "private notification",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.from ===
+                currentPrivateUser
+        ){
+
+            return;
+
+        }
+
+
+        const name =
+            data.from;
+
+
+        privateUnread[name] =
+            (
+                privateUnread[name] ||
+                0
+            ) + 1;
+
+
+        updatePrivateNotification();
+
+    }
+);
+
+
+// =========================================================
+// RENDER PRIVATE CHAT
+// =========================================================
+
+function renderPrivateChat(){
+
+    const box =
+        getPrivateMessages();
+
+
+    if(!box)
+        return;
+
+
+    box.innerHTML =
+        "";
+
+
+    if(!currentPrivateUser)
+        return;
+
+
+    const title =
+        $("privateTitle");
+
+
+    if(title){
+
+        title.textContent =
+            `💬 أنت الآن في محادثة خاصة مع ${currentPrivateUser}`;
+
+    }
+
+
+    const messages =
+        privateChats[
+            currentPrivateUser
+        ] || [];
+
+
+    messages.forEach(
+        data => {
+
+            const mine =
+                data.from ===
+                currentUser;
+
+
+            const row =
+                document.createElement(
+                    "div"
+                );
+
+
+            row.style.cssText = `
+                display:flex;
+                justify-content:${
+                    mine
+                        ? "flex-start"
+                        : "flex-end"
+                };
+                margin-bottom:9px;
+            `;
+
+
+            const bubble =
+                document.createElement(
+                    "div"
+                );
+
+
+            bubble.style.cssText = `
+                max-width:82%;
+                padding:10px 13px;
+                border-radius:15px;
+                background:${
+                    mine
+                        ? "#242424"
+                        : "#151515"
+                };
+                border:1px solid #292929;
+                color:white;
+                word-break:break-word;
+            `;
+
+
+            bubble.innerHTML = `
+
+                <div
+                    style="
+                        font-size:11px;
+                        color:#777;
+                        margin-bottom:4px;
+                    "
+                >
+                    ${escapeHtml(
+                        data.time || ""
+                    )}
+                </div>
+
+
+                <div
+                    style="
+                        white-space:pre-wrap;
+                    "
+                >
+                    ${escapeHtml(
+                        data.message ||
+                        ""
+                    )}
+                </div>
+
+            `;
+
+
+            row.appendChild(
+                bubble
+            );
+
+
+            box.appendChild(
+                row
+            );
+
+        }
+    );
+
+
+    keepChatBottom();
+
+}
+
+
+// =========================================================
+// PRIVATE NOTIFICATION BADGE
+// =========================================================
+
+function updatePrivateNotification(){
+
+    let total =
+        0;
+
+
+    Object.values(
+        privateUnread
+    ).forEach(
+        count => {
+
+            total +=
+                Number(
+                    count || 0
+                );
+
+        }
+    );
+
+
+    let badge =
+        $("privateNotificationBadge");
+
+
+    if(!badge){
+
+        badge =
+            document.createElement(
+                "span"
+            );
+
+
+        badge.id =
+            "privateNotificationBadge";
+
+
+        badge.style.cssText = `
+            position:fixed;
+            top:70px;
+            left:15px;
+            z-index:9999;
+            min-width:24px;
+            height:24px;
+            padding:0 7px;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            border-radius:20px;
+            background:#b00020;
+            color:white;
+            font-size:12px;
+            font-weight:bold;
+        `;
+
+
+        document.body.appendChild(
+            badge
+        );
+
+    }
+
+
+    if(total > 0){
+
+        badge.textContent =
+            total > 99
+                ? "99+"
+                : total;
+
+
+        badge.style.display =
+            "flex";
+
+    }else{
+
+        badge.style.display =
+            "none";
+
+    }
+
+}
+
+
+// =========================================================
+// PRIVATE ERROR
+// =========================================================
+
+socket.on(
+    "private error",
+    message => {
+
+        showToast(
+            message ||
+            "❌ تعذر إرسال الرسالة الخاصة"
+        );
+
+    }
+);
+
+
+// =========================================================
+// ROOM MODERATION NOTICES
+// =========================================================
+
+socket.on(
+    "room moderation notice",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        showRoomNotice(
+            data.message ||
+            ""
+        );
+
+    }
+);
+
+
+function showRoomNotice(
+    message
+){
+
+    const messages =
+        getChatMessages();
+
+
+    if(!messages)
+        return;
+
+
+    const notice =
+        document.createElement(
+            "div"
+        );
+
+
+    notice.style.cssText = `
+        margin:8px auto;
+        padding:8px 13px;
+        width:max-content;
+        max-width:90%;
+        background:#1b1b1b;
+        border:1px solid #333;
+        border-radius:15px;
+        color:#d0d0d0;
+        text-align:center;
+        font-size:13px;
+    `;
+
+
+    notice.textContent =
+        message;
+
+
+    messages.appendChild(
+        notice
+    );
+
+
+    keepChatBottom();
+
+}
+
+
+// =========================================================
+// ROOM NOTICE
+// =========================================================
+
+socket.on(
+    "room notice",
+    data => {
+
+        if(!data)
+            return;
+
+
+        showRoomNotice(
+            data.message ||
+            ""
+        );
+
+    }
+);
+
+
+// =========================================================
+// ADMIN ASSIGNED NOTICE
+// =========================================================
+
+socket.on(
+    "room admins updated",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.roomId ===
+            activeRoomId
+        ){
+
+            showRoomNotice(
+                `👑 تم تحديث أدمن الغرفة`
+            );
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// ROOM SETTINGS
+// =========================================================
+
+socket.on(
+    "room setting changed",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.setting ===
+                "starsMode"
+        ){
+
+            showToast(
+                data.value
+                    ? "⭐ تم تشغيل وضع النجوم"
+                    : "⭐ تم إيقاف وضع النجوم"
+            );
+
+        }
+
+
+        if(
+            data.setting ===
+                "chatLocked"
+        ){
+
+            showToast(
+                data.value
+                    ? "🔒 تم قفل الدردشة"
+                    : "🔓 تم فتح الدردشة"
+            );
+
+        }
+
+
+        if(
+            data.setting ===
+                "maintenance"
+        ){
+
+            showToast(
+                data.value
+                    ? "🛠️ الغرفة تحت الصيانة"
+                    : "✅ انتهت الصيانة"
+            );
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// ROOM STATUS
+// =========================================================
+
+socket.on(
+    "room status",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.enabled === false
+        ){
+
+            showToast(
+                "⛔ تم إيقاف هذه الغرفة"
+            );
+
+
+            showRoomSelection();
+
+        }
+
+    }
+);
+// =========================================================
+// USER LIST BUTTON
+// =========================================================
+
+function toggleRoomUsers(){
+
+    const list =
+        $("roomUsers");
+
+    if(!list)
+        return;
+
+
+    if(list.style.display === "none"){
+
+        renderRoomUsers();
+
+        list.style.display =
+            "block";
+
+    }else{
+
+        list.style.display =
+            "none";
+
+    }
+
+}
+
+
+window.toggleRoomUsers =
+    toggleRoomUsers;
+
+
+// =========================================================
+// PRIVATE LIST
+// =========================================================
+
+function showPrivateUsers(){
+
+    let box =
+        $("privateUsersList");
+
+
+    if(!box){
+
+        box =
+            document.createElement(
+                "div"
+            );
+
+
+        box.id =
+            "privateUsersList";
+
+
+        box.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:10002;
+            display:none;
+            background:#080808;
+            color:white;
+            direction:rtl;
+            overflow-y:auto;
+        `;
+
+
+        document.body.appendChild(
+            box
+        );
+
+    }
+
+
+    box.innerHTML = `
+
+        <div
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                padding:16px;
+                background:#111;
+                border-bottom:1px solid #292929;
+            "
+        >
+
+            <strong
+                style="
+                    font-size:20px;
+                "
+            >
+                💬 المحادثات الخاصة
+            </strong>
+
+
+            <button
+                type="button"
+                id="closePrivateUsers"
+                style="
+                    width:40px;
+                    height:40px;
+                    border:0;
+                    border-radius:50%;
+                    background:#252525;
+                    color:white;
+                    font-size:22px;
+                "
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <div
+            id="privateUsersItems"
+            style="
+                padding:12px;
+            "
+        ></div>
+
+    `;
+
+
+    const items =
+        $("privateUsersItems");
+
+
+    Object.keys(
+        privateChats
+    ).forEach(
+        name => {
+
+            const row =
+                document.createElement(
+                    "button"
+                );
+
+
+            row.type =
+                "button";
+
+
+            row.style.cssText = `
+                display:block;
+                width:100%;
+                padding:15px;
+                margin-bottom:8px;
+                border:1px solid #292929;
+                border-radius:14px;
+                background:#121212;
+                color:white;
+                text-align:right;
+            `;
+
+
+            const unread =
+                privateUnread[name] ||
+                0;
+
+
+            row.innerHTML = `
+
+                <div
+                    style="
+                        font-size:17px;
+                        font-weight:bold;
+                    "
+                >
+                    👤
+                    ${escapeHtml(name)}
+
+                    ${
+                        unread
+                            ? `
+                                <span
+                                    style="
+                                        float:left;
+                                        background:#b00020;
+                                        border-radius:20px;
+                                        padding:3px 8px;
+                                        font-size:11px;
+                                    "
+                                >
+                                    ${unread}
+                                </span>
+                            `
+                            : ""
+                    }
+
+                </div>
+
+            `;
+
+
+            row.onclick =
+                () => {
+
+                    box.style.display =
+                        "none";
+
+                    openPrivateChat(
+                        name
+                    );
+
+                };
+
+
+            items.appendChild(
+                row
+            );
+
+        }
+    );
+
+
+    if(
+        !Object.keys(
+            privateChats
+        ).length
+    ){
+
+        items.innerHTML = `
+
+            <div
+                style="
+                    padding:40px 10px;
+                    text-align:center;
+                    color:#777;
+                "
+            >
+                لا توجد محادثات خاصة حتى الآن
+            </div>
+
+        `;
+
+    }
+
+
+    const close =
+        $("closePrivateUsers");
+
+
+    if(close){
+
+        close.onclick =
+            () => {
+
+                box.style.display =
+                    "none";
+
+            };
+
+    }
+
+
+    box.style.display =
+        "block";
+
+}
+
+
+window.showPrivateUsers =
+    showPrivateUsers;
+
+
+// =========================================================
+// ADMIN / MODERATION PANEL INSIDE CHAT
+// =========================================================
+
+let roomAdminData = null;
+
+let roomModerationData = null;
+
+
+socket.on(
+    "room admins",
+    data => {
+
+        roomAdminData =
+            data || null;
+
+    }
+);
+
+
+socket.on(
+    "room moderation",
+    data => {
+
+        roomModerationData =
+            data || null;
+
+        applyRoomModerationState();
+
+    }
+);
+
+
+// =========================================================
+// APPLY ROOM MODERATION STATE
+// =========================================================
+
+function applyRoomModerationState(){
+
+    if(!roomModerationData)
+        return;
+
+
+    if(
+        roomModerationData.chatLocked
+    ){
+
+        disableMessageInput(
+            "🔒 الدردشة مقفلة حاليًا"
+        );
+
+    }else{
+
+        enableMessageInput();
+
+    }
+
+
+    if(
+        roomModerationData.maintenance
+    ){
+
+        showRoomNotice(
+            "🛠️ الغرفة تحت الصيانة حاليًا"
+        );
+
+    }
+
+}
+
+
+// =========================================================
+// DISABLE MESSAGE INPUT
+// =========================================================
+
+function disableMessageInput(
+    text
+){
+
+    const input =
+        getMessageInput();
+
+
+    if(input){
+
+        input.disabled =
+            true;
+
+        input.placeholder =
+            text ||
+            "الدردشة مقفلة";
+
+    }
+
+
+    const buttons =
+        document.querySelectorAll(
+            "[data-send-message]"
+        );
+
+
+    buttons.forEach(
+        button => {
+
+            button.disabled =
+                true;
+
+        }
+    );
+
+}
+
+
+// =========================================================
+// ENABLE MESSAGE INPUT
+// =========================================================
+
+function enableMessageInput(){
+
+    const input =
+        getMessageInput();
+
+
+    if(input){
+
+        input.disabled =
+            false;
+
+
+        if(currentRoom){
+
+            input.placeholder =
+                `اكتب رسالتك في ${currentRoom.name}...`;
+
+        }else{
+
+            input.placeholder =
+                "اكتب رسالتك...";
+
+        }
+
+    }
+
+
+    const buttons =
+        document.querySelectorAll(
+            "[data-send-message]"
+        );
+
+
+    buttons.forEach(
+        button => {
+
+            button.disabled =
+                false;
+
+        }
+    );
+
+}
+
+
+// =========================================================
+// STAR MODE
+// =========================================================
+
+let roomStarsMode =
+    false;
+
+
+socket.on(
+    "room stars mode",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        roomStarsMode =
+            Boolean(
+                data.enabled
+            );
+
+
+        updateStarsUI();
+
+    }
+);
+
+
+function updateStarsUI(){
+
+    const button =
+        $("starButton");
+
+
+    if(!button)
+        return;
+
+
+    if(roomStarsMode){
+
+        button.style.display =
+            "block";
+
+    }else{
+
+        button.style.display =
+            "none";
+
+    }
+
+}
+
+
+// =========================================================
+// GIVE STAR
+// =========================================================
+
+function giveStar(
+    username
+){
+
+    if(!username)
+        return;
+
+
+    if(!activeRoomId){
+
+        showToast(
+            "🏠 اختر غرفة أولاً"
+        );
+
+        return;
+
+    }
+
+
+    socket.emit(
+        "give room star",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+window.giveStar =
+    giveStar;
+
+
+// =========================================================
+// REMOVE STAR
+// =========================================================
+
+function removeStar(
+    username
+){
+
+    if(!username)
+        return;
+
+
+    socket.emit(
+        "remove room star",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+window.removeStar =
+    removeStar;
+
+
+// =========================================================
+// STAR EVENTS
+// =========================================================
+
+socket.on(
+    "room star given",
+    data => {
+
+        if(!data)
+            return;
+
+
+        showRoomNotice(
+            `⭐ تم إعطاء نجمة لـ ${data.username}`
+        );
+
+    }
+);
+
+
+socket.on(
+    "room star removed",
+    data => {
+
+        if(!data)
+            return;
+
+
+        showRoomNotice(
+            `⭐ تم إزالة النجمة من ${data.username}`
+        );
+
+    }
+);
+
+
+// =========================================================
+// MODERATION ACTIONS
+// =========================================================
+
+function roomKick(
+    username
+){
+
+    if(!activeRoomId)
+        return;
+
+
+    socket.emit(
+        "room kick",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+function roomBan(
+    username
+){
+
+    if(!activeRoomId)
+        return;
+
+
+    socket.emit(
+        "room ban",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+function roomMute(
+    username
+){
+
+    if(!activeRoomId)
+        return;
+
+
+    socket.emit(
+        "room mute",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+function roomDisconnect(
+    username
+){
+
+    if(!activeRoomId)
+        return;
+
+
+    socket.emit(
+        "room disconnect",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+function roomUnban(
+    username
+){
+
+    if(!activeRoomId)
+        return;
+
+
+    socket.emit(
+        "room unban",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+function roomUnmute(
+    username
+){
+
+    if(!activeRoomId)
+        return;
+
+
+    socket.emit(
+        "room unmute",
+        {
+            roomId:
+                activeRoomId,
+
+            username
+        }
+    );
+
+}
+
+
+window.roomKick =
+    roomKick;
+
+window.roomBan =
+    roomBan;
+
+window.roomMute =
+    roomMute;
+
+window.roomDisconnect =
+    roomDisconnect;
+
+window.roomUnban =
+    roomUnban;
+
+window.roomUnmute =
+    roomUnmute;
+
+
+// =========================================================
+// DELETE ROOM MESSAGE
+// =========================================================
+
+function deleteRoomMessage(
+    messageId
+){
+
+    if(!messageId)
+        return;
+
+
+    if(!activeRoomId)
+        return;
+
+
+    socket.emit(
+        "delete room message",
+        {
+            roomId:
+                activeRoomId,
+
+            messageId
+        }
+    );
+
+}
+
+
+window.deleteRoomMessage =
+    deleteRoomMessage;
+
+
+// =========================================================
+// ROOM MESSAGE DELETED
+// =========================================================
+
+socket.on(
+    "room message deleted",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        const element =
+            document.querySelector(
+                `[data-message-id="${CSS.escape(
+                    String(
+                        data.messageId ||
+                        ""
+                    )
+                )}"]`
+            );
+
+
+        if(element){
+
+            element.remove();
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// FORCE LEAVE ROOM
+// =========================================================
+
+socket.on(
+    "room kicked",
+    data => {
+
+        if(
+            data?.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        if(activeRoomId){
+
+            openRooms =
+                openRooms.filter(
+                    id =>
+                        id !==
+                        activeRoomId
+                );
+
+        }
+
+
+        currentRoom =
+            null;
+
+        activeRoomId =
+            null;
+
+
+        showRoomSelection();
+
+
+        showToast(
+            "👢 تم طردك من الغرفة"
+        );
+
+    }
+);
+
+
+socket.on(
+    "room banned",
+    data => {
+
+        if(
+            data?.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        openRooms = [];
+
+
+        currentRoom =
+            null;
+
+        activeRoomId =
+            null;
+
+
+        showRoomSelection();
+
+
+        showToast(
+            "🚫 تم حظرك من هذه الغرفة"
+        );
+
+    }
+);
+
+
+socket.on(
+    "room disconnected",
+    data => {
+
+        if(
+            data?.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        openRooms = [];
+
+
+        currentRoom =
+            null;
+
+        activeRoomId =
+            null;
+
+
+        showRoomSelection();
+
+
+        showToast(
+            "⛔ تم فصلك من الغرفة"
+        );
+
+    }
+);
+
+
+// =========================================================
+// MUTE STATUS
+// =========================================================
+
+socket.on(
+    "room muted",
+    data => {
+
+        if(
+            data?.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        disableMessageInput(
+            "🔇 أنت مكتوم في هذه الغرفة"
+        );
+
+
+        showToast(
+            "🔇 تم كتمك في الغرفة"
+        );
+
+    }
+);
+
+
+socket.on(
+    "room unmuted",
+    data => {
+
+        if(
+            data?.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        enableMessageInput();
+
+
+        showToast(
+            "🔊 تم فك الكتم عنك"
+        );
+
+    }
+);
+
+
+// =========================================================
+// ROOM SWITCH WITH SWIPE
+// =========================================================
+
+let touchStartX =
+    0;
+
+let touchStartY =
+    0;
+
+
+document.addEventListener(
+    "touchstart",
+    event => {
+
+        if(
+            !event.touches ||
+            !event.touches.length
+        ){
+
+            return;
+
+        }
+
+
+        touchStartX =
+            event.touches[0].clientX;
+
+
+        touchStartY =
+            event.touches[0].clientY;
+
+    },
+    {
+        passive:true
+    }
+);
+
+
+document.addEventListener(
+    "touchend",
+    event => {
+
+        if(
+            !event.changedTouches ||
+            !event.changedTouches.length
+        ){
+
+            return;
+
+        }
+
+
+        const endX =
+            event.changedTouches[0].clientX;
+
+
+        const endY =
+            event.changedTouches[0].clientY;
+
+
+        const diffX =
+            endX -
+            touchStartX;
+
+
+        const diffY =
+            endY -
+            touchStartY;
+
+
+        /*
+           إذا كانت الحركة عمودية
+           نتركها للتمرير الطبيعي.
+        */
+
+        if(
+            Math.abs(diffY) >
+            Math.abs(diffX)
+        ){
+
+            return;
+
+        }
+
+
+        /*
+           لا نعتبر الحركة Swipe
+           إلا إذا كانت واضحة.
+        */
+
+        if(
+            Math.abs(diffX) <
+            70
+        ){
+
+            return;
+
+        }
+
+
+        if(
+            openRooms.length <
+            2
+        ){
+
+            return;
+
+        }
+
+
+        const index =
+            openRooms.indexOf(
+                activeRoomId
+            );
+
+
+        if(index < 0)
+            return;
+
+
+        let nextIndex;
+
+
+        if(diffX < 0){
+
+            /*
+               سحب لليسار
+            */
+
+            nextIndex =
+                index + 1;
+
+        }else{
+
+            /*
+               سحب لليمين
+            */
+
+            nextIndex =
+                index - 1;
+
+        }
+
+
+        if(
+            nextIndex < 0 ||
+            nextIndex >=
+                openRooms.length
+        ){
+
+            return;
+
+        }
+
+
+        switchRoom(
+            openRooms[
+                nextIndex
+            ]
+        );
+
+    },
+    {
+        passive:true
+    }
+);
+
+
+// =========================================================
+// ROOM LIST UPDATE
+// =========================================================
+
+socket.on(
+    "rooms updated",
+    rooms => {
+
+        roomsCache =
+            Array.isArray(
+                rooms
+            )
+                ? rooms
+                : [];
+
+
+        /*
+           إذا تم حذف غرفة
+           وهي مفتوحة عند المستخدم،
+           نغلقها.
+        */
+
+        openRooms =
+            openRooms.filter(
+                roomId =>
+                    roomsCache.some(
+                        room =>
+                            room.id ===
+                            roomId
+                    )
+            );
+
+
+        if(
+            activeRoomId &&
+            !openRooms.includes(
+                activeRoomId
+            )
+        ){
+
+            activeRoomId =
+                null;
+
+            currentRoom =
+                null;
+
+            showRoomSelection();
+
+        }
+
+
+        renderRooms();
+
+        renderRoomTabs();
+
+    }
+);
+
+
+// =========================================================
+// LOGIN / ROOM INITIAL LOAD
+// =========================================================
+
+socket.on(
+    "login success",
+    () => {
+
+        /*
+           السيرفر الجديد يرسل الغرف
+           بعد تسجيل الدخول.
+        */
+
+        socket.emit(
+            "get rooms"
+        );
+
+    }
+);
+
+
+// =========================================================
+// GET ROOMS RESULT
+// =========================================================
+
+socket.on(
+    "rooms list",
+    rooms => {
+
+        roomsCache =
+            Array.isArray(
+                rooms
+            )
+                ? rooms
+                : [];
+
+
+        renderRooms();
+
+    }
+);
+
+
+// =========================================================
+// ADMIN NOTICE
+// =========================================================
+
+socket.on(
+    "admin assigned",
+    data => {
+
+        if(
+            data?.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        showRoomNotice(
+            "✨ تم توكيل Admin"
+        );
+
+    }
+);
+
+
+// =========================================================
+// ROOM PROTECTION
+// =========================================================
+
+socket.on(
+    "room protection",
+    data => {
+
+        if(!data)
+            return;
+
+
+        if(
+            data.roomId &&
+            data.roomId !==
+                activeRoomId
+        ){
+
+            return;
+
+        }
+
+
+        showRoomNotice(
+            data.enabled
+                ? "🛡️ تم تفعيل حماية الغرفة"
+                : "🛡️ تم إيقاف حماية الغرفة"
+        );
+
+    }
+);
+
+
+// =========================================================
+// GENERAL SERVER MESSAGE
+// =========================================================
+
+socket.on(
+    "server message",
+    message => {
+
+        if(message){
+
+            showToast(
+                message
+            );
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// ERROR HANDLING
+// =========================================================
+
+socket.on(
+    "error message",
+    message => {
+
+        showToast(
+            message ||
+            "❌ حدث خطأ"
+        );
+
+    }
+);
+
+
+// =========================================================
+// BACK TO ROOMS
+// =========================================================
+
+function backToRooms(){
+
+    currentRoom =
+        null;
+
+    activeRoomId =
+        null;
+
+
+    showRoomSelection();
+
+}
+
+
+window.backToRooms =
+    backToRooms;
+
+
+// =========================================================
+// CLEANUP BEFORE PAGE CLOSE
+// =========================================================
+
+window.addEventListener(
+    "beforeunload",
+    () => {
+
+        /*
+           Socket.io يتولى فصل الاتصال
+           تلقائيًا.
+        */
+
+    }
+);
+
+
+// =========================================================
+// INITIAL UI
+// =========================================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        createRoomInterface();
+
+        createPrivateInterface();
+
+        updatePrivateNotification();
 
         updateChatViewport();
 
-        window.scrollTo(
-          0,
-          0
-        );
-
-      },
-      300
-    );
-
-  }
+    }
 );
+
+
+// =========================================================
+// FINAL STARTUP
+// =========================================================
+
+createRoomInterface();
+
+createPrivateInterface();
+
+updatePrivateNotification();
+
+updateChatViewport();
+
+
+// =========================================================
+// END OF APP.JS
+// =========================================================
