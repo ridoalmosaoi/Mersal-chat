@@ -10446,6 +10446,14 @@ socket.on(
 );
 
 });
+function getUserBySocket(socket) {
+
+    return users.find(
+        user =>
+            user.id === socket.id
+    );
+
+}
 /* =========================================================
    SERVER START
    ========================================================= */
