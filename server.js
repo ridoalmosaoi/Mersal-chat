@@ -345,6 +345,11 @@ function getUser(socket) {
             socket.id
     );
 }
+function getUserBySocket(socket) {
+    return users.find(
+        user => user.socketId === socket.id
+    ) || null;
+}
 
 
 function getUserByName(name) {
