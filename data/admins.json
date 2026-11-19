@@ -1,0 +1,23 @@
+[
+  {
+    "name": "a",
+    "password": "a",
+    "permissions": {
+      "kick": true,
+      "ban": true,
+      "disconnect": true,
+      "unban": true,
+      "mute": true,
+      "clear": true,
+      "maintenance": true,
+      "chatLock": true,
+      "privateLock": true,
+      "deleteMessage": true,
+      "addAdmin": true,
+      "removeAdmin": true,
+      "viewIP": true,
+      "viewUserInfo": true,
+      "stars": true
+    }
+  }
+]
